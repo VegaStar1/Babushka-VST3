@@ -192,6 +192,27 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         if (reopened < 0.05) return fail ("clearing cables did not restore the normalled path");
     }
 
+    // Extra output buses: EURORACK OUT follows the signal before VOLUME, REVERB OUT is the 100 % wet tank.
+    {
+        BabushkaProcessor ob;
+        auto layout = ob.getBusesLayout();
+        layout.outputBuses.getReference (1) = juce::AudioChannelSet::mono();
+        layout.outputBuses.getReference (2) = juce::AudioChannelSet::mono();
+        if (! ob.setBusesLayout (layout)) return fail ("cannot enable Eurorack Out / Reverb Out buses");
+        ob.prepareToPlay (48000.0, 512);
+        ob.apvts.getParameter ("volume")->setValueNotifyingHost (0.4f);     // main output is quiet, EURORACK OUT must not follow it
+        juce::AudioBuffer<float> b5 (ob.getTotalNumOutputChannels(), 512);
+        double mainPk = 0, euroPk = 0, revPk = 0;
+        for (int blk = 0; blk < 60; ++blk)
+        {
+            juce::MidiBuffer m; if (blk == 0) m.addEvent (juce::MidiMessage::noteOn (1, 48, (juce::uint8) 100), 0);
+            b5.clear(); ob.processBlock (b5, m);
+            if (blk > 20) { mainPk = std::max (mainPk, (double) b5.getMagnitude (0, 0, 512)); euroPk = std::max (euroPk, (double) b5.getMagnitude (2, 0, 512)); revPk = std::max (revPk, (double) b5.getMagnitude (3, 0, 512)); }
+        }
+        std::printf ("Extra buses (%d output channels): main peak %.3f, Eurorack Out %.3f, Reverb Out %.3f\n", b5.getNumChannels(), mainPk, euroPk, revPk);
+        if (b5.getNumChannels() != 4 || euroPk < 1.5 * mainPk || revPk < 0.02) return fail ("extra output buses");
+    }
+
     // Factory presets: every parameter id exists, cables parse, the sound is finite and audible.
     {
         BabushkaProcessor pr;

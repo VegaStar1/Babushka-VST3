@@ -156,6 +156,28 @@ int main (int argc, char** argv)
             if (! ok) ++springFail;
         }
         std::printf ("  spring T60 calibration: %s\n", springFail == 0 ? "ALL PASSED" : "FAILURES");
+
+        // The tank must sound the same at every host rate: steady sines of 8 frequencies, wet/dry level per rate.
+        double byRate[3]; int ri = 0;
+        for (int rate : { 44100, 48000, 96000 })
+        {
+            double sum = 0; int n = 0;
+            for (double f : { 98.0, 131.0, 165.0, 220.0, 294.0, 392.0, 523.0, 880.0 })
+            {
+                SpringReverb r2; r2.prepare ((float) rate);
+                double ed = 0, ew = 0;
+                for (int i = 0; i < rate * 4; ++i)
+                {
+                    const float x = 0.3f * (float) std::sin (6.283185307179586 * f * i / rate), w2 = r2.process (x);
+                    if (i >= rate * 2) { ed += (double) x * x; ew += (double) w2 * w2; }
+                }
+                sum += 10.0 * std::log10 (ew / ed); ++n;
+            }
+            byRate[ri++] = sum / n;
+        }
+        const double spread = std::max ({ byRate[0], byRate[1], byRate[2] }) - std::min ({ byRate[0], byRate[1], byRate[2] });
+        std::printf ("  tank level on tones at 44.1 / 48 / 96 kHz: %+.1f / %+.1f / %+.1f dB, spread %.1f dB  %s\n",
+                     byRate[0], byRate[1], byRate[2], spread, spread < 1.5 ? "OK" : "FAIL");
     }
     {
         // AC coupling: a recorded 66 Hz square wave sags ≈17 % over a half-period (≈5.5 Hz single-pole equivalent).
@@ -260,6 +282,19 @@ int main (int argc, char** argv)
         }
         Params p; p.mixOsc1 = 0.6f; p.cutoff = 0.7f; p.sustain = 1.0f;
         auto rms = [] (const std::vector<float>& y) { double a = 0; for (size_t i = y.size() / 4; i < y.size(); ++i) a += y[i] * y[i]; return std::sqrt (a / (y.size() * 0.75)); };
+        // The spring is a long, resonant tank, so a single held note can land on a peak or in a dip of its
+        // response; the level is judged on the average over several notes (and must not depend on the rate).
+        double sumDb = 0; int nNotes = 0;
+        for (int note : { 36, 41, 48, 53, 60, 67, 72 })
+        {
+            Params q = p; q.reverbMix = 0.0f;
+            const double d = rms (renderSeq (q, notes ({ { 0.0, 3.0, note } }), 3.0));
+            q.reverbMix = 1.0f;
+            const double w = rms (renderSeq (q, notes ({ { 0.0, 3.0, note } }), 3.0));
+            sumDb += 20.0 * std::log10 (w / d); ++nNotes;
+        }
+        const double meanDb = sumDb / nNotes;
+        std::printf ("Spring level, 100%% wet vs dry on held notes: mean %+.1f dB over %d notes (%s)\n", meanDb, nNotes, std::abs (meanDb) < 3.0 ? "OK" : "FAIL");
         auto dry = renderSeq (p, notes ({ { 0.0, 3.0, 48 } }), 3.0);
         p.reverbMix = 1.0f;
         auto wet = renderSeq (p, notes ({ { 0.0, 3.0, 48 } }), 3.0);
@@ -454,6 +489,35 @@ int main (int argc, char** argv)
                            n2.size() > 2 ? n2[2] : 0, n2.size() > 3 ? n2[3] : 0, n2.size() > 4 ? n2[4] : 0);
             // 4 edges walk 60 64 67 60; RESET IN sends the pattern back to its first note, so the next edge plays 60 again
             check ("STEP-ADVANCE + RESET IN", n2.size() == 5 && n2[0] == 60 && n2[1] == 64 && n2[2] == 67 && n2[3] == 60 && n2[4] == 60, buf);
+        }
+        {   // Local Off: the keyboard no longer plays the internal voice; KB / GATE OUT still work and cables restore it
+            Params q = base; q.localOn = false;
+            std::vector<float> g, k;
+            const double silent = rmsOf (run (q, PatchState(), { { 60, 0 } }, 1.0), 0);
+            const double viaCable = rmsOf (run (q, cables ({ { Jack::GateOut, Jack::EnvTriggerIn } }), { { 60, 0 } }, 1.0), 0);
+            run (q, cables ({ { Jack::GateOut, Jack::AttenuatorIn } }), { { 60, 0 } }, 0.05, &g, Jack::GateOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 72, 0 } }, 0.05, &k, Jack::KbOut);
+            std::snprintf (buf, sizeof buf, "silent %.5f, GATE OUT -> TRIGGER IN %.3f, gate %.1f V, KB OUT %.2f V", silent, viaCable, g.back(), k.back());
+            check ("LOCAL OFF", silent < 1.0e-3 && viaCable > 0.05 && std::abs (g.back() - 8.0f) < 0.01f && std::abs (k.back() - 1.0f) < 0.01f, buf);
+        }
+        {   // KB OUT range 0…+10 V
+            std::vector<float> a, b2, c; Params q = base; q.kbOutRange = 1;
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 60, 0 } }, 0.05, &a, Jack::KbOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 72, 0 } }, 0.05, &b2, Jack::KbOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 0, 0 } }, 0.05, &c, Jack::KbOut);
+            std::snprintf (buf, sizeof buf, "note 60 %.2f V, note 72 %.2f V, note 0 %.2f V", a.back(), b2.back(), c.back());
+            check ("KB OUT range 0 ... +10 V", std::abs (a.back() - 5.0f) < 0.01f && std::abs (b2.back() - 6.0f) < 0.01f && std::abs (c.back() - 0.0f) < 0.01f, buf);
+        }
+        {   // Extra outputs: EURORACK OUT ignores VOLUME, REVERB OUT is the tank at 100 % wet whatever the MIX knob says
+            auto measure = [&] (float volume, double& mainRms, double& euroRms, double& revRms) {
+                Engine e; e.prepare (fs, 2); Params q = base; q.volume = volume; q.reverbMix = 0.0f; e.setParams (q); e.noteOn (48);
+                std::vector<float> m (fs), eu (fs), rv (fs);
+                for (int pos = 0; pos < fs; pos += 64) e.process (m.data() + pos, nullptr, 64, eu.data() + pos, rv.data() + pos);
+                mainRms = rmsOf (m, fs / 2); euroRms = rmsOf (eu, fs / 2); revRms = rmsOf (rv, fs / 2); };
+            double m1, e1, r1, m2, e2, r2;
+            measure (0.9f, m1, e1, r1); measure (0.45f, m2, e2, r2);
+            std::snprintf (buf, sizeof buf, "main %.3f -> %.3f, euro %.3f -> %.3f, reverb out %.3f (MIX = 0)", m1, m2, e1, e2, r1);
+            check ("EURORACK OUT / REVERB OUT buses", std::abs (e1 - e2) < 1.0e-4 && m2 < 0.5 * m1 && r1 > 0.02, buf);
         }
         {   // Fuzz: random cables and parameters, 60 s
             Engine e; e.prepare (fs, 2); Rng r; r.seed (777);

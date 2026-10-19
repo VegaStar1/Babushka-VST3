@@ -78,6 +78,9 @@ struct Params
     int   notePriority = 0;          // 0 = last, 1 = low, 2 = high
     float fineTune = 0.0f;           // semitones, ±1
     float drift = 0.25f;             // extra: analogue drift amount (0 = stable)
+    // Global settings of the hardware (manual p. 38)
+    bool  localOn = true;            // off: keyboard, pitch wheel and ARP/SEQ only drive KB OUT / GATE OUT / KB VEL OUT
+    int   kbOutRange = 0;            // KB OUT voltage range: 0 = −5…+5 V, 1 = 0…+10 V
 };
 
 class Engine
@@ -205,7 +208,9 @@ public:
     void process (float* out, int numSamples) noexcept { process (out, nullptr, numSamples); }
 
     // ext: optional INSTRUMENT IN signal (host rate), may be nullptr.
-    void process (float* out, const float* ext, int numSamples) noexcept
+    // euroOut / reverbOut: optional extra outputs (host rate): EURORACK OUT (after the reverb MIX, before
+    // VOLUME; ±1 ≈ ±5 V) and REVERB OUT (spring tank, always 100 % wet).
+    void process (float* out, const float* ext, int numSamples, float* euroOut = nullptr, float* reverbOut = nullptr) noexcept
     {
         updateBlockConstants();
         ArpSeq::Event ev[4];
@@ -242,8 +247,14 @@ public:
             const float mix = sRevMix.v;
             float y = voice * (1.0f - mix) + wet * mix;
             y = outDc.process (y);
-            if (isUsed (Jack::ReverbOut)) setOut (Jack::ReverbOut, revOutDc.process (wet) * 5.0f);   // always 100 % wet
-            if (isUsed (Jack::EuroOut))   setOut (Jack::EuroOut, y * 5.0f);                            // after MIX, before VOLUME
+            if (reverbOut != nullptr || isUsed (Jack::ReverbOut))
+            {
+                const float r = revOutDc.process (wet);                                                // always 100 % wet, AC coupled
+                if (reverbOut != nullptr) reverbOut[n] = r;
+                if (isUsed (Jack::ReverbOut)) setOut (Jack::ReverbOut, r * 5.0f);
+            }
+            if (euroOut != nullptr) euroOut[n] = y;                                                    // after MIX, before VOLUME
+            if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, y * 5.0f);
             y = y * volumeGain (sVolume.v) * 1.6f;
             out[n] = safetyLimit (y);
         }
@@ -344,8 +355,11 @@ private:
         if (! gate && fromNoteOn)
         {
             gate = true;
-            if (! routing.inputPatched[(int) Jack::EnvTriggerIn]) env.gateOn();   // TRIGGER IN replaces the keyboard gate
-            kbRls.gateOn();
+            if (params.localOn)                                                     // Local Off: no hard-wired gate
+            {
+                if (! routing.inputPatched[(int) Jack::EnvTriggerIn]) env.gateOn();   // TRIGGER IN replaces the keyboard gate
+                kbRls.gateOn();
+            }
         }
     }
 
@@ -456,7 +470,11 @@ private:
         // Keyboard / ARP / SEQ outputs. KB OUT carries the glided pitch, 1 V/oct, 0 V = middle C (ASSUMPTION).
         accentLevel *= accentDecay;
         if (isUsed (Jack::GateOut)) setOut (Jack::GateOut, gate ? 8.0f : 0.0f);
-        if (isUsed (Jack::KbOut))   setOut (Jack::KbOut, clampf ((currentPitch - 60.0f) * (1.0f / 12.0f), -5.0f, 5.0f));
+        if (isUsed (Jack::KbOut))
+        {
+            const float v = (currentPitch - 60.0f) * (1.0f / 12.0f);
+            setOut (Jack::KbOut, p.kbOutRange == 1 ? clampf (v + 5.0f, 0.0f, 10.0f) : clampf (v, -5.0f, 5.0f));
+        }
         if (isUsed (Jack::KbVelOut)) setOut (Jack::KbVelOut, arp.sequencerRunning() ? 5.0f * accentLevel : velHeld);
 
         // Attenuator (bipolar; its input is normalled to +8 V, so unpatched it is a DC source).
@@ -492,7 +510,9 @@ private:
         const float pwMod    = lfoOut * sLfoPw.v * wheel * 0.45f;
 
         // Pitch: 8' = keyboard pitch. 32' … 4' / 16' … 2'. PITCH IN is summed with the keyboard CV (1 V/oct).
-        const float basePitch = currentPitch + bend * (float) p.bendRange + p.fineTune + pitchMod;
+        // Local Off: the internal voice sees neither the keyboard CV nor the pitch wheel (0 V = middle C).
+        const float kbCv = p.localOn ? currentPitch : 60.0f;
+        const float basePitch = kbCv + (p.localOn ? bend * (float) p.bendRange : 0.0f) + p.fineTune + pitchMod;
         const float d = p.drift * 0.03f;  // up to ±3 cents at drift = 1
         float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process();
         float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process();
@@ -540,7 +560,7 @@ private:
         if (patched (Jack::FilterEnvAmtIn)) envAmt += 0.2f * readIn (Jack::FilterEnvAmtIn);
         float octaves = sCutoff.v * std::log2 (11000.0f / 10.0f)
                         + envAmt * 6.0f * e
-                        + track * (currentPitch - 60.0f) * (1.0f / 12.0f)
+                        + track * (kbCv - 60.0f) * (1.0f / 12.0f)
                         + cutMod;
         if (patched (Jack::FilterCutoffIn)) octaves += readIn (Jack::FilterCutoffIn);
         const float cutoffHz = std::min (10.0f * std::exp2 (octaves), 24000.0f);

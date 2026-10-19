@@ -295,7 +295,7 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     addSection ("OUTPUT",      { "vcaMode", "reverbMix", "volume" });
     addSection ("CONTROLLER / GLOBAL", { "glide", "glideType", "legatoGlide", "bendRange", "notePriority", "fineTune", "drift", "oversampling" });
     addSection ("ARP / SEQ",   { "arpPlay", "arpHold", "arpMode", "arpDirection", "arpOctSeq", "arpRate", "arpSync", "arpFreeStep" });
-    addSection ("CLOCK JACKS", { "extClockMode", "extClockPpqn", "clockOutPpqn" });
+    addSection ("JACKS / GLOBAL", { "extClockMode", "extClockPpqn", "clockOutPpqn", "kbOutRange", "localOn" });
 
     addAndMakeVisible (patchPanel);
     addAndMakeVisible (presetBrowser);
@@ -339,7 +339,7 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     arpInfo.setColour (juce::Label::textColourId, kText.withAlpha (0.8f));
     addAndMakeVisible (arpInfo);
 
-    auto& arpSection = sections[sections.size() - 2];   // ARP / SEQ (CLOCK JACKS follows it)
+    auto& arpSection = sections[sections.size() - 2];   // ARP / SEQ (JACKS / GLOBAL follows it)
     arpSection.extraHeight = 58;
     arpSection.layoutExtra = [this] (juce::Rectangle<int> r) {
         auto row = r.removeFromTop (26);

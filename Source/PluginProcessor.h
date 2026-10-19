@@ -63,7 +63,7 @@ public:
 
 private:
     babushka::dsp::Engine engine;
-    std::vector<float> mono, ext;
+    std::vector<float> mono, ext, euro, reverbOut;
     juce::SpinLock seqLock;
     juce::File userPresetDir;
     juce::String currentPresetName { "Init" };

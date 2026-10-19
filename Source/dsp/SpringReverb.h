@@ -156,7 +156,11 @@ private:
 
     void setupSpring (Spring& sp, float transitSeconds, int stages, int K, float a, float t60, uint32_t seed)
     {
-        sp.transit = transitSeconds * fs;
+        // The dispersion chain adds a group delay of K·(1−a)/(1+a) samples per stage at low frequencies; K is rounded
+        // from the sample rate, so the plain transit would give a slightly different loop time (and different
+        // comb-filter resonances) at 44.1, 48 and 96 kHz. Compensating makes the loop time rate-independent.
+        const float chainDelay = (float) stages * (float) K * (1.0f - a) / (1.0f + a);
+        sp.transit = std::max (transitSeconds * fs - chainDelay, 8.0f);
         sp.delay.assign ((size_t) (sp.transit + 64.0f), 0.0f);
         sp.chain.prepare (stages, K, a);
         sp.loopLP.setCutoff (7000.0f, fs);
@@ -164,8 +168,8 @@ private:
         sp.loopHP.setCutoff (7.0f, fs);
         sp.loopShelf.set (330.0f, 340.0f, fs);
         sp.ripple.prepare (fs, seed, 2.0f, 0.25f);
-        // Loop delay ≈ transit + mean dispersion delay (≈ stages·K samples).
-        const float loopSeconds = (sp.transit + (float) (stages * K)) / fs;
+        // Loop delay ≈ transit + mean dispersion delay (stages / 8.6 kHz, independent of the sample rate).
+        const float loopSeconds = transitSeconds + (float) stages / 8600.0f;
         sp.g = std::pow (10.0f, -3.0f * loopSeconds / t60);
     }
 };

@@ -64,6 +64,9 @@ namespace ids
     static constexpr const char* extClockMode = "extClockMode";
     static constexpr const char* extClockPpqn = "extClockPpqn";
     static constexpr const char* clockOutPpqn = "clockOutPpqn";
+    // Global settings (manual p. 38)
+    static constexpr const char* localOn    = "localOn";
+    static constexpr const char* kbOutRange = "kbOutRange";
 }
 
 APVTS::ParameterLayout BabushkaProcessor::createLayout()
@@ -151,12 +154,16 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     choice (ids::extClockMode, "Clock In Mode", { "Clock", "Step-Advance" }, 0);
     p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ids::extClockPpqn, 1 }, "Clock In PPQN", 1, 48, 2));
     p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ids::clockOutPpqn, 1 }, "Clock Out PPQN", 1, 48, 2));
+    p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::localOn, 1 }, "Local On", true));
+    choice (ids::kbOutRange, "KB Out Range", { "-5 to +5 V", "0 to +10 V" }, 0);
 
     return { p.begin(), p.end() };
 }
 
 BabushkaProcessor::BabushkaProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                                       .withOutput ("Eurorack Out", juce::AudioChannelSet::mono(), false)
+                                       .withOutput ("Reverb Out", juce::AudioChannelSet::mono(), false)
                                        .withInput ("Ext In", juce::AudioChannelSet::stereo(), false)),
       apvts (*this, nullptr, "BABUSHKA", createLayout())
 {
@@ -166,7 +173,12 @@ bool BabushkaProcessor::isBusesLayoutSupported (const BusesLayout& layouts) cons
 {
     const auto out = layouts.getMainOutputChannelSet();
     const auto in  = layouts.getMainInputChannelSet();
-    const bool outOk = out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo();
+    bool outOk = out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo();
+    for (int b = 1; b < layouts.outputBuses.size(); ++b)    // Eurorack Out / Reverb Out: off, mono or stereo
+    {
+        const auto cs = layouts.getChannelSet (false, b);
+        outOk = outOk && (cs.isDisabled() || cs == juce::AudioChannelSet::mono() || cs == juce::AudioChannelSet::stereo());
+    }
     const bool inOk  = in.isDisabled() || in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::stereo();
     return outOk && inOk;
 }
@@ -181,6 +193,8 @@ void BabushkaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     engine.setParams (readParams());
     patchDirty.store (true);          // re-send the cables to the freshly prepared engine
     mono.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
+    euro.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
+    reverbOut.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     ext.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     {
         const juce::SpinLock::ScopedLockType lock (seqLock);
@@ -208,6 +222,7 @@ babushka::dsp::Params BabushkaProcessor::readParams() const
     p.fineTune = f (ids::fineTune); p.drift = f (ids::drift);
     p.extLevel = f (ids::extLevel);
     p.hpCutoff = f (ids::hpCutoff); p.attenuator = f (ids::attenuator);
+    p.localOn = f (ids::localOn) > 0.5f; p.kbOutRange = i (ids::kbOutRange);
     return p;
 }
 
@@ -323,6 +338,10 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         patchDirty.store (true);
     }
     if ((int) mono.size() < numSamples) mono.resize ((size_t) numSamples);
+    if ((int) euro.size() < numSamples) euro.resize ((size_t) numSamples);
+    if ((int) reverbOut.size() < numSamples) reverbOut.resize ((size_t) numSamples);
+    auto busEnabled = [this] (int index) { auto* b = getBus (false, index); return b != nullptr && b->isEnabled(); };
+    const bool euroOn = busEnabled (1), reverbOn = busEnabled (2);
 
     if ((int) ext.size() < numSamples) ext.resize ((size_t) numSamples);
 
@@ -372,16 +391,35 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     for (const auto meta : midi)
     {
         const int at = juce::jlimit (0, numSamples, meta.samplePosition);
-        if (at > pos) { engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, at - pos); pos = at; }
+        if (at > pos)
+        {
+            engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, at - pos,
+                            euroOn ? euro.data() + pos : nullptr, reverbOn ? reverbOut.data() + pos : nullptr);
+            pos = at;
+        }
         handleMidi (meta.getMessage());
     }
-    if (pos < numSamples) engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, numSamples - pos);
+    if (pos < numSamples)
+        engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, numSamples - pos,
+                        euroOn ? euro.data() + pos : nullptr, reverbOn ? reverbOut.data() + pos : nullptr);
 
     currentSeqLength.store (arp.currentLength());
     pendingSequences = arp.sequences();
 
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        buffer.copyFrom (ch, 0, mono.data(), numSamples);
+    {   // main output (mono voice on every channel of bus 0) and the two optional mono outputs
+        auto mainOut = getBusBuffer (buffer, false, 0);
+        for (int ch = 0; ch < mainOut.getNumChannels(); ++ch) mainOut.copyFrom (ch, 0, mono.data(), numSamples);
+        if (euroOn)
+        {
+            auto b = getBusBuffer (buffer, false, 1);
+            for (int ch = 0; ch < b.getNumChannels(); ++ch) b.copyFrom (ch, 0, euro.data(), numSamples);
+        }
+        if (reverbOn)
+        {
+            auto b = getBusBuffer (buffer, false, 2);
+            for (int ch = 0; ch < b.getNumChannels(); ++ch) b.copyFrom (ch, 0, reverbOut.data(), numSamples);
+        }
+    }
 }
 
 juce::AudioProcessorEditor* BabushkaProcessor::createEditor() { return new BabushkaEditor (*this); }
