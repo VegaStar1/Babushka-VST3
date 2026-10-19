@@ -9,7 +9,102 @@ namespace
     constexpr int kCell = 86, kCellH = 96, kHeader = 26, kPad = 8;
 }
 
-BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p), processor (p)
+// ---------------------------------------------------------------------------------------------------------
+PatchPanelComponent::PatchPanelComponent (BabushkaProcessor& p) : processor (p)
+{
+    using namespace babushka::dsp;
+    fillBox (fromBox, true);
+    fillBox (toBox, false);
+    fromBox.setTextWhenNothingSelected ("from (output / mult)");
+    toBox.setTextWhenNothingSelected ("to (input / mult)");
+    for (auto* b : { &patchButton, &removeButton, &clearButton })
+    {
+        b->setColour (juce::TextButton::buttonColourId, kBg);
+        b->setColour (juce::TextButton::textColourOffId, kText);
+        addAndMakeVisible (*b);
+    }
+    patchButton.onClick = [this] {
+        if (fromBox.getSelectedId() == 0 || toBox.getSelectedId() == 0) return;
+        processor.addCable ((babushka::dsp::Jack) (fromBox.getSelectedId() - 1), (babushka::dsp::Jack) (toBox.getSelectedId() - 1));
+        refresh(); };
+    removeButton.onClick = [this] { const int r = list.getSelectedRow(); if (r >= 0) { processor.removeCable (r); refresh(); } };
+    clearButton.onClick = [this] { processor.clearCables(); refresh(); };
+    addAndMakeVisible (fromBox);
+    addAndMakeVisible (toBox);
+    list.setModel (this);
+    list.setRowHeight (20);
+    list.setColour (juce::ListBox::backgroundColourId, kBg);
+    addAndMakeVisible (list);
+    hint.setFont (juce::FontOptions (11.5f));
+    hint.setColour (juce::Label::textColourId, kText.withAlpha (0.7f));
+    hint.setText ("A cable in an input replaces its normalled source. Mult jacks are one node. Delete key removes the selected cable.", juce::dontSendNotification);
+    addAndMakeVisible (hint);
+    refresh();
+}
+
+void PatchPanelComponent::fillBox (juce::ComboBox& box, bool outputs)
+{
+    using namespace babushka::dsp;
+    juce::String lastSection;
+    for (int i = 0; i < kNumJacks; ++i)
+    {
+        const auto& info = jackInfo ((Jack) i);
+        const bool wanted = info.kind == JackKind::Mult || (outputs ? info.kind == JackKind::Output : info.kind == JackKind::Input);
+        if (! wanted) continue;
+        if (juce::String (info.section) != lastSection) { lastSection = info.section; box.addSectionHeading (lastSection); }
+        box.addItem (juce::String (info.label), i + 1);
+    }
+}
+
+void PatchPanelComponent::refresh()
+{
+    cached = processor.getPatchCopy();
+    list.updateContent();
+    list.repaint();
+}
+
+void PatchPanelComponent::paintListBoxItem (int row, juce::Graphics& g, int width, int height, bool selected)
+{
+    using namespace babushka::dsp;
+    if (row < 0 || row >= cached.count) return;
+    if (selected) g.fillAll (kAccent.withAlpha (0.35f));
+    const auto& c = cached.cables[(size_t) row];
+    g.setColour (kText);
+    g.setFont (juce::FontOptions (12.5f));
+    g.drawText (juce::String (jackInfo (c.a).section) + " · " + jackInfo (c.a).label + "   <->   "
+                    + jackInfo (c.b).section + " · " + jackInfo (c.b).label, 8, 0, width - 12, height, juce::Justification::centredLeft);
+}
+
+void PatchPanelComponent::paint (juce::Graphics& g)
+{
+    g.setColour (kPanel);
+    g.fillRoundedRectangle (getLocalBounds().toFloat(), 6.0f);
+    g.setColour (kAccent);
+    g.setFont (juce::FontOptions (12.5f, juce::Font::bold));
+    g.drawText ("PATCH PANEL  (41 points: 21 inputs, 16 outputs, 4 mult)", 10, 4, getWidth() - 20, 18, juce::Justification::centredLeft);
+}
+
+void PatchPanelComponent::resized()
+{
+    auto r = getLocalBounds().reduced (8, 0);
+    r.removeFromTop (26);
+    auto row = r.removeFromTop (26);
+    fromBox.setBounds (row.removeFromLeft (230));
+    row.removeFromLeft (6);
+    toBox.setBounds (row.removeFromLeft (230));
+    row.removeFromLeft (8);
+    patchButton.setBounds (row.removeFromLeft (80));
+    row.removeFromLeft (6);
+    removeButton.setBounds (row.removeFromLeft (80));
+    row.removeFromLeft (6);
+    clearButton.setBounds (row.removeFromLeft (90));
+    r.removeFromTop (4);
+    hint.setBounds (r.removeFromBottom (18));
+    list.setBounds (r.reduced (0, 2));
+}
+
+// ---------------------------------------------------------------------------------------------------------
+BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p), processor (p), patchPanel (p)
 {
     lnf.setColour (juce::Slider::rotarySliderFillColourId, kAccent);
     lnf.setColour (juce::Slider::thumbColourId, kAccent);
@@ -24,11 +119,15 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     addSection ("OSCILLATOR 1", { "osc1Octave", "osc1Wave" });
     addSection ("OSCILLATOR 2", { "osc2Octave", "osc2Wave", "osc2Freq", "osc2Sync" });
     addSection ("MIXER",       { "mixOsc1", "mixOsc2", "mixNoise", "extLevel" });
+    addSection ("UTILITIES",   { "hpCutoff", "attenuator" });
     addSection ("FILTER",      { "cutoff", "resonance", "kbdTrack", "envAmt" });
     addSection ("ENVELOPE",    { "attack", "decay", "sustain", "release" });
     addSection ("OUTPUT",      { "vcaMode", "reverbMix", "volume" });
     addSection ("CONTROLLER / GLOBAL", { "glide", "glideType", "legatoGlide", "bendRange", "notePriority", "fineTune", "drift", "oversampling" });
     addSection ("ARP / SEQ",   { "arpPlay", "arpHold", "arpMode", "arpDirection", "arpOctSeq", "arpRate", "arpSync", "arpFreeStep" });
+    addSection ("CLOCK JACKS", { "extClockMode", "extClockPpqn", "clockOutPpqn" });
+
+    addAndMakeVisible (patchPanel);
 
     for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton })
     {
@@ -47,7 +146,7 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     arpInfo.setColour (juce::Label::textColourId, kText.withAlpha (0.8f));
     addAndMakeVisible (arpInfo);
 
-    auto& arpSection = sections.back();
+    auto& arpSection = sections[sections.size() - 2];   // ARP / SEQ (CLOCK JACKS follows it)
     arpSection.extraHeight = 58;
     arpSection.layoutExtra = [this] (juce::Rectangle<int> r) {
         auto row = r.removeFromTop (26);
@@ -58,8 +157,8 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     };
 
     setResizable (true, true);
-    setResizeLimits (720, 480, 1800, 1400);
-    setSize (1040, 940);
+    setResizeLimits (720, 480, 1800, 1600);
+    setSize (1040, 1180);
     startTimerHz (10);
     timerCallback();
 }
@@ -180,4 +279,5 @@ void BabushkaEditor::resized()
         x += w + kPad;
         rowH = std::max (rowH, h);
     }
+    patchPanel.setBounds (kPad, y + rowH + kPad, width, std::max (170, getHeight() - (y + rowH + 2 * kPad)));
 }

@@ -3,6 +3,30 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "PluginProcessor.h"
 
+// Temporary patch bay: pick two jacks, press PATCH to plug a cable in; select a cable and press REMOVE to pull it out.
+class PatchPanelComponent : public juce::Component, private juce::ListBoxModel
+{
+public:
+    explicit PatchPanelComponent (BabushkaProcessor&);
+    void resized() override;
+    void paint (juce::Graphics&) override;
+    void refresh();
+
+private:
+    BabushkaProcessor& processor;
+    juce::ComboBox fromBox, toBox;
+    juce::TextButton patchButton { "PATCH" }, removeButton { "REMOVE" }, clearButton { "CLEAR ALL" };
+    juce::ListBox list;
+    juce::Label hint;
+    babushka::dsp::PatchState cached;
+
+    int getNumRows() override { return cached.count; }
+    void paintListBoxItem (int row, juce::Graphics&, int width, int height, bool selected) override;
+    void deleteKeyPressed (int row) override { if (row >= 0) { processor.removeCable (row); refresh(); } }
+    void fillBox (juce::ComboBox&, bool outputs);
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PatchPanelComponent)
+};
+
 // Temporary functional panel: controls grouped by hardware module.
 // The final skinned UI (own design, not a copy of the hardware panel) comes in a later phase.
 class BabushkaEditor : public juce::AudioProcessorEditor, private juce::Timer
@@ -36,6 +60,7 @@ private:
     BabushkaProcessor& processor;
     std::vector<Section> sections;
     juce::LookAndFeel_V4 lnf;
+    PatchPanelComponent patchPanel;
 
     // ARP/SEQ step-entry buttons, tap tempo and status line.
     juce::TextButton tapButton { "TAP" }, tieButton { "TIE" }, restButton { "REST" }, accentButton { "ACCENT" };

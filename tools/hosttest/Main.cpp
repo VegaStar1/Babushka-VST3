@@ -159,6 +159,38 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         if (peakOut < 0.05) return fail ("external input not audible");
     }
 
+    // Patch panel: a cable changes the sound, and cables survive save / load.
+    {
+        using namespace babushka::dsp;
+        BabushkaProcessor pp;
+        pp.setPlayConfigDetails (0, 2, 48000.0, 512);
+        pp.prepareToPlay (48000.0, 512);
+        pp.apvts.getParameter ("vcaMode")->setValueNotifyingHost (1.0f);   // DRONE: sounds without a key
+        juce::AudioBuffer<float> b3 (2, 512);
+        auto level = [&] (BabushkaProcessor& proc) {
+            double pk = 0;
+            for (int blk = 0; blk < 40; ++blk) { juce::MidiBuffer m; b3.clear(); proc.processBlock (b3, m); if (blk > 20) pk = std::max (pk, (double) b3.getMagnitude (0, 0, 512)); }
+            return pk; };
+        const double open = level (pp);
+        pp.addCable (Jack::AttenuatorOut, Jack::VcaAmtIn);                 // attenuator at centre = 0 V → VCA closed
+        const double shut = level (pp);
+        std::printf ("Patch panel: DRONE level %.3f, with ATTENUATOR OUT -> VCA AMT IN (0 V) %.4f\n", open, shut);
+        if (open < 0.05 || shut > 0.01) return fail ("patch cable did not change the sound");
+        juce::MemoryBlock st; pp.getStateInformation (st);
+
+        BabushkaProcessor loaded;
+        loaded.setPlayConfigDetails (0, 2, 48000.0, 512);
+        loaded.prepareToPlay (48000.0, 512);
+        loaded.setStateInformation (st.getData(), (int) st.getSize());
+        const double shut2 = level (loaded);
+        std::printf ("Patch panel after state reload: %d cable(s), level %.4f\n", loaded.getPatchCopy().count, shut2);
+        if (loaded.getPatchCopy().count != 1 || shut2 > 0.01) return fail ("cables not restored from state");
+        loaded.clearCables();
+        const double reopened = level (loaded);
+        std::printf ("Patch panel after CLEAR ALL: level %.3f\n", reopened);
+        if (reopened < 0.05) return fail ("clearing cables did not restore the normalled path");
+    }
+
     // In-process editor screenshot (a hosted VST3 view is a native child window and cannot be snapshotted).
     {
         BabushkaProcessor proc;

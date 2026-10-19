@@ -40,6 +40,12 @@ public:
     void requestRecTie()    { ++recTieRequests; }
     void requestRecAccent() { ++recAccentRequests; }
     void setArpTempoFromTap (double bpm);
+
+    // Patch cables (message thread). The audio thread picks up changes at the start of the next block.
+    babushka::dsp::PatchState getPatchCopy() const;
+    bool addCable (babushka::dsp::Jack a, babushka::dsp::Jack b);
+    void removeCable (int index);
+    void clearCables();
     int getCurrentSequenceLength() const { return currentSeqLength.load(); }
     juce::String getArpRateText() const;
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -48,6 +54,9 @@ private:
     babushka::dsp::Engine engine;
     std::vector<float> mono, ext;
     juce::SpinLock seqLock;
+    mutable juce::SpinLock patchLock;
+    babushka::dsp::PatchState patchState;
+    std::atomic<bool> patchDirty { true };
     std::array<babushka::dsp::Sequence, 3> pendingSequences {};   // last known sequences (for save / re-prepare)
     std::atomic<int> recRestRequests { 0 }, recTieRequests { 0 }, recAccentRequests { 0 }, currentSeqLength { 0 };
     int currentOversampling = 2;
