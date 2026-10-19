@@ -112,6 +112,71 @@ int main (int argc, char** argv)
         writeWav (dir + "/test_spring_ir.wav", ir, fs);
     }
 
+    // ---------------- 3b. Calibration against recordings of the hardware ----------------------
+    // Targets come from analysis of recorded Grandmother material (see docs/analysis/hardware-recordings.md).
+    {
+        // Spring tank: T60 per octave band, estimated like the recordings: band-pass, smoothed energy,
+        // linear fit of the dB decay from 0.3 s after the peak down to 30 dB below it.
+        SpringReverb rv; rv.prepare ((float) fs);
+        Rng nr; nr.seed (1234);
+        std::vector<float> wet ((size_t) fs * 14);
+        for (size_t i = 0; i < wet.size(); ++i) wet[i] = rv.process (i < (size_t) fs / 20 ? 0.5f * nr.bipolar() : 0.0f);
+
+        struct Band { float lo, hi, target, tolLo, tolHi; };
+        const Band bands[] = { {  60,  120, 8.4f, 0.7f, 1.4f }, { 120,  240, 10.5f, 0.7f, 1.4f }, { 240,  480, 6.8f, 0.7f, 1.4f },
+                               { 480,  960, 4.4f, 0.7f, 1.4f }, { 960, 1920,  3.6f, 0.7f, 1.4f }, { 1920, 3840, 2.5f, 0.7f, 1.4f },
+                               { 3840, 7680, 1.1f, 0.7f, 1.8f } };
+        std::printf ("Spring tank T60 per octave band (hardware recordings -> model):\n");
+        int springFail = 0;
+        for (const Band& b : bands)
+        {
+            // Two cascaded RBJ band-pass biquads (constant 0 dB peak), centre = geometric mean, Q = 1.4.
+            const double f0 = std::sqrt ((double) b.lo * b.hi), w0 = 6.283185307179586 * f0 / fs, q = 1.4;
+            const double al = std::sin (w0) / (2 * q), a0 = 1 + al;
+            const double bb0 = al / a0, bb2 = -al / a0, aa1 = -2 * std::cos (w0) / a0, aa2 = (1 - al) / a0;
+            std::vector<double> e (wet.size());
+            double z1[2] = { 0, 0 }, z2[2] = { 0, 0 };
+            for (size_t i = 0; i < wet.size(); ++i)
+            {
+                double v = wet[i];
+                for (int s = 0; s < 2; ++s) { const double o = bb0 * v + z1[s]; z1[s] = -aa1 * o + z2[s]; z2[s] = bb2 * v - aa2 * o; v = o; }
+                e[i] = v * v;
+            }
+            const double a = 1.0 - std::exp (-6.283185307179586 * 15.0 / fs);
+            double s1 = 0, s2 = 0;
+            for (double& x : e) { s1 += a * (x - s1); s2 += a * (s1 - s2); x = 10.0 * std::log10 (s2 + 1e-14); }
+            size_t pk = 0; for (size_t i = 0; i < (size_t) (1.2 * fs); ++i) if (e[i] > e[pk]) pk = i;
+            double sx = 0, sy = 0, sxx = 0, sxy = 0; int n = 0;
+            for (size_t i = pk + (size_t) (0.3 * fs); i < std::min (e.size(), pk + (size_t) (4.0 * fs)); ++i)
+                if (e[i] > e[pk] - 30.0) { const double t = (double) i / fs; sx += t; sy += e[i]; sxx += t * t; sxy += t * e[i]; ++n; }
+            const double slope = n > 100 ? (n * sxy - sx * sy) / (n * sxx - sx * sx) : 0.0;
+            const double t60 = slope < 0 ? -60.0 / slope : 99.0;
+            const bool ok = t60 >= b.target * b.tolLo && t60 <= b.target * b.tolHi;
+            std::printf ("  %5.0f-%5.0f Hz: recorded %5.1f s, model %5.1f s  %s\n", b.lo, b.hi, b.target, t60, ok ? "OK" : "FAIL");
+            if (! ok) ++springFail;
+        }
+        std::printf ("  spring T60 calibration: %s\n", springFail == 0 ? "ALL PASSED" : "FAILURES");
+    }
+    {
+        // AC coupling: a recorded 66 Hz square wave sags ≈17 % over a half-period (≈5.5 Hz single-pole equivalent).
+        Params p; p.osc1Octave = 2; p.osc1Wave = 2; p.mixOsc1 = 0.35f; p.mixOsc2 = 0.0f; p.cutoff = 1.0f; p.resonance = 0.0f;
+        p.vcaMode = 2; p.volume = 1.0f; p.drift = 0.0f; p.reverbMix = 0.0f;
+        auto y = renderSeq (p, notes ({ { 0.0, 3.0, 36 } }), 3.0);
+        double hi0 = 0, hi1 = 0; int nc = 0;
+        std::vector<int> ed;
+        for (size_t i = (size_t) fs * 2 + 1; i < y.size(); ++i) if (y[i - 1] < 0 && y[i] >= 0) ed.push_back ((int) i);
+        for (size_t k = 0; k + 1 < ed.size(); ++k)
+        {
+            const int a = ed[k]; const double per = ed[k + 1] - a;
+            hi0 += y[(size_t) (a + (int) (0.06 * per))]; hi1 += y[(size_t) (a + (int) (0.44 * per))]; ++nc;
+        }
+        const double ratio = nc > 0 ? hi1 / hi0 : 0.0, period = 1.0 / 65.406;
+        const double corner = -std::log (ratio) / (0.38 * period) / 6.283185307179586;
+        const bool ok = corner > 4.5 && corner < 6.5;
+        std::printf ("Output coupling: square-wave sag %.3f over 0.38 period -> %.2f Hz equivalent (recorded ≈5.5 Hz)  %s\n",
+                     ratio, corner, ok ? "OK" : "FAIL");
+    }
+
     // ---------------- 4. Musical demos ----------------------------------------------------------
     {   // Classic bass: two saws 16', slight detune, low cutoff, env sweep.
         Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 1; p.osc2Freq = 0.08f;

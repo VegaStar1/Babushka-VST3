@@ -85,8 +85,10 @@ public:
         lfo.prepare (fsOs);
         reverb.prepare (fsBase);
         arp.prepare (fsBase);
-        filterDc.setCutoff (4.0f, fsOs);
-        outDc.setCutoff (5.0f, fsBase);
+        // AC coupling: measured on a recorded square wave (flat tops sag ≈17 % over a half-period at 66 Hz)
+        // the whole hardware chain behaves like one high-pass at ≈5.5 Hz; the two blockers add up to that.
+        filterDc.setCutoff (1.5f, fsOs);
+        outDc.setCutoff (4.0f, fsBase);
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
         noise.seed (0xBAB05CAu);
 
