@@ -104,7 +104,177 @@ void PatchPanelComponent::resized()
 }
 
 // ---------------------------------------------------------------------------------------------------------
-BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p), processor (p), patchPanel (p)
+// ---------------------------------------------------------------------------------------------------------
+PresetBrowser::PresetBrowser (BabushkaProcessor& p) : processor (p)
+{
+    list.setModel (this);
+    list.setRowHeight (24);
+    list.setColour (juce::ListBox::backgroundColourId, kBg);
+    addAndMakeVisible (list);
+    nameEditor.setTextToShowWhenEmpty ("name for a new preset", kText.withAlpha (0.5f));
+    nameEditor.setColour (juce::TextEditor::backgroundColourId, kBg);
+    nameEditor.setColour (juce::TextEditor::textColourId, kText);
+    nameEditor.setColour (juce::TextEditor::outlineColourId, kAccent.withAlpha (0.5f));
+    addAndMakeVisible (nameEditor);
+    for (auto* b : { &saveButton, &deleteButton, &folderButton })
+    {
+        b->setColour (juce::TextButton::buttonColourId, kBg);
+        b->setColour (juce::TextButton::textColourOffId, kText);
+        addAndMakeVisible (*b);
+    }
+    saveButton.onClick = [this] {
+        const auto name = nameEditor.getText().trim();
+        if (name.isEmpty()) { status.setText ("Type a name first.", juce::dontSendNotification); return; }
+        if (processor.saveUserPreset (name)) { status.setText ("Saved '" + name + "'.", juce::dontSendNotification); refresh(); if (onLoaded) onLoaded(); }
+        else status.setText ("Could not save to " + processor.getUserPresetDirectory().getFullPathName(), juce::dontSendNotification); };
+    deleteButton.onClick = [this] { deleteKeyPressed (list.getSelectedRow()); };
+    folderButton.onClick = [this] { processor.getUserPresetDirectory().createDirectory(); processor.getUserPresetDirectory().revealToUser(); };
+    for (auto* l : { &description, &status })
+    {
+        l->setFont (juce::FontOptions (12.5f));
+        l->setColour (juce::Label::textColourId, kText.withAlpha (0.85f));
+        l->setJustificationType (juce::Justification::topLeft);
+        addAndMakeVisible (*l);
+    }
+    refresh();
+}
+
+void PresetBrowser::refresh()
+{
+    rows.clear();
+    juce::String lastCategory;
+    const auto& all = babushka::factoryPresets();
+    for (int i = 0; i < (int) all.size(); ++i)
+    {
+        if (juce::String (all[(size_t) i].category) != lastCategory)
+        {
+            lastCategory = all[(size_t) i].category;
+            rows.push_back ({ Row::Header, lastCategory.toUpperCase(), -1, {} });
+        }
+        rows.push_back ({ Row::Factory, all[(size_t) i].name, i, {} });
+    }
+    const auto files = processor.getUserPresetFiles();
+    if (! files.isEmpty()) rows.push_back ({ Row::Header, "USER", -1, {} });
+    for (auto& f : files) rows.push_back ({ Row::User, f.getFileNameWithoutExtension(), -1, f });
+    list.updateContent();
+    selectCurrentByName();
+}
+
+void PresetBrowser::selectCurrentByName()
+{
+    suppress = true;
+    list.deselectAllRows();
+    const auto cur = processor.getCurrentPresetName();
+    for (int i = 0; i < (int) rows.size(); ++i)
+        if (rows[(size_t) i].kind != Row::Header && rows[(size_t) i].text == cur)
+        {
+            list.selectRow (i, false, true);
+            if (rows[(size_t) i].kind == Row::Factory)
+                description.setText (juce::String (babushka::factoryPresets()[(size_t) rows[(size_t) i].factoryIndex].description), juce::dontSendNotification);
+            nameEditor.setText (cur, false);
+            break;
+        }
+    suppress = false;
+    list.repaint();
+}
+
+void PresetBrowser::paintListBoxItem (int row, juce::Graphics& g, int width, int height, bool selected)
+{
+    if (row < 0 || row >= (int) rows.size()) return;
+    const auto& r = rows[(size_t) row];
+    if (r.kind == Row::Header)
+    {
+        g.setColour (kPanel);
+        g.fillRect (0, 0, width, height);
+        g.setColour (kAccent);
+        g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+        g.drawText (r.text, 8, 0, width - 12, height, juce::Justification::centredLeft);
+        return;
+    }
+    if (selected) g.fillAll (kAccent.withAlpha (0.35f));
+    g.setColour (kText);
+    g.setFont (juce::FontOptions (14.0f));
+    g.drawText (r.text, 16, 0, width - 20, height, juce::Justification::centredLeft);
+}
+
+void PresetBrowser::loadRow (int row)
+{
+    if (row < 0 || row >= (int) rows.size()) return;
+    const auto& r = rows[(size_t) row];
+    if (r.kind == Row::Factory)
+    {
+        processor.applyFactoryPreset (r.factoryIndex);
+        description.setText (juce::String (babushka::factoryPresets()[(size_t) r.factoryIndex].description), juce::dontSendNotification);
+    }
+    else if (r.kind == Row::User)
+    {
+        if (! processor.loadUserPreset (r.file)) { status.setText ("Could not read " + r.file.getFileName(), juce::dontSendNotification); return; }
+        description.setText ("User preset (" + r.file.getFullPathName() + ")", juce::dontSendNotification);
+    }
+    else return;
+    status.setText ({}, juce::dontSendNotification);
+    nameEditor.setText (r.text, false);
+    if (onLoaded) onLoaded();
+}
+
+void PresetBrowser::selectedRowsChanged (int lastRowSelected)
+{
+    if (! suppress) loadRow (lastRowSelected);
+}
+
+void PresetBrowser::deleteKeyPressed (int row)
+{
+    if (row < 0 || row >= (int) rows.size() || rows[(size_t) row].kind != Row::User) { status.setText ("Only user presets can be deleted.", juce::dontSendNotification); return; }
+    const auto name = rows[(size_t) row].text;
+    if (processor.deleteUserPreset (rows[(size_t) row].file)) { status.setText ("Deleted '" + name + "'.", juce::dontSendNotification); refresh(); }
+}
+
+void PresetBrowser::loadRelative (int delta)
+{
+    int cur = -1;
+    for (int i = 0; i < (int) rows.size(); ++i)
+        if (rows[(size_t) i].kind != Row::Header && rows[(size_t) i].text == processor.getCurrentPresetName()) { cur = i; break; }
+    int i = cur;
+    for (int step = 0; step < (int) rows.size(); ++step)
+    {
+        i = ((i + delta) % (int) rows.size() + (int) rows.size()) % (int) rows.size();
+        if (cur < 0 && delta < 0) i = (int) rows.size() - 1 - step;   // nothing selected: start from the end / the start
+        if (rows[(size_t) i].kind != Row::Header) break;
+    }
+    suppress = true; list.selectRow (i, true, true); suppress = false;
+    loadRow (i);
+    list.repaint();
+}
+
+void PresetBrowser::paint (juce::Graphics& g)
+{
+    g.setColour (kPanel);
+    g.fillRoundedRectangle (getLocalBounds().toFloat(), 6.0f);
+    g.setColour (kAccent);
+    g.setFont (juce::FontOptions (12.5f, juce::Font::bold));
+    g.drawText ("PRESETS  (click to load; factory presets can be edited and saved as user presets)", 10, 4, getWidth() - 20, 18, juce::Justification::centredLeft);
+}
+
+void PresetBrowser::resized()
+{
+    auto r = getLocalBounds().reduced (8, 0);
+    r.removeFromTop (26);
+    auto bottom = r.removeFromBottom (120);
+    list.setBounds (r.reduced (0, 2));
+    auto row = bottom.removeFromTop (28).reduced (0, 2);
+    nameEditor.setBounds (row.removeFromLeft (260));
+    row.removeFromLeft (6);
+    saveButton.setBounds (row.removeFromLeft (70));
+    row.removeFromLeft (6);
+    deleteButton.setBounds (row.removeFromLeft (80));
+    row.removeFromLeft (6);
+    folderButton.setBounds (row.removeFromLeft (120));
+    description.setBounds (bottom.removeFromTop (60).reduced (2, 4));
+    status.setBounds (bottom.reduced (2, 0));
+}
+
+// ---------------------------------------------------------------------------------------------------------
+BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p), processor (p), patchPanel (p), presetBrowser (p)
 {
     lnf.setColour (juce::Slider::rotarySliderFillColourId, kAccent);
     lnf.setColour (juce::Slider::thumbColourId, kAccent);
@@ -128,6 +298,29 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     addSection ("CLOCK JACKS", { "extClockMode", "extClockPpqn", "clockOutPpqn" });
 
     addAndMakeVisible (patchPanel);
+    addAndMakeVisible (presetBrowser);
+    presetBrowser.setVisible (false);
+    for (auto* b : { &synthTab, &presetsTab, &prevButton, &nextButton })
+    {
+        b->setColour (juce::TextButton::buttonColourId, kBg);
+        b->setColour (juce::TextButton::buttonOnColourId, kAccent);
+        b->setColour (juce::TextButton::textColourOffId, kText);
+        b->setColour (juce::TextButton::textColourOnId, kBg);
+        addAndMakeVisible (*b);
+    }
+    synthTab.setClickingTogglesState (false);
+    synthTab.onClick = [this] { showPresetsTab (false); };
+    presetsTab.onClick = [this] { showPresetsTab (true); };
+    prevButton.onClick = [this] { presetBrowser.loadRelative (-1); };
+    nextButton.onClick = [this] { presetBrowser.loadRelative (+1); };
+    presetLabel.setJustificationType (juce::Justification::centred);
+    presetLabel.setFont (juce::FontOptions (15.0f, juce::Font::bold));
+    presetLabel.setColour (juce::Label::textColourId, kText);
+    addAndMakeVisible (presetLabel);
+    presetBrowser.onLoaded = [this] { timerCallback(); };
+    synthTab.setToggleState (true, juce::dontSendNotification);
+    synthTab.setClickingTogglesState (false);
+    presetsTab.setClickingTogglesState (false);
 
     for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton })
     {
@@ -165,8 +358,26 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
 
 BabushkaEditor::~BabushkaEditor() { stopTimer(); setLookAndFeel (nullptr); }
 
+void BabushkaEditor::showPresetsTab (bool show)
+{
+    presetsVisible = show;
+    for (auto& s : sections)
+        for (auto& c : s.controls) { c->widget->setVisible (! show); c->label->setVisible (! show); }
+    for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton }) b->setVisible (! show);
+    arpInfo.setVisible (! show);
+    patchPanel.setVisible (! show);
+    presetBrowser.setVisible (show);
+    synthTab.setToggleState (! show, juce::dontSendNotification);
+    presetsTab.setToggleState (show, juce::dontSendNotification);
+    if (show) presetBrowser.refresh();
+    timerCallback();
+    repaint();
+}
+
 void BabushkaEditor::timerCallback()
 {
+    presetLabel.setText (processor.getCurrentPresetName(), juce::dontSendNotification);
+    patchPanel.refresh();
     const int mode = (int) processor.apvts.getRawParameterValue ("arpMode")->load();
     juce::String t = processor.getArpRateText();
     if (mode != 0)
@@ -240,8 +451,9 @@ void BabushkaEditor::paint (juce::Graphics& g)
     g.drawText ("BABUSHKA", 14, 6, 300, 30, juce::Justification::centredLeft);
     g.setColour (kText.withAlpha (0.55f));
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("semi-modular analog voice  |  core build 0.1", 170, 6, 400, 30, juce::Justification::centredLeft);
+    g.drawText ("semi-modular analog voice", 170, 6, 220, 30, juce::Justification::centredLeft);
 
+    if (presetsVisible) return;
     for (auto& s : sections)
     {
         g.setColour (kPanel);
@@ -280,4 +492,16 @@ void BabushkaEditor::resized()
         rowH = std::max (rowH, h);
     }
     patchPanel.setBounds (kPad, y + rowH + kPad, width, std::max (170, getHeight() - (y + rowH + 2 * kPad)));
+
+    // Header: preset selector in the middle, page tabs on the right; the preset page fills the area below.
+    auto head = getLocalBounds().withHeight (36).reduced (kPad, 5);
+    auto tabs = head.removeFromRight (180);
+    synthTab.setBounds (tabs.removeFromLeft (86));
+    tabs.removeFromLeft (6);
+    presetsTab.setBounds (tabs.removeFromLeft (88));
+    auto sel = head.withTrimmedLeft (400).withTrimmedRight (12);
+    prevButton.setBounds (sel.removeFromLeft (30));
+    nextButton.setBounds (sel.removeFromRight (30));
+    presetLabel.setBounds (sel);
+    presetBrowser.setBounds (kPad, 42, width, getHeight() - 42 - kPad);
 }

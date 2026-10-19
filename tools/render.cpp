@@ -399,6 +399,19 @@ int main (int argc, char** argv)
             std::snprintf (buf, sizeof buf, "%.2f Hz (C4) -> %.2f Hz (C5), free-running %.2f Hz", freq (a), freq (b2), freq (w0));
             check ("KB OUT -> RATE IN (LFO tracks keyboard)", std::abs (freq (b2) / freq (a) - 2.0) < 0.05, buf);
         }
+        {   // S/H is sampled again every time SYNC IN restarts the LFO (GATE OUT -> SYNC IN: a new random value per key)
+            Engine e; e.prepare (fs, 2); Params q = base; q.lfoRate = 0.0f; e.setParams (q);
+            e.setPatch (cables ({ { Jack::GateOut, Jack::ModSyncIn }, { Jack::ModShOut, Jack::AttenuatorIn } }));
+            std::vector<float> o (fs / 4); std::vector<float> seen;
+            for (int k = 0; k < 6; ++k)
+            {
+                e.noteOn (60 + k); e.process (o.data(), (int) o.size()); seen.push_back (e.outputVolts (Jack::ModShOut));
+                e.noteOff (60 + k); e.process (o.data(), (int) o.size());
+            }
+            int distinct = 0; for (size_t i = 0; i < seen.size(); ++i) { bool dup = false; for (size_t j = 0; j < i; ++j) if (std::abs (seen[i] - seen[j]) < 1e-4f) dup = true; if (! dup) ++distinct; }
+            std::snprintf (buf, sizeof buf, "%d different S/H values in 6 key presses", distinct);
+            check ("GATE OUT -> SYNC IN re-samples S/H", distinct >= 5, buf);
+        }
         {   // Clock out: 120 BPM, PPQN 2 -> 4 pulses per second
             Engine e; e.prepare (fs, 2); Params q = base; e.setParams (q); e.setPatch (cables ({ { Jack::ClockOut, Jack::AttenuatorIn } }));
             ArpSeqParams ap; ap.rate = ArpSeq::knobForBpm (120.0f); e.setArpParams (ap);

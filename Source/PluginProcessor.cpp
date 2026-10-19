@@ -386,7 +386,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
 juce::AudioProcessorEditor* BabushkaProcessor::createEditor() { return new BabushkaEditor (*this); }
 
-void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
+std::unique_ptr<juce::XmlElement> BabushkaProcessor::createStateXml()
 {
     auto state = apvts.copyState();
     std::array<babushka::dsp::Sequence, 3> copy;
@@ -397,30 +397,115 @@ void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
     for (int i = 0; i < 3; ++i)
         state.setProperty ("seq" + juce::String (i + 1), sequenceToString (copy[(size_t) i]), nullptr);
     state.setProperty ("patch", juce::String (getPatchCopy().toString()), nullptr);
-    if (auto xml = state.createXml()) copyXmlToBinary (*xml, destData);
+    state.setProperty ("presetName", currentPresetName, nullptr);
+    return state.createXml();
+}
+
+void BabushkaProcessor::restoreFromXml (const juce::XmlElement& xml)
+{
+    if (! xml.hasTagName (apvts.state.getType())) return;
+    auto tree = juce::ValueTree::fromXml (xml);
+    std::array<babushka::dsp::Sequence, 3> loaded;
+    for (int i = 0; i < 3; ++i)
+        loaded[(size_t) i] = sequenceFromString (tree.getProperty ("seq" + juce::String (i + 1)).toString());
+    setSequences (loaded);
+    {
+        const juce::SpinLock::ScopedLockType lock (patchLock);
+        patchState = babushka::dsp::PatchState::fromString (tree.getProperty ("patch").toString().toStdString());
+    }
+    patchDirty.store (true);
+    currentPresetName = tree.hasProperty ("presetName") ? tree.getProperty ("presetName").toString() : juce::String ("Init");
+    apvts.replaceState (tree);
+}
+
+void BabushkaProcessor::setSequences (const std::array<babushka::dsp::Sequence, 3>& loaded)
+{
+    const juce::SpinLock::ScopedLockType lock (seqLock);
+    pendingSequences = loaded;
+    engine.arpSeq().sequences() = loaded;
+}
+
+void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    if (auto xml = createStateXml()) copyXmlToBinary (*xml, destData);
 }
 
 void BabushkaProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        if (xml->hasTagName (apvts.state.getType()))
-        {
-            auto tree = juce::ValueTree::fromXml (*xml);
-            std::array<babushka::dsp::Sequence, 3> loaded;
-            for (int i = 0; i < 3; ++i)
-                loaded[(size_t) i] = sequenceFromString (tree.getProperty ("seq" + juce::String (i + 1)).toString());
-            {
-                const juce::SpinLock::ScopedLockType lock (seqLock);
-                pendingSequences = loaded;
-                engine.arpSeq().sequences() = loaded;
-            }
-            {
-                const juce::SpinLock::ScopedLockType lock (patchLock);
-                patchState = babushka::dsp::PatchState::fromString (tree.getProperty ("patch").toString().toStdString());
-            }
-            patchDirty.store (true);
-            apvts.replaceState (tree);
-        }
+    if (auto xml = getXmlFromBinary (data, sizeInBytes)) restoreFromXml (*xml);
 }
+
+// ---- presets ---------------------------------------------------------------------------------------------
+void BabushkaProcessor::applyFactoryPreset (int index)
+{
+    const auto& all = babushka::factoryPresets();
+    if (index < 0 || index >= (int) all.size()) return;
+    const auto& pr = all[(size_t) index];
+
+    // Back to defaults (except the global settings), then the preset's own values.
+    for (auto* prm : getParameters())
+        if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (prm))
+            if (! babushka::isGlobalParam (rp->paramID.toRawUTF8()))
+                rp->setValueNotifyingHost (rp->getDefaultValue());
+    for (auto& [id, value] : pr.values)
+        if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (id)))
+            rp->setValueNotifyingHost (rp->convertTo0to1 (value));
+        else jassertfalse;   // unknown parameter id in a factory preset
+
+    {
+        const juce::SpinLock::ScopedLockType lock (patchLock);
+        patchState = babushka::dsp::PatchState::fromString (pr.patch);
+    }
+    patchDirty.store (true);
+
+    if (pr.seq1[0] != 0 || pr.seq2[0] != 0 || pr.seq3[0] != 0)
+    {
+        std::array<babushka::dsp::Sequence, 3> seqs;
+        { const juce::SpinLock::ScopedLockType lock (seqLock); seqs = pendingSequences; }
+        const char* texts[3] = { pr.seq1, pr.seq2, pr.seq3 };
+        for (int i = 0; i < 3; ++i) if (texts[i][0] != 0) seqs[(size_t) i] = sequenceFromString (texts[i]);
+        setSequences (seqs);
+    }
+    currentPresetName = pr.name;
+}
+
+juce::File BabushkaProcessor::getUserPresetDirectory() const
+{
+    if (userPresetDir != juce::File())
+        return userPresetDir;
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Babushka").getChildFile ("Presets");
+}
+
+juce::Array<juce::File> BabushkaProcessor::getUserPresetFiles() const
+{
+    auto files = getUserPresetDirectory().findChildFiles (juce::File::findFiles, false, "*.babushka");
+    files.sort();
+    return files;
+}
+
+bool BabushkaProcessor::saveUserPreset (const juce::String& rawName)
+{
+    const auto name = juce::File::createLegalFileName (rawName.trim());
+    if (name.isEmpty()) return false;
+    auto dir = getUserPresetDirectory();
+    if (! dir.createDirectory().wasOk()) return false;
+    currentPresetName = name;
+    auto xml = createStateXml();
+    return xml != nullptr && xml->writeTo (dir.getChildFile (name + ".babushka"));
+}
+
+bool BabushkaProcessor::loadUserPreset (const juce::File& file)
+{
+    if (auto xml = juce::parseXML (file))
+    {
+        if (! xml->hasTagName (apvts.state.getType())) return false;
+        restoreFromXml (*xml);
+        currentPresetName = file.getFileNameWithoutExtension();
+        return true;
+    }
+    return false;
+}
+
+bool BabushkaProcessor::deleteUserPreset (const juce::File& file) { return file.getParentDirectory() == getUserPresetDirectory() && file.deleteFile(); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new BabushkaProcessor(); }

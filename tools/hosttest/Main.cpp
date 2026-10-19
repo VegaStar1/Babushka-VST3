@@ -5,6 +5,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../../Source/PluginProcessor.h"
+#include "../../Source/PluginEditor.h"
 
 static int fail (const juce::String& msg) { std::printf ("FAIL: %s\n", msg.toRawUTF8()); return 1; }
 
@@ -191,6 +192,67 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         if (reopened < 0.05) return fail ("clearing cables did not restore the normalled path");
     }
 
+    // Factory presets: every parameter id exists, cables parse, the sound is finite and audible.
+    {
+        BabushkaProcessor pr;
+        pr.setPlayConfigDetails (0, 2, 48000.0, 512);
+        pr.prepareToPlay (48000.0, 512);
+        juce::AudioBuffer<float> b4 (2, 512);
+        const auto& all = babushka::factoryPresets();
+        std::printf ("Factory presets: %d\n", (int) all.size());
+        for (int i = 0; i < (int) all.size(); ++i)
+        {
+            const auto& fp = all[(size_t) i];
+            for (auto& [id, v] : fp.values)
+            {
+                auto* prm = pr.apvts.getParameter (id);
+                if (prm == nullptr) return fail (juce::String ("unknown parameter id '") + id + "' in preset " + fp.name);
+                (void) v;
+            }
+            pr.applyFactoryPreset (i);
+            const int wantCables = babushka::dsp::PatchState::fromString (fp.patch).count;
+            if (pr.getPatchCopy().count != wantCables) return fail (juce::String ("cables of preset ") + fp.name);
+            if (pr.getCurrentPresetName() != fp.name) return fail (juce::String ("preset name ") + fp.name);
+            double pk = 0; bool bad = false;
+            for (int blk = 0; blk < 120; ++blk)    // 1.3 s with a held key (arpeggiator / sequencer presets need it or play by themselves)
+            {
+                juce::MidiBuffer m;
+                if (blk == 0) { m.addEvent (juce::MidiMessage::noteOn (1, 48, (juce::uint8) 100), 0); m.addEvent (juce::MidiMessage::noteOn (1, 55, (juce::uint8) 100), 1); }
+                b4.clear(); pr.processBlock (b4, m);
+                for (int k = 0; k < 512; ++k) { const float v = b4.getSample (0, k); if (! std::isfinite (v)) bad = true; pk = std::max (pk, (double) std::abs (v)); }
+            }
+            { juce::MidiBuffer off; off.addEvent (juce::MidiMessage::allNotesOff (1), 0); b4.clear(); pr.processBlock (b4, off); }
+            std::printf ("  %-10s %-22s peak %.3f  cables %d\n", fp.category, fp.name, pk, wantCables);
+            if (bad || pk < 0.02) return fail (juce::String ("preset is silent or not finite: ") + fp.name);
+        }
+        // a preset resets the knobs it does not mention
+        pr.applyFactoryPreset (1);      // Classic Bass: cutoff .32
+        const float cutBass = pr.apvts.getRawParameterValue ("cutoff")->load();
+        pr.applyFactoryPreset (0);      // Init
+        const float cutInit = pr.apvts.getRawParameterValue ("cutoff")->load();
+        std::printf ("Preset reset: cutoff %.2f after Classic Bass, %.2f after Init (default 0.60)\n", cutBass, cutInit);
+        if (std::abs (cutBass - 0.32f) > 1e-3f || std::abs (cutInit - 0.6f) > 1e-3f) return fail ("preset values / reset");
+
+        // user presets: save, reload in a fresh processor, delete
+        auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_preset_test");
+        dir.deleteRecursively();
+        pr.setUserPresetDirectory (dir);
+        pr.applyFactoryPreset (6);      // Warm Pad (has a PWM LFO setup)
+        pr.apvts.getParameter ("cutoff")->setValueNotifyingHost (0.77f);
+        pr.addCable (babushka::dsp::Jack::KbOut, babushka::dsp::Jack::ModRateIn);
+        if (! pr.saveUserPreset ("Test Sound")) return fail ("save user preset");
+        pr.applyFactoryPreset (1);
+        const auto files = pr.getUserPresetFiles();
+        std::printf ("User presets in folder: %d (%s)\n", files.size(), files.isEmpty() ? "-" : files[0].getFileName().toRawUTF8());
+        if (files.size() != 1 || ! pr.loadUserPreset (files[0])) return fail ("load user preset");
+        const float cutUser = pr.apvts.getParameter ("cutoff")->getValue();
+        std::printf ("User preset reload: cutoff %.3f (expect 0.770), cables %d (expect 1), name '%s'\n",
+                     cutUser, pr.getPatchCopy().count, pr.getCurrentPresetName().toRawUTF8());
+        if (std::abs (cutUser - 0.77f) > 1e-3f || pr.getPatchCopy().count != 1 || pr.getCurrentPresetName() != "Test Sound") return fail ("user preset round trip");
+        if (! pr.deleteUserPreset (files[0]) || ! pr.getUserPresetFiles().isEmpty()) return fail ("delete user preset");
+        dir.deleteRecursively();
+    }
+
     // In-process editor screenshot (a hosted VST3 view is a native child window and cannot be snapshotted).
     {
         BabushkaProcessor proc;
@@ -200,6 +262,20 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         juce::FileOutputStream os (out);
         juce::PNGImageFormat().writeImageToStream (img, os);
         std::printf ("Editor screenshot written (%dx%d)\n", ed->getWidth(), ed->getHeight());
+        if (auto* be = dynamic_cast<BabushkaEditor*> (ed.get()))
+        {
+            proc.applyFactoryPreset (13);   // a patched preset, so the cable list is not empty
+            be->showPresetsTab (true);
+            auto img2 = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            juce::File out2 (juce::File (shotPath).getSiblingFile (juce::File (shotPath).getFileNameWithoutExtension() + "_presets.png")); out2.deleteFile();
+            juce::FileOutputStream os2 (out2);
+            juce::PNGImageFormat().writeImageToStream (img2, os2);
+            be->showPresetsTab (false);
+            auto img3 = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            juce::File out3 (juce::File (shotPath).getSiblingFile (juce::File (shotPath).getFileNameWithoutExtension() + "_patched.png")); out3.deleteFile();
+            juce::FileOutputStream os3 (out3);
+            juce::PNGImageFormat().writeImageToStream (img3, os3);
+        }
     }
     std::printf ("ALL HOST TESTS PASSED\n");
     return 0;

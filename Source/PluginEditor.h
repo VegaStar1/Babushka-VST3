@@ -27,12 +27,44 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PatchPanelComponent)
 };
 
+// Preset browser: factory presets by category, then the user presets found in the preset folder.
+// A click loads the preset (quick auditioning); SAVE stores the current sound under the typed name.
+class PresetBrowser : public juce::Component, private juce::ListBoxModel
+{
+public:
+    explicit PresetBrowser (BabushkaProcessor&);
+    void refresh();                              // rescan the user folder
+    void loadRelative (int delta);               // previous / next preset (skips category headers)
+    std::function<void()> onLoaded;
+    void resized() override;
+    void paint (juce::Graphics&) override;
+
+private:
+    struct Row { enum Kind { Header, Factory, User } kind = Header; juce::String text; int factoryIndex = -1; juce::File file; };
+    BabushkaProcessor& processor;
+    std::vector<Row> rows;
+    juce::ListBox list;
+    juce::TextEditor nameEditor;
+    juce::TextButton saveButton { "SAVE" }, deleteButton { "DELETE" }, folderButton { "OPEN FOLDER" };
+    juce::Label description, status;
+    bool suppress = false;
+
+    int getNumRows() override { return (int) rows.size(); }
+    void paintListBoxItem (int row, juce::Graphics&, int width, int height, bool selected) override;
+    void selectedRowsChanged (int lastRowSelected) override;
+    void deleteKeyPressed (int row) override;
+    void loadRow (int row);
+    void selectCurrentByName();
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PresetBrowser)
+};
+
 // Temporary functional panel: controls grouped by hardware module.
 // The final skinned UI (own design, not a copy of the hardware panel) comes in a later phase.
 class BabushkaEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit BabushkaEditor (BabushkaProcessor&);
+    void showPresetsTab (bool show);
     ~BabushkaEditor() override;
 
     void paint (juce::Graphics&) override;
@@ -61,6 +93,10 @@ private:
     std::vector<Section> sections;
     juce::LookAndFeel_V4 lnf;
     PatchPanelComponent patchPanel;
+    PresetBrowser presetBrowser;
+    juce::TextButton synthTab { "SYNTH" }, presetsTab { "PRESETS" }, prevButton { "<" }, nextButton { ">" };
+    juce::Label presetLabel;
+    bool presetsVisible = false;
 
     // ARP/SEQ step-entry buttons, tap tempo and status line.
     juce::TextButton tapButton { "TAP" }, tieButton { "TIE" }, restButton { "REST" }, accentButton { "ACCENT" };

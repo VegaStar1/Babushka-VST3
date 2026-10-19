@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Engine.h"
+#include "Presets.h"
 
 class BabushkaProcessor : public juce::AudioProcessor
 {
@@ -46,6 +47,16 @@ public:
     bool addCable (babushka::dsp::Jack a, babushka::dsp::Jack b);
     void removeCable (int index);
     void clearCables();
+
+    // Presets (message thread). Factory presets are compiled in; user presets are XML files in a folder.
+    void applyFactoryPreset (int index);
+    bool saveUserPreset (const juce::String& name);
+    bool loadUserPreset (const juce::File& file);
+    bool deleteUserPreset (const juce::File& file);
+    juce::Array<juce::File> getUserPresetFiles() const;
+    juce::File getUserPresetDirectory() const;
+    void setUserPresetDirectory (const juce::File& dir) { userPresetDir = dir; }   // tests / custom location
+    juce::String getCurrentPresetName() const { return currentPresetName; }
     int getCurrentSequenceLength() const { return currentSeqLength.load(); }
     juce::String getArpRateText() const;
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -54,6 +65,8 @@ private:
     babushka::dsp::Engine engine;
     std::vector<float> mono, ext;
     juce::SpinLock seqLock;
+    juce::File userPresetDir;
+    juce::String currentPresetName { "Init" };
     mutable juce::SpinLock patchLock;
     babushka::dsp::PatchState patchState;
     std::atomic<bool> patchDirty { true };
@@ -62,6 +75,9 @@ private:
     int currentOversampling = 2;
     double currentSampleRate = 48000.0;
 
+    std::unique_ptr<juce::XmlElement> createStateXml();
+    void restoreFromXml (const juce::XmlElement&);
+    void setSequences (const std::array<babushka::dsp::Sequence, 3>&);
     void handleMidi (const juce::MidiMessage& m);
     babushka::dsp::Params readParams() const;
     babushka::dsp::ArpSeqParams readArpParams() const;
