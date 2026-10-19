@@ -69,6 +69,36 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
     std::printf ("State round-trip: Cutoff restored to %.3f (expected 0.123), state %d bytes\n", cutoff->getValue(), (int) state.getSize());
     if (std::abs (cutoff->getValue() - 0.123f) > 1e-3f) return fail ("state restore");
 
+    // Arpeggiator through the hosted VST3: hold a chord with PLAY on → separate note bursts.
+    {
+        juce::AudioProcessorParameter* play = nullptr;
+        for (auto* prm : plugin->getParameters()) if (prm->getName (64) == "Arp/Seq Play") play = prm;
+        if (play == nullptr) return fail ("no Arp/Seq Play parameter");
+        play->setValueNotifyingHost (1.0f);
+        cutoff->setValueNotifyingHost (0.6f);   // the state test above left the filter almost closed
+        juce::Array<float> env;
+        for (int b = 0; b < (int) (3.0 * 48000 / 512); ++b)
+        {
+            juce::MidiBuffer m;
+            if (b == 0) { m.addEvent (juce::MidiMessage::noteOn (1, 48, (juce::uint8) 100), 0);
+                          m.addEvent (juce::MidiMessage::noteOn (1, 52, (juce::uint8) 100), 1);
+                          m.addEvent (juce::MidiMessage::noteOn (1, 55, (juce::uint8) 100), 2); }
+            buf.clear(); plugin->processBlock (buf, m);
+            env.add (buf.getRMSLevel (0, 0, 512));
+        }
+        float mx = 0; for (auto v : env) mx = std::max (mx, v);
+        std::printf ("  play param value seen by host: %.2f; rms per 100 ms:", play->getValue());
+        for (int i = 0; i < env.size(); i += 9) std::printf (" %.2f", env[i]);
+        std::printf ("\n");
+        int bursts = 0; bool above = false;
+        for (auto v : env) { if (! above && v > 0.5f * mx) { ++bursts; above = true; } else if (above && v < 0.2f * mx) above = false; }
+        std::printf ("Arpeggiator (hosted): %d note bursts in 3 s (expect ~12 at 120 BPM 1/8)\n", bursts);
+        if (bursts < 6) return fail ("arpeggiator did not step");
+        play->setValueNotifyingHost (0.0f);
+        juce::MidiBuffer off; for (int n : { 48, 52, 55 }) off.addEvent (juce::MidiMessage::noteOff (1, n), 0);
+        buf.clear(); plugin->processBlock (buf, off);
+    }
+
     // Editor
     if (plugin->hasEditor())
     {
@@ -80,6 +110,54 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
     }
 
     plugin->releaseResources();
+
+    // In-process: sequence recording survives save/load; external input reaches the output.
+    {
+        BabushkaProcessor rec;
+        rec.setPlayConfigDetails (0, 2, 48000.0, 512);
+        rec.prepareToPlay (48000.0, 512);
+        rec.apvts.getParameter ("arpMode")->setValueNotifyingHost (1.0f);   // REC
+        juce::AudioBuffer<float> b2 (2, 512);
+        int t = 0;
+        for (int n : { 60, 63, 67 })
+        {
+            juce::MidiBuffer m; m.addEvent (juce::MidiMessage::noteOn (1, n, (juce::uint8) 100), 0);
+            m.addEvent (juce::MidiMessage::noteOff (1, n), 200); b2.clear(); rec.processBlock (b2, m); ++t;
+        }
+        rec.requestRecRest(); { juce::MidiBuffer m; b2.clear(); rec.processBlock (b2, m); }
+        std::printf ("Recorded sequence length: %d (expect 4)\n", rec.getCurrentSequenceLength());
+        if (rec.getCurrentSequenceLength() != 4) return fail ("sequence recording");
+        juce::MemoryBlock st; rec.getStateInformation (st);
+
+        BabushkaProcessor loaded;
+        loaded.setPlayConfigDetails (0, 2, 48000.0, 512);
+        loaded.prepareToPlay (48000.0, 512);
+        loaded.setStateInformation (st.getData(), (int) st.getSize());
+        { juce::MidiBuffer m; b2.clear(); loaded.processBlock (b2, m); }
+        std::printf ("Sequence after state reload: %d steps\n", loaded.getCurrentSequenceLength());
+        if (loaded.getCurrentSequenceLength() != 4) return fail ("sequence state");
+
+        // External input: enable the sidechain bus, silence the oscillators, VCA in DRONE.
+        BabushkaProcessor ex;
+        auto layout = ex.getBusesLayout();
+        layout.inputBuses.getReference (0) = juce::AudioChannelSet::stereo();
+        if (! ex.setBusesLayout (layout)) return fail ("cannot enable Ext In bus");
+        ex.prepareToPlay (48000.0, 512);
+        ex.apvts.getParameter ("mixOsc1")->setValueNotifyingHost (0.0f);
+        ex.apvts.getParameter ("vcaMode")->setValueNotifyingHost (1.0f);   // DRONE
+        ex.apvts.getParameter ("cutoff")->setValueNotifyingHost (0.9f);
+        juce::AudioBuffer<float> io (2, 512);
+        double peakOut = 0;
+        for (int blk = 0; blk < 40; ++blk)
+        {
+            for (int i = 0; i < 512; ++i) { const float v = 0.5f * std::sin (2.0 * juce::MathConstants<double>::pi * 220.0 * (blk * 512 + i) / 48000.0);
+                                            io.setSample (0, i, v); io.setSample (1, i, v); }
+            juce::MidiBuffer m; ex.processBlock (io, m);
+            if (blk > 10) peakOut = std::max (peakOut, (double) io.getMagnitude (0, 0, 512));
+        }
+        std::printf ("External input in DRONE mode: output peak %.3f\n", peakOut);
+        if (peakOut < 0.05) return fail ("external input not audible");
+    }
 
     // In-process editor screenshot (a hosted VST3 view is a native child window and cannot be snapshotted).
     {

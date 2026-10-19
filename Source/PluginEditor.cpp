@@ -23,18 +23,73 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     addSection ("MODULATION",  { "lfoRate", "lfoWave", "lfoPitchAmt", "lfoCutoffAmt", "lfoPwAmt", "modWheel" });
     addSection ("OSCILLATOR 1", { "osc1Octave", "osc1Wave" });
     addSection ("OSCILLATOR 2", { "osc2Octave", "osc2Wave", "osc2Freq", "osc2Sync" });
-    addSection ("MIXER",       { "mixOsc1", "mixOsc2", "mixNoise" });
+    addSection ("MIXER",       { "mixOsc1", "mixOsc2", "mixNoise", "extLevel" });
     addSection ("FILTER",      { "cutoff", "resonance", "kbdTrack", "envAmt" });
     addSection ("ENVELOPE",    { "attack", "decay", "sustain", "release" });
     addSection ("OUTPUT",      { "vcaMode", "reverbMix", "volume" });
     addSection ("CONTROLLER / GLOBAL", { "glide", "glideType", "legatoGlide", "bendRange", "notePriority", "fineTune", "drift", "oversampling" });
+    addSection ("ARP / SEQ",   { "arpPlay", "arpHold", "arpMode", "arpDirection", "arpOctSeq", "arpRate", "arpSync", "arpFreeStep" });
+
+    for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton })
+    {
+        b->setColour (juce::TextButton::buttonColourId, kBg);
+        b->setColour (juce::TextButton::textColourOffId, kText);
+        addAndMakeVisible (*b);
+    }
+    tapButton.onClick    = [this] { handleTap(); };
+    tieButton.onClick    = [this] { processor.requestRecTie(); };
+    restButton.onClick   = [this] { processor.requestRecRest(); };
+    accentButton.onClick = [this] { processor.requestRecAccent(); };
+    tieButton.setTooltip ("REC mode: extend the last note by one step");
+    restButton.setTooltip ("REC mode: add a rest");
+    accentButton.setTooltip ("REC mode: accent the next note");
+    arpInfo.setFont (juce::FontOptions (12.0f));
+    arpInfo.setColour (juce::Label::textColourId, kText.withAlpha (0.8f));
+    addAndMakeVisible (arpInfo);
+
+    auto& arpSection = sections.back();
+    arpSection.extraHeight = 58;
+    arpSection.layoutExtra = [this] (juce::Rectangle<int> r) {
+        auto row = r.removeFromTop (26);
+        const int w = row.getWidth() / 4;
+        for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton })
+            b->setBounds (row.removeFromLeft (w).reduced (3, 0));
+        arpInfo.setBounds (r.reduced (3, 2));
+    };
 
     setResizable (true, true);
-    setResizeLimits (720, 480, 1800, 1200);
-    setSize (1040, 700);
+    setResizeLimits (720, 480, 1800, 1400);
+    setSize (1040, 940);
+    startTimerHz (10);
+    timerCallback();
 }
 
-BabushkaEditor::~BabushkaEditor() { setLookAndFeel (nullptr); }
+BabushkaEditor::~BabushkaEditor() { stopTimer(); setLookAndFeel (nullptr); }
+
+void BabushkaEditor::timerCallback()
+{
+    const int mode = (int) processor.apvts.getRawParameterValue ("arpMode")->load();
+    juce::String t = processor.getArpRateText();
+    if (mode != 0)
+        t << "   |   seq " << (int) processor.apvts.getRawParameterValue ("arpOctSeq")->load() + 1
+          << ": " << processor.getCurrentSequenceLength() << " / 256 steps";
+    if (mode == 2) t << "   |   REC: play keys to enter notes";
+    arpInfo.setText (t, juce::dontSendNotification);
+}
+
+// TAP: at least three taps in a row set the free tempo (as on the hardware).
+void BabushkaEditor::handleTap()
+{
+    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    if (! tapTimes.isEmpty() && now - tapTimes.getLast() > 2.0) tapTimes.clear();
+    tapTimes.add (now);
+    if (tapTimes.size() > 4) tapTimes.remove (0);
+    if (tapTimes.size() >= 3)
+    {
+        const double avg = (tapTimes.getLast() - tapTimes.getFirst()) / (tapTimes.size() - 1);
+        if (avg > 0.0) processor.setArpTempoFromTap (60.0 / avg);
+    }
+}
 
 void BabushkaEditor::addSection (const juce::String& title, std::initializer_list<const char*> paramIds)
 {
@@ -108,7 +163,7 @@ void BabushkaEditor::resized()
         const int n = (int) s.controls.size();
         const int cols = std::min (n, 4);
         const int rows = (n + cols - 1) / cols;
-        const int w = cols * kCell + 12, h = kHeader + rows * kCellH + 6;
+        const int w = cols * kCell + 12, h = kHeader + rows * kCellH + 6 + s.extraHeight;
         if (x + w > kPad + width) { x = kPad; y += rowH + kPad; rowH = 0; }
         s.bounds = { x, y, w, h };
         for (int i = 0; i < n; ++i)
@@ -120,6 +175,8 @@ void BabushkaEditor::resized()
             if (isKnob) c.widget->setBounds (cx + 4, cy + 16, kCell - 8, kCellH - 20);
             else        c.widget->setBounds (cx + 4, cy + 34, kCell - 8, 24);
         }
+        if (s.layoutExtra)
+            s.layoutExtra ({ x + 6, y + kHeader + rows * kCellH, w - 12, s.extraHeight });
         x += w + kPad;
         rowH = std::max (rowH, h);
     }

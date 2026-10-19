@@ -205,6 +205,106 @@ int main (int argc, char** argv)
                      rms (dry), rms (wet), 20 * std::log10 (rms (wet) / rms (dry)), hp);
     }
 
+    // ---------------- 5c. Arpeggiator / sequencer logic -------------------------------------
+    {
+        auto runArp = [&] (ArpSeq& a, int samples, std::vector<std::pair<int, ArpSeq::Event>>& log) {
+            ArpSeq::Event ev[4];
+            for (int i = 0; i < samples; ++i) { const int n = a.tick (ev); for (int k = 0; k < n; ++k) log.push_back ({ i, ev[k] }); }
+        };
+        auto onsList = [] (const std::vector<std::pair<int, ArpSeq::Event>>& log, int maxN) {
+            std::string r; int c = 0;
+            for (auto& [t, e] : log) if (e.type == 1 && c++ < maxN) r += std::to_string (e.note) + "@" + std::to_string (t) + " ";
+            return r; };
+        int failures = 0;
+        auto expectNotes = [&] (const char* name, const std::vector<std::pair<int, ArpSeq::Event>>& log, std::vector<int> want) {
+            std::vector<int> got; for (auto& [t, e] : log) if (e.type == 1) got.push_back (e.note);
+            bool ok = got.size() >= want.size();
+            for (size_t i = 0; ok && i < want.size(); ++i) ok = got[i] == want[i];
+            std::printf ("  %-34s %s  %s\n", name, ok ? "OK  " : "FAIL", onsList (log, (int) want.size()).c_str());
+            if (! ok) ++failures; };
+
+        std::printf ("Arpeggiator / sequencer:\n");
+        {   // ORDR, 2 octaves, 120 BPM, 1/8 → 12000 samples per step at 48 kHz (0.25 s)
+            ArpSeq a; a.prepare (48000.0f);
+            ArpSeqParams p; p.play = true; p.mode = 0; p.octSeq = 1; p.rate = ArpSeq::knobForBpm (120.0f); p.freeStep = 1;
+            a.setParams (p); a.keyOn (60); a.keyOn (64); a.keyOn (67);
+            std::vector<std::pair<int, ArpSeq::Event>> log; runArp (a, 48000 * 2, log);
+            expectNotes ("ARP ORDR 2 oct", log, { 60, 64, 67, 72, 76, 79, 60, 64 });
+            int t1 = -1, t2 = -1, off1 = -1, c = 0;
+            for (auto& [t, e] : log) { if (e.type == 1) { if (c == 1) t1 = t; if (c == 2) t2 = t; ++c; } if (e.type == 2 && off1 < 0) off1 = t; }
+            std::printf ("  step length %d samples (expect 12000), first gate off after %d (expect 6000)\n", t2 - t1, off1);
+            if (std::abs ((t2 - t1) - 12000) > 1 || std::abs (off1 - 6000) > 1) ++failures;
+        }
+        {   // FWD/BKWD in pressed order 67, 60, 64
+            ArpSeq a; a.prepare (48000.0f);
+            ArpSeqParams p; p.play = true; p.mode = 0; p.direction = 1; p.rate = 0.9f; a.setParams (p);
+            a.keyOn (67); a.keyOn (60); a.keyOn (64);
+            std::vector<std::pair<int, ArpSeq::Event>> log; runArp (a, 48000 * 3, log);
+            expectNotes ("ARP FWD/BKWD (pressed order)", log, { 67, 60, 64, 60, 67, 60, 64 });
+        }
+        {   // HOLD latch, then a new chord after releasing all keys starts a new pattern
+            ArpSeq a; a.prepare (48000.0f);
+            ArpSeqParams p; p.play = true; p.mode = 0; p.hold = true; p.rate = 0.9f; a.setParams (p);
+            a.keyOn (48); a.keyOn (55); a.keyOff (48); a.keyOff (55);
+            std::vector<std::pair<int, ArpSeq::Event>> log; runArp (a, 20000, log);
+            a.keyOn (50); a.keyOff (50);
+            runArp (a, 20000, log);
+            expectNotes ("ARP HOLD + new pattern", log, { 48, 55, 48 });
+            bool sawOld = false; int c = 0; for (auto& [t, e] : log) if (e.type == 1 && c++ >= 4 && e.note != 50) sawOld = true;
+            std::printf ("  after new key only 50 plays: %s\n", sawOld ? "FAIL" : "OK");
+            if (sawOld) ++failures;
+        }
+        {   // REC: 60, REST, 63 (+TIE), 67 accent; then SEQ transposed by +2
+            ArpSeq a; a.prepare (48000.0f);
+            ArpSeqParams p; p.mode = 2; p.octSeq = 0; a.setParams (p);
+            a.keyOn (60); a.keyOff (60); a.recRest(); a.keyOn (63); a.keyOff (63); a.recTie(); a.recAccent(); a.keyOn (67); a.keyOff (67);
+            std::printf ("  recorded length %d (expect 5)\n", a.currentLength());
+            if (a.currentLength() != 5) ++failures;
+            p.mode = 1; p.play = true; p.rate = ArpSeq::knobForBpm (120.0f); a.setParams (p);
+            a.keyOn (62); a.keyOff (62);
+            std::vector<std::pair<int, ArpSeq::Event>> log; runArp (a, 12000 * 10, log);
+            expectNotes ("SEQ transposed +2", log, { 62, 65, 69, 62, 65, 69 });
+            // The tie: 65 must sound across two steps (no note-off at the half-step of step 3).
+            int on65 = -1, off65 = -1;
+            for (auto& [t, e] : log) { if (e.type == 1 && e.note == 65 && on65 < 0) on65 = t; if (e.type == 2 && e.note == 65 && on65 >= 0 && off65 < 0) off65 = t; }
+            std::printf ("  tied note length %d samples (expect 18000 = 1.5 steps)\n", off65 - on65);
+            if (std::abs ((off65 - on65) - 18000) > 2) ++failures;
+        }
+        {   // Host sync: 1/16 at 120 BPM, transport running from bar start → 6000 samples per step
+            ArpSeq a; a.prepare (48000.0f);
+            ArpSeqParams p; p.play = true; p.mode = 0; p.sync = true; p.rate = 16.0f / 23.0f; a.setParams (p);
+            a.setTransport (true, 0.0, 120.0);
+            a.keyOn (60); a.keyOn (62);
+            std::vector<std::pair<int, ArpSeq::Event>> log; runArp (a, 48000, log);
+            std::vector<int> times; for (auto& [t, e] : log) if (e.type == 1) times.push_back (t);
+            std::printf ("  host sync %s: onsets", ArpSeq::divisionName (ArpSeq::divisionIndex (p.rate)));
+            bool ok = times.size() >= 4;
+            for (size_t i = 0; i < std::min<size_t> (times.size(), 5); ++i) { std::printf (" %d", times[i]); if (i > 0 && std::abs (times[i] - (int) i * 6000) > 1) ok = false; }
+            std::printf ("  %s\n", ok ? "OK" : "FAIL");
+            if (! ok) ++failures;
+        }
+        std::printf ("  arp/seq tests: %s\n", failures == 0 ? "ALL PASSED" : "FAILURES");
+
+        // Audio demo: arpeggio through the full engine
+        Engine e; e.prepare (fs, 2);
+        Params pp; pp.osc1Octave = 2; pp.osc1Wave = 1; pp.osc2Octave = 1; pp.osc2Freq = 7.02f; pp.mixOsc1 = 0.6f; pp.mixOsc2 = 0.4f;
+        pp.cutoff = 0.5f; pp.resonance = 0.55f; pp.envAmt = 0.45f; pp.decay = 0.25f; pp.sustain = 0.2f; pp.release = 0.2f;
+        pp.reverbMix = 0.3f; pp.kbdTrack = 1;
+        e.setParams (pp);
+        ArpSeqParams ap; ap.play = true; ap.mode = 0; ap.octSeq = 2; ap.direction = 1; ap.rate = ArpSeq::knobForBpm (132.0f); ap.freeStep = 2;
+        e.setArpParams (ap);
+        std::vector<float> x ((size_t) fs * 6, 0.0f);
+        e.noteOn (48); e.noteOn (51); e.noteOn (55);
+        for (int pos = 0; pos < (int) x.size(); pos += 64)
+        {
+            if (pos == fs * 3) { e.noteOff (51); e.noteOn (53); }
+            if (pos == fs * 5) { e.noteOff (48); e.noteOff (53); e.noteOff (55); }
+            pp.cutoff = 0.42f + 0.2f * (float) std::sin (pos / (double) fs * 1.3); e.setParams (pp);
+            e.process (x.data() + pos, std::min (64, (int) x.size() - pos));
+        }
+        normalisePeak (x); writeWav (dir + "/demo_8_arpeggio.wav", x, fs);
+    }
+
     // ---------------- 6. Fuzz / stability: random parameter jumps -----------------------------
     {
         Engine e; e.prepare (fs, 2); Rng r; r.seed (1234);

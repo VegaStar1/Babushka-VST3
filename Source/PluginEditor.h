@@ -5,7 +5,7 @@
 
 // Temporary functional panel: controls grouped by hardware module.
 // The final skinned UI (own design, not a copy of the hardware panel) comes in a later phase.
-class BabushkaEditor : public juce::AudioProcessorEditor
+class BabushkaEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit BabushkaEditor (BabushkaProcessor&);
@@ -29,11 +29,20 @@ private:
         juce::String title;
         std::vector<std::unique_ptr<Control>> controls;
         juce::Rectangle<int> bounds;
+        int extraHeight = 0;                                       // room for non-parameter widgets
+        std::function<void (juce::Rectangle<int>)> layoutExtra;
     };
 
     BabushkaProcessor& processor;
     std::vector<Section> sections;
     juce::LookAndFeel_V4 lnf;
 
+    // ARP/SEQ step-entry buttons, tap tempo and status line.
+    juce::TextButton tapButton { "TAP" }, tieButton { "TIE" }, restButton { "REST" }, accentButton { "ACCENT" };
+    juce::Label arpInfo;
+    juce::Array<double> tapTimes;
+
     void addSection (const juce::String& title, std::initializer_list<const char*> paramIds);
+    void timerCallback() override;
+    void handleTap();
 };

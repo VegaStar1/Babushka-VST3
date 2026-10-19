@@ -8,29 +8,47 @@ on:
 jobs:
   windows-vst3:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+        run: |
+          # Default generator = newest installed Visual Studio (no hard-coded version).
+          cmake -S . -B build -A x64 2>&1 | tee configure.log; status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then tail -n 30 configure.log | sed 's/^/::error title=configure::/'; exit $status; fi
       - name: Build
-        run: cmake --build build --config Release --target Babushka_VST3 Babushka_Standalone babushka_render --parallel
+        run: |
+          cmake --build build --config Release --target Babushka_VST3 Babushka_Standalone babushka_render --parallel 2>&1 | tee build.log; status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then grep -E "error|Error" build.log | head -n 30 | sed 's/^/::error title=build::/'; exit $status; fi
       - name: DSP tests
         run: |
-          mkdir out
-          build/Release/babushka_render.exe out
+          mkdir -p out
+          ./build/Release/babushka_render.exe out | tee tests.log
+          grep -q "arp/seq tests: ALL PASSED" tests.log
+          grep -q "no NaN/Inf" tests.log
       - uses: actions/upload-artifact@v4
         with:
           name: Babushka-Windows-VST3
           path: build/Babushka_artefacts/Release/VST3/Babushka.vst3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Babushka-Windows-Standalone
+          path: build/Babushka_artefacts/Release/Standalone/Babushka.exe
 
   macos-vst3:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: |
+          cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" 2>&1 | tee configure.log; status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then tail -n 30 configure.log | sed 's/^/::error title=configure::/'; exit $status; fi
       - name: Build
-        run: cmake --build build --config Release --target Babushka_VST3 Babushka_Standalone --parallel
+        run: |
+          cmake --build build --config Release --target Babushka_VST3 Babushka_Standalone --parallel 2>&1 | tail -n 200 > build.log; status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then grep -E "error" build.log | head -n 30 | sed 's/^/::error title=build::/'; exit $status; fi
       - uses: actions/upload-artifact@v4
         with:
           name: Babushka-macOS-VST3

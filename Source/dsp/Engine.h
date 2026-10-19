@@ -9,6 +9,7 @@
 // recordings of the hardware.
 #pragma once
 
+#include "ArpSeq.h"
 #include "Common.h"
 #include "Decimator.h"
 #include "Envelope.h"
@@ -36,6 +37,7 @@ struct Params
 
     // Mixer levels
     float mixOsc1 = 0.6f, mixOsc2 = 0.0f, mixNoise = 0.0f;
+    float extLevel = 0.5f;          // plugin-only gain for the INSTRUMENT IN (hardware has none)
 
     // Modulation
     float lfoRate = 0.45f;           // knob → 0.07 Hz … 1.3 kHz
@@ -82,6 +84,7 @@ public:
         kbRls.prepare (fsOs);
         lfo.prepare (fsOs);
         reverb.prepare (fsBase);
+        arp.prepare (fsBase);
         filterDc.setCutoff (4.0f, fsOs);
         outDc.setCutoff (5.0f, fsBase);
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
@@ -102,26 +105,50 @@ public:
     {
         filter.reset(); env.reset(); kbRls.reset(); lfo.reset(); reverb.reset(); decimator.reset();
         filterDc.reset(); outDc.reset();
-        heldCount = 0; sustainPedal = false; gate = false;
+        heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f;
         for (auto& h : held) h = { -1, false };
     }
 
     void setParams (const Params& p) noexcept { params = p; }
 
-    // ---- MIDI -------------------------------------------------------------------------------
+    void setArpParams (const ArpSeqParams& p)
+    {
+        const bool wasCapturing = arp.capturesKeys();
+        arp.setParams (p);
+        if (! wasCapturing && arp.capturesKeys()) releaseVoiceKeys();   // ARP/SEQ takes over the keyboard
+    }
+    void setTransport (bool playing, double ppq, double bpm) noexcept { arp.setTransport (playing, ppq, bpm); }
+    ArpSeq& arpSeq() noexcept { return arp; }
+
+    // ---- MIDI / keyboard --------------------------------------------------------------------
+    // Keys go to the ARP/SEQ when it is running, otherwise straight to the voice (REC also records).
     void noteOn (int note)
+    {
+        const bool captured = arp.capturesKeys();
+        arp.keyOn (note);
+        if (! captured) voiceOn (note);
+    }
+
+    void noteOff (int note)
+    {
+        const bool captured = arp.capturesKeys();
+        arp.keyOff (note);
+        if (! captured) voiceOff (note);
+    }
+
+    void voiceOn (int note)
     {
         removeHeld (note);
         if (heldCount < (int) held.size()) held[(size_t) heldCount++] = { note, false };
         updateKey (true);
     }
 
-    void noteOff (int note)
+    void voiceOff (int note, bool pedalApplies = true)
     {
         for (int i = 0; i < heldCount; ++i)
             if (held[(size_t) i].note == note)
             {
-                if (sustainPedal) held[(size_t) i].sustained = true;
+                if (sustainPedal && pedalApplies) held[(size_t) i].sustained = true;
                 else removeHeld (note);
                 break;
             }
@@ -141,16 +168,31 @@ public:
 
     void setPitchBend (float normalised) noexcept { bend = clampf (normalised, -1.0f, 1.0f); }   // −1..1
     void setModWheelCC (float v) noexcept { ccWheel = clampf (v, 0.0f, 1.0f); }
-    void allNotesOff() { heldCount = 0; sustainPedal = false; updateKey (false); }
+    void allNotesOff() { heldCount = 0; sustainPedal = false; updateKey (false); arp.stopAll(); }
+    void releaseVoiceKeys() { heldCount = 0; updateKey (false); }
 
     // ---- Audio ------------------------------------------------------------------------------
-    void process (float* out, int numSamples) noexcept
+    void process (float* out, int numSamples) noexcept { process (out, nullptr, numSamples); }
+
+    // ext: optional INSTRUMENT IN signal (host rate), may be nullptr.
+    void process (float* out, const float* ext, int numSamples) noexcept
     {
         updateBlockConstants();
+        ArpSeq::Event ev[4];
         for (int n = 0; n < numSamples; ++n)
         {
+            const int ne = arp.tick (ev);
+            for (int e = 0; e < ne; ++e) { if (ev[e].type == 1) voiceOn (ev[e].note); else voiceOff (ev[e].note, false); }
+
             tickSmoothers();
-            for (int i = 0; i < os; ++i) osBuf[(size_t) i] = tickVoice();
+            // INSTRUMENT IN: preamp → mixer. Linear interpolation up to the oversampled rate.
+            const float extNow = ext != nullptr ? ext[n] * extGain (params.extLevel) : 0.0f;
+            for (int i = 0; i < os; ++i)
+            {
+                const float t = (float) (i + 1) / (float) os;
+                osBuf[(size_t) i] = tickVoice (extPrev + (extNow - extPrev) * t);
+            }
+            extPrev = extNow;
             const float voice = decimator.process (osBuf.data());
 
             // Output section: VCA out -> reverb (normalled REVERB IN) -> dry/wet MIX -> VOLUME.
@@ -175,7 +217,9 @@ private:
     Envelope env, kbRls;
     Lfo lfo;
     SpringReverb reverb;
+    ArpSeq arp;
     Decimator decimator;
+    float extPrev = 0.0f;
     DcBlocker filterDc, outDc;
     Drift drift1, drift2;
     Rng noise;
@@ -255,6 +299,9 @@ private:
     static float glideTime (float knob) noexcept { return knob <= 0.001f ? 0.0f : 0.002f * std::pow (2500.0f, knob); }         // ASSUMPTION: 2 ms..5 s
     static float mixerGain (float knob) noexcept { return 1.3f * std::pow (clampf (knob, 0.0f, 1.0f), 1.3f); }
     static float volumeGain (float knob) noexcept { return knob * knob; }
+    // Plugin-only: 0.5 ≈ a full-scale host signal hits the mixer like an oscillator at ~2 o'clock;
+    // 1.0 drives the mixer into overdrive (the hardware preamp brings guitars to 10 Vpp).
+    static float extGain (float knob) noexcept { return 2.0f * knob * knob * 2.0f; }
 
     // Plugin-only protection (not part of the hardware model): transparent below 0.8 (−2 dBFS),
     // soft knee above, never exceeds 1.2.
@@ -300,7 +347,7 @@ private:
         sRevMix.process (p.reverbMix); sVolume.process (p.volume); sLfoRate.process (p.lfoRate);
     }
 
-    float tickVoice() noexcept
+    float tickVoice (float extIn) noexcept
     {
         const auto& p = params;
 
@@ -342,7 +389,7 @@ private:
 
         // Mixer (CP3-style summing amp, limited headroom): gentle drive above ~1 o'clock,
         // overdrive near max; a loud input compresses the others. Slight asymmetry adds 2nd harmonic.
-        const float sum = o1 * mixerGain (sMix1.v) + o2 * mixerGain (sMix2.v) + whiteNoise * mixerGain (sMixN.v);
+        const float sum = o1 * mixerGain (sMix1.v) + o2 * mixerGain (sMix2.v) + whiteNoise * mixerGain (sMixN.v) + extIn;
         constexpr float drive = 1.2f, bias = 0.12f;
         const float mixed = (std::tanh (sum * drive + bias) - std::tanh (bias)) * (1.0f / drive);
 

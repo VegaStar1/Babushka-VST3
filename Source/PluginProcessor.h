@@ -34,16 +34,30 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState apvts;
+
+    // Called from the editor (message thread).
+    void requestRecRest()   { ++recRestRequests; }
+    void requestRecTie()    { ++recTieRequests; }
+    void requestRecAccent() { ++recAccentRequests; }
+    void setArpTempoFromTap (double bpm);
+    int getCurrentSequenceLength() const { return currentSeqLength.load(); }
+    juce::String getArpRateText() const;
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 
 private:
     babushka::dsp::Engine engine;
-    std::vector<float> mono;
+    std::vector<float> mono, ext;
+    juce::SpinLock seqLock;
+    std::array<babushka::dsp::Sequence, 3> pendingSequences {};   // last known sequences (for save / re-prepare)
+    std::atomic<int> recRestRequests { 0 }, recTieRequests { 0 }, recAccentRequests { 0 }, currentSeqLength { 0 };
     int currentOversampling = 2;
     double currentSampleRate = 48000.0;
 
     void handleMidi (const juce::MidiMessage& m);
     babushka::dsp::Params readParams() const;
+    babushka::dsp::ArpSeqParams readArpParams() const;
+    static juce::String sequenceToString (const babushka::dsp::Sequence&);
+    static babushka::dsp::Sequence sequenceFromString (const juce::String&);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BabushkaProcessor)
 };
