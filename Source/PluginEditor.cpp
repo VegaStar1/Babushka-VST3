@@ -6,21 +6,15 @@ using namespace babushka::ui;
 BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p), processor (p)
 {
     setOpaque (true);
+    skinIndex() = juce::jlimit (0, (int) skins().size() - 1, uiSettings.getIntValue ("skin", 0));
     bubble = std::make_unique<HintBubble>();
-    babushka::ui::HintSink& sink = *this;
-    panel = std::make_unique<SynthPanel> (p, sink,
-                                          [this] { processor.stepPreset (-1); },
-                                          [this] { processor.stepPreset (+1); },
-                                          [this] { showPresets (true); },
-                                          [this] { showSettings (true); });
     cables = std::make_unique<CableLayer> (p);
     cables->hints = this;
-    cables->setJacks (panel->jackSites());
     cables->setBounds (0, 0, kW, kH);
 
     addAndMakeVisible (content);
     content.setBounds (0, 0, kW, kH);
-    content.addAndMakeVisible (*panel);
+    buildPanel();
     content.addAndMakeVisible (*cables);
     backdrop = std::make_unique<Backdrop>();
     backdrop->onClick = [this] { showPresets (false); showSettings (false); };
@@ -29,12 +23,49 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     content.addChildComponent (*bubble);
 
     setResizable (true, true);
-    setResizeLimits (kW / 2, kH / 2, kW * 5 / 4, kH * 5 / 4);
+    setResizeLimits (kW * 3 / 5, kH * 3 / 5, kW * 5 / 4, kH * 5 / 4);
     getConstrainer()->setFixedAspectRatio ((double) kW / (double) kH);
     setSize ((int) (kW * 0.8), (int) (kH * 0.8));
 }
 
 BabushkaEditor::~BabushkaEditor() = default;
+
+juce::PropertiesFile::Options BabushkaEditor::uiSettingsOptions()
+{
+    juce::PropertiesFile::Options o;
+    o.applicationName = "Babushka";
+    o.filenameSuffix = ".settings";
+    o.folderName = "Babushka";
+    o.osxLibrarySubFolder = "Application Support";
+    o.commonToAllUsers = false;
+    return o;
+}
+
+// The panel holds all of the printed artwork, so a change of skin simply builds a new one (cables keep their state).
+void BabushkaEditor::buildPanel()
+{
+    if (panel != nullptr) content.removeChildComponent (panel.get());
+    babushka::ui::HintSink& sink = *this;
+    panel = std::make_unique<SynthPanel> (processor, sink,
+                                          [this] { processor.stepPreset (-1); },
+                                          [this] { processor.stepPreset (+1); },
+                                          [this] { showPresets (true); },
+                                          [this] { showSettings (true); });
+    content.addAndMakeVisible (*panel, 0);
+    cables->setJacks (panel->jackSites());
+}
+
+void BabushkaEditor::setSkin (int index)
+{
+    index = juce::jlimit (0, (int) skins().size() - 1, index);
+    if (index == skinIndex()) return;
+    skinIndex() = index;
+    uiSettings.setValue ("skin", index);
+    uiSettings.saveIfNeeded();
+    hideHint();
+    buildPanel();
+    content.repaint();
+}
 
 void BabushkaEditor::paint (juce::Graphics& g) { g.fillAll (juce::Colour (0xff070707)); }
 
@@ -82,6 +113,7 @@ void BabushkaEditor::showSettings (bool show)
     {
         settings = std::make_unique<SettingsOverlay> (processor);
         settings->onClose = [this] { showSettings (false); };
+        settings->onSkinChange = [this] (int index) { setSkin (index); };
         content.addChildComponent (*settings);
     }
     if (presets != nullptr && show) showPresets (false);

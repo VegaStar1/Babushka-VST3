@@ -18,6 +18,7 @@ public:
 
     void showPresets (bool show);
     void showSettings (bool show);
+    void setSkin (int index);                                       // index into babushka::ui::skins(); remembered per user
     babushka::ui::CableLayer& cableLayer() { return *cables; }     // for tests
     babushka::ui::SynthPanel& synthPanel() { return *panel; }
 
@@ -25,6 +26,8 @@ private:
     void showHint (juce::Component& from, const juce::String& text) override;
     void hideHint() override;
     void updateBackdrop();
+    void buildPanel();
+    static juce::PropertiesFile::Options uiSettingsOptions();
 
     BabushkaProcessor& processor;
     struct Content : public juce::Component { } content;           // logical size kW x kH, scaled into the window
@@ -34,6 +37,7 @@ private:
     std::unique_ptr<babushka::ui::Backdrop> backdrop;
     std::unique_ptr<babushka::ui::PresetOverlay> presets;
     std::unique_ptr<babushka::ui::SettingsOverlay> settings;
+    juce::PropertiesFile uiSettings { uiSettingsOptions() };      // per-user look of the editor (skin)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BabushkaEditor)
 };

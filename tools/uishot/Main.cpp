@@ -47,9 +47,17 @@ struct Runner : private juce::Timer
         if (tick == 140) ed.showPresets (true);
         if (tick == 144) { save (ed, out.getChildFile ("ui_presets.png")); ed.showPresets (false); ed.showSettings (true); }
         if (tick == 148) { save (ed, out.getChildFile ("ui_settings.png")); ed.showSettings (false); }
-        if (tick == 152) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        // the other skin, with a few cables, then a small window (legibility of the print)
+        if (tick == 150) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
+                           for (auto* id : { "osc2Sync", "arpHold" }) proc.apvts.getParameter (id)->setValueNotifyingHost (1.0f); }
+        if (tick == 180) save (ed, out.getChildFile ("ui_black.png"));
+        if (tick == 181) ed.setSize (900, 651);
+        if (tick == 184) save (ed, out.getChildFile ("ui_small_black.png"));
+        if (tick == 185) { ed.setSkin (0); }
+        if (tick == 188) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1500, 1085); ed.setSkin (skinBefore); }
+        if (tick == 190) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
-    int before = 0;
+    int before = 0, skinBefore = 0;
 };
 }
 

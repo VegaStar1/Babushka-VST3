@@ -31,11 +31,16 @@ juce_add_plugin(Babushka
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Synth Mono)
 
-# Fonts embedded in the editor (Montserrat, SIL Open Font License 1.1 — see docs/licenses).
+# Fonts embedded in the editor (Montserrat and Barlow Semi Condensed, SIL Open Font License 1.1 — see docs/licenses)
+# and the NUWMUN logo (vector).
 juce_add_binary_data(BabushkaAssets SOURCES
     Source/ui/fonts/Montserrat-Regular.ttf
     Source/ui/fonts/Montserrat-SemiBold.ttf
-    Source/ui/fonts/Montserrat-Bold.ttf)
+    Source/ui/fonts/Montserrat-Bold.ttf
+    Source/ui/fonts/BarlowSemiCondensed-Medium.ttf
+    Source/ui/fonts/BarlowSemiCondensed-SemiBold.ttf
+    Source/ui/fonts/BarlowSemiCondensed-Bold.ttf
+    Source/ui/art/nuwmun_logo.svg)
 
 target_sources(Babushka PRIVATE
     Source/PluginProcessor.cpp

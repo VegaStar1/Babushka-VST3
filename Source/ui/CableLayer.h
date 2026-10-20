@@ -1,9 +1,10 @@
 // Babushka — patch cables with rope physics.
 //
 // Each cable is a chain of points integrated with Verlet steps under gravity and held together by distance
-// constraints (position-based dynamics). The two plugs are pinned to their jacks, so the cable sags, swings when
-// a plug is dragged and settles again. A cable has a fixed length (a little longer than the span between the
-// jacks when it is plugged in), so it goes taut when pulled.
+// constraints (position-based dynamics). Constraints between every second point resist sharp bends, so the cable
+// behaves like a springy rubber-jacketed lead rather than a string: it hangs in a wide curve, follows a dragged
+// plug and settles quickly. The two plugs are pinned to their jacks. A plugged cable is a little longer than the
+// span between its jacks; a cable in the hand pays out or takes in length as the plug moves away or comes back.
 //
 // Interaction: press an empty jack and drag to pull a new plug out, release over another jack to connect.
 // Press a jack that already has a cable to pull that plug out again; release away from any jack and the cable
@@ -64,7 +65,13 @@ public:
         const int existing = topRopeAt (id);
         if (removeOnly)
         {
-            if (existing >= 0) removeModelCable (ropes[(size_t) existing]);
+            if (existing >= 0)
+            {
+                removeModelCable (ropes[(size_t) existing]);
+                ropes.erase (ropes.begin() + existing);
+                if (held > existing) --held;
+                repaint();
+            }
             return;
         }
         if (existing >= 0)
@@ -76,12 +83,11 @@ public:
             if (r.a == id) { std::swap (r.a, r.b); std::reverse (r.p.begin(), r.p.end()); std::reverse (r.prev.begin(), r.prev.end()); }
             r.pending = true;                                  // anchor = r.a, loose end = r.b
             r.dragPos = pos;
-            r.length = juce::jmax (r.length, 420.0f);
             ropes.push_back (std::move (r));
         }
         else
         {
-            Rope r = makeRope (id, id, jackPos (id), jackPos (id), 820.0f);
+            Rope r = makeRope (id, id, jackPos (id), jackPos (id), kMinLength);
             r.pending = true;
             r.dragPos = pos;
             ropes.push_back (std::move (r));
@@ -98,9 +104,9 @@ public:
         const auto anchor = jackPos (r.a);
         auto d = pos;
         const float dist = anchor.getDistanceFrom (d);
-        const float maxDist = r.length * 0.985f;
-        if (dist > maxDist) d = anchor + (d - anchor) * (maxDist / dist);   // the cable is only so long
+        if (dist > kMaxLength * 0.97f) d = anchor + (d - anchor) * (kMaxLength * 0.97f / dist);   // the longest cable in the bag
         r.dragPos = d;
+        r.targetLength = slackFor (anchor.getDistanceFrom (d)) + 20.0f;
         targetJack = jackAt (pos, kDrop);
         if (targetJack >= 0 && jacks[(size_t) targetJack].id == r.a) targetJack = -1;
         if (hints && targetJack >= 0) hints->showHint (*this, jackName (jacks[(size_t) targetJack].id));
@@ -122,6 +128,7 @@ public:
             {
                 r.b = target; r.pending = false;
                 r.dragPos = jackPos (target);
+                r.targetLength = slackFor (jackPos (r.a).getDistanceFrom (jackPos (target)));
                 ropes.push_back (std::move (r));
                 knownVersion = processor.getPatchVersion();
             }
@@ -137,12 +144,17 @@ public:
 
 private:
     static constexpr float kGrab = 15.0f, kDrop = 19.0f;
+    static constexpr float kMinLength = 120.0f, kMaxLength = 1100.0f;
+    static constexpr int kPoints = 34;
+
+    // Length of a plugged cable: some slack over the straight span, so it hangs in a curve without dragging on the panel.
+    static float slackFor (float span) { return juce::jlimit (kMinLength, kMaxLength, span * 1.07f + 40.0f); }
 
     struct Rope
     {
         babushka::dsp::Jack a {}, b {};
         bool pending = false;                       // one end is in the user's hand
-        float length = 200.0f;
+        float length = 200.0f, targetLength = 200.0f;
         std::vector<juce::Point<float>> p, prev;
         juce::Point<float> dragPos;
         juce::Colour colour;
@@ -213,8 +225,8 @@ private:
 
     Rope makeRope (babushka::dsp::Jack a, babushka::dsp::Jack b, juce::Point<float> pa, juce::Point<float> pb, float length)
     {
-        Rope r; r.a = a; r.b = b; r.length = length; r.colour = nextCableColour();
-        const int n = juce::jlimit (12, 80, (int) (length / 14.0f)) + 1;
+        Rope r; r.a = a; r.b = b; r.length = r.targetLength = length; r.colour = nextCableColour();
+        const int n = kPoints;
         const float chord = pa.getDistanceFrom (pb);
         const float sag = std::sqrt (juce::jmax (0.0f, 0.375f * juce::jmax (chord, 40.0f) * juce::jmax (0.0f, length - chord)));
         r.p.resize ((size_t) n); r.prev.resize ((size_t) n);
@@ -256,7 +268,7 @@ private:
             for (auto& r : ropes) if (! r.pending && ((r.a == c.a && r.b == c.b) || (r.a == c.b && r.b == c.a))) { have = true; break; }
             if (have) continue;
             const auto pa = jackPos (c.a), pb = jackPos (c.b);
-            ropes.insert (ropes.begin() + (held >= 0 ? held : (int) ropes.size()), makeRope (c.a, c.b, pa, pb, pa.getDistanceFrom (pb) * 1.2f + 70.0f));
+            ropes.insert (ropes.begin() + (held >= 0 ? held : (int) ropes.size()), makeRope (c.a, c.b, pa, pb, slackFor (pa.getDistanceFrom (pb))));
             if (held >= 0) ++held;
         }
     }
@@ -265,13 +277,14 @@ private:
     {
         syncWithModel();
         if (ropes.empty()) return;
-        constexpr float dt = 1.0f / 60.0f, gravity = 2700.0f, damping = 0.987f;
+        constexpr float dt = 1.0f / 60.0f, gravity = 1900.0f, damping = 0.93f, bendStiffness = 0.14f;
         bool moving = false;
         for (auto& r : ropes)
         {
             const auto pa = jackPos (r.a);
             const auto pb = r.pending ? r.dragPos : jackPos (r.b);
             const size_t n = r.p.size();
+            r.length += (r.targetLength - r.length) * 0.25f;
             for (size_t i = 1; i + 1 < n; ++i)
             {
                 const auto v = (r.p[i] - r.prev[i]) * damping;
@@ -293,9 +306,21 @@ private:
                     else if (fb)  r.p[i] += d * diff;
                     else        { r.p[i] += d * (0.5f * diff); r.p[i + 1] -= d * (0.5f * diff); }
                 }
+                // bending: points two apart are pushed towards a straight line, so the jacket resists kinks
+                for (size_t i = 0; i + 2 < n; ++i)
+                {
+                    auto d = r.p[i + 2] - r.p[i];
+                    const float len = std::max (0.0001f, std::sqrt (d.x * d.x + d.y * d.y));
+                    const float minLen = 1.97f * seg;
+                    if (len >= minLen) continue;
+                    const auto corr = d * (bendStiffness * 0.5f * (len - minLen) / len);
+                    if (i != 0)         r.p[i] += corr;
+                    if (i + 2 != n - 1) r.p[i + 2] -= corr;
+                }
                 r.p[0] = pa; r.p[n - 1] = pb;
             }
             for (size_t i = 1; i + 1 < n; ++i) if (r.p[i].getDistanceFrom (r.prev[i]) > 0.02f) { moving = true; break; }
+            if (std::abs (r.targetLength - r.length) > 0.5f) moving = true;
         }
         if (moving || held >= 0) repaint();
     }
@@ -325,12 +350,14 @@ private:
             g.strokePath (path, juce::PathStrokeType (7.0f + (float) i * 3.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded),
                           juce::AffineTransform::translation (3.0f * lift, 5.0f * lift));
         }
-        g.setColour (r.colour.darker (0.65f));
-        g.strokePath (path, juce::PathStrokeType (6.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour (r.colour.darker (0.75f));
+        g.strokePath (path, juce::PathStrokeType (7.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour (r.colour.darker (0.15f));
+        g.strokePath (path, juce::PathStrokeType (5.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         g.setColour (r.colour);
-        g.strokePath (path, juce::PathStrokeType (4.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.setColour (r.colour.brighter (0.55f).withAlpha (0.75f));
-        g.strokePath (path, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), juce::AffineTransform::translation (-0.9f, -1.1f));
+        g.strokePath (path, juce::PathStrokeType (3.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), juce::AffineTransform::translation (-0.4f, -0.6f));
+        g.setColour (r.colour.brighter (0.7f).withAlpha (0.6f));
+        g.strokePath (path, juce::PathStrokeType (1.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), juce::AffineTransform::translation (-1.0f, -1.4f));
         paintPlug (g, r.p[0], r.colour, false);
         paintPlug (g, r.p.back(), r.colour, inHand);
     }

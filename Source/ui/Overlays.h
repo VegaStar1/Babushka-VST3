@@ -13,8 +13,8 @@ public:
     void show (const juce::String& t, juce::Point<float> at)
     {
         text = t;
-        const float w = font (Weight::SemiBold, 12.0f).getStringWidthFloat (t) + 22.0f;
-        const juce::Rectangle<float> r (w, 24.0f);
+        const float w = juce::GlyphArrangement::getStringWidth (font (Weight::NarrowSemi, 16.0f, 0.02f), t) + 26.0f;
+        const juce::Rectangle<float> r (w, 28.0f);
         setBounds (r.withCentre ({ at.x, at.y - 30.0f }).toNearestInt().constrainedWithin (juce::Rectangle<int> (0, 0, kW, kH)));
         setVisible (true);
         toFront (false);
@@ -31,7 +31,7 @@ public:
         g.fillRoundedRectangle (r, 6.0f);
         g.setColour (col::ledAmber.withAlpha (0.65f));
         g.drawRoundedRectangle (r, 6.0f, 1.0f);
-        label (g, text, r, col::ink, 12.0f, Weight::SemiBold, juce::Justification::centred, 0.02f);
+        label (g, text, r, col::ink, 16.0f, Weight::NarrowSemi, juce::Justification::centred, 0.02f);
     }
 private:
     juce::String text;
@@ -48,6 +48,38 @@ public:
 };
 
 // ---- shared look for the dialogs ---------------------------------------------------------------------------------
+// Combo boxes, pop-up menus and slider read-outs in the panel's fonts and colours, at a size that stays legible.
+class DialogLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    DialogLookAndFeel()
+    {
+        setColour (juce::PopupMenu::backgroundColourId, juce::Colour (0xff151413));
+        setColour (juce::PopupMenu::textColourId, col::ink);
+        setColour (juce::PopupMenu::highlightedBackgroundColourId, col::amber.withAlpha (0.35f));
+        setColour (juce::PopupMenu::highlightedTextColourId, col::ledAmber.brighter (0.3f));
+        setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff0b0a09));
+        setColour (juce::ComboBox::textColourId, col::ledAmber);
+        setColour (juce::ComboBox::outlineColourId, col::outline.withAlpha (0.45f));
+        setColour (juce::ComboBox::arrowColourId, col::ledAmber);
+        setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff0b0a09));
+        setColour (juce::TextEditor::textColourId, col::ledAmber);
+        setColour (juce::Label::textColourId, col::ledAmber);
+        setColour (juce::Slider::trackColourId, col::amber);
+        setColour (juce::Slider::backgroundColourId, juce::Colour (0xff0b0a09));
+        setColour (juce::Slider::thumbColourId, col::metalLight);
+        setColour (juce::Slider::textBoxTextColourId, col::ledAmber);
+        setColour (juce::Slider::textBoxOutlineColourId, col::outline.withAlpha (0.35f));
+        setColour (juce::ToggleButton::tickColourId, col::ledAmber);
+        setColour (juce::ToggleButton::tickDisabledColourId, col::ink.withAlpha (0.6f));
+        setColour (juce::ScrollBar::thumbColourId, col::amber.withAlpha (0.7f));
+    }
+    juce::Font getComboBoxFont (juce::ComboBox&) override { return font (Weight::NarrowSemi, 17.0f, 0.02f); }
+    juce::Font getPopupMenuFont() override { return font (Weight::NarrowSemi, 17.0f, 0.02f); }
+    juce::Font getLabelFont (juce::Label&) override { return font (Weight::NarrowSemi, 16.0f, 0.02f); }
+    juce::Typeface::Ptr getTypefaceForFont (const juce::Font&) override { return typeface (Weight::NarrowSemi); }
+};
+
 inline void drawDialogFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title)
 {
     g.setColour (juce::Colours::black.withAlpha (0.65f));
@@ -58,7 +90,7 @@ inline void drawDialogFrame (juce::Graphics& g, juce::Rectangle<float> r, const 
     grain (g, r, 0.9f);
     g.setColour (col::outline.withAlpha (0.55f));
     g.drawRoundedRectangle (r.reduced (6.0f), 7.0f, 1.0f);
-    label (g, title, r.withHeight (46.0f).translated (0.0f, 8.0f), col::ink, 14.0f, Weight::Bold, juce::Justification::centred, 0.18f);
+    label (g, title, r.withHeight (46.0f).translated (0.0f, 8.0f), col::ink, 17.0f, Weight::Bold, juce::Justification::centred, 0.18f);
 }
 
 // ---- preset browser -----------------------------------------------------------------------------------------------------
@@ -67,14 +99,15 @@ class PresetOverlay : public juce::Component, private juce::ListBoxModel
 public:
     explicit PresetOverlay (BabushkaProcessor& p) : processor (p), closeButton ("CLOSE"), saveButton ("SAVE"), deleteButton ("DELETE"), folderButton ("OPEN FOLDER")
     {
+        setLookAndFeel (&lookAndFeel);
         list.setModel (this);
-        list.setRowHeight (30);
+        list.setRowHeight (34);
         list.setColour (juce::ListBox::backgroundColourId, juce::Colour (0xff0b0a09));
         list.setColour (juce::ListBox::outlineColourId, col::outline.withAlpha (0.3f));
         list.setOutlineThickness (1);
         addAndMakeVisible (list);
         nameEditor.setTextToShowWhenEmpty ("name for a new preset", col::ink.withAlpha (0.4f));
-        nameEditor.setFont (font (Weight::SemiBold, 14.0f));
+        nameEditor.setFont (font (Weight::NarrowSemi, 17.0f));
         nameEditor.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff0b0a09));
         nameEditor.setColour (juce::TextEditor::textColourId, col::ledAmber);
         nameEditor.setColour (juce::TextEditor::outlineColourId, col::outline.withAlpha (0.4f));
@@ -92,6 +125,7 @@ public:
         folderButton.onClick = [this] { processor.getUserPresetDirectory().createDirectory(); processor.getUserPresetDirectory().revealToUser(); };
         setSize (760, 840);
     }
+    ~PresetOverlay() override { setLookAndFeel (nullptr); }
 
     std::function<void()> onClose;
 
@@ -119,9 +153,9 @@ public:
     void paint (juce::Graphics& g) override
     {
         drawDialogFrame (g, getLocalBounds().toFloat().reduced (4.0f), "PRESETS");
-        label (g, description(), juce::Rectangle<float> (28.0f, (float) getHeight() - 92.0f, (float) getWidth() - 56.0f, 46.0f), col::ink.withAlpha (0.9f), 12.5f,
-               Weight::Regular, juce::Justification::topLeft, 0.0f);
-        label (g, status, juce::Rectangle<float> (28.0f, (float) getHeight() - 42.0f, (float) getWidth() - 56.0f, 18.0f), col::ledAmber, 11.5f, Weight::SemiBold, juce::Justification::centredLeft, 0.0f);
+        label (g, description(), juce::Rectangle<float> (28.0f, (float) getHeight() - 94.0f, (float) getWidth() - 56.0f, 48.0f), col::ink.withAlpha (0.92f), 15.5f,
+               Weight::Narrow, juce::Justification::topLeft, 0.01f, 2);
+        label (g, status, juce::Rectangle<float> (28.0f, (float) getHeight() - 42.0f, (float) getWidth() - 56.0f, 20.0f), col::ledAmber, 15.0f, Weight::NarrowSemi, juce::Justification::centredLeft, 0.01f);
     }
 
     void resized() override
@@ -144,6 +178,7 @@ public:
 
 private:
     struct Entry { bool header; BabushkaProcessor::PresetRef ref; juce::String text; };
+    DialogLookAndFeel lookAndFeel;
     BabushkaProcessor& processor;
     std::vector<Entry> entries;
     juce::ListBox list;
@@ -167,11 +202,11 @@ private:
         if (e.header)
         {
             g.setColour (juce::Colour (0xff1d1c1a)); g.fillRect (0, 0, width, height);
-            label (g, e.text.toUpperCase(), juce::Rectangle<float> (14.0f, 0.0f, (float) width - 20.0f, (float) height), col::amber, 11.0f, Weight::Bold, juce::Justification::centredLeft, 0.18f);
+            label (g, e.text.toUpperCase(), juce::Rectangle<float> (14.0f, 0.0f, (float) width - 20.0f, (float) height), col::amber.brighter (0.2f), 14.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.18f);
             return;
         }
         if (selected) { g.setColour (col::amber.withAlpha (0.22f)); g.fillRect (0, 0, width, height); g.setColour (col::amber); g.fillRect (0, 0, 3, height); }
-        label (g, e.text, juce::Rectangle<float> (24.0f, 0.0f, (float) width - 30.0f, (float) height), selected ? col::ledAmber : col::ink, 14.0f, Weight::SemiBold, juce::Justification::centredLeft, 0.01f);
+        label (g, e.text, juce::Rectangle<float> (24.0f, 0.0f, (float) width - 30.0f, (float) height), selected ? col::ledAmber.brighter (0.2f) : col::ink, 17.0f, Weight::NarrowSemi, juce::Justification::centredLeft, 0.01f);
     }
     void selectedRowsChanged (int last) override
     {
@@ -193,13 +228,16 @@ private:
 };
 
 // ---- settings --------------------------------------------------------------------------------------------------------------
-// Everything that is not on the hardware front panel: tuning of the model, glide behaviour, clock jacks, quality.
+// Everything that is not on the hardware front panel: tuning of the model, glide behaviour, clock jacks, quality, look.
 class SettingsOverlay : public juce::Component
 {
 public:
     explicit SettingsOverlay (BabushkaProcessor& p) : closeButton ("CLOSE")
     {
+        setLookAndFeel (&lookAndFeel);
         auto& apvts = p.apvts;
+        addSkinRow();
+        addRow (apvts, "Spring reverb decay", "Length of the spring tail. x1.00 is the hardware tank.", "reverbDecay", Row::Knob);
         addRow (apvts, "Analog drift", "Slow random wander of the oscillator tuning.", "drift", Row::Knob);
         addRow (apvts, "Instrument In level", "Gain of the sidechain input (no control on the hardware).", "extLevel", Row::Knob);
         addRow (apvts, "Quality", "Oversampling of the voice: Eco 1x, Normal 2x, High 4x.", "oversampling", Row::Choice);
@@ -216,39 +254,59 @@ public:
         addRow (apvts, "Local on", "Off: keys and wheels drive only the KB / GATE / VEL jacks.", "localOn", Row::Toggle);
         addAndMakeVisible (closeButton);
         closeButton.onClick = [this] { if (onClose) onClose(); };
-        setSize (920, 120 + (int) rows.size() * 44 + 70);
+        setSize (1040, kTop + (int) rows.size() * kRow + 74);
     }
+    ~SettingsOverlay() override { setLookAndFeel (nullptr); }
+
     std::function<void()> onClose;
+    std::function<void (int)> onSkinChange;          // index into skins()
 
     void paint (juce::Graphics& g) override
     {
         drawDialogFrame (g, getLocalBounds().toFloat().reduced (4.0f), "SETTINGS");
         for (size_t i = 0; i < rows.size(); ++i)
         {
-            const float y = 66.0f + (float) i * 44.0f;
-            label (g, rows[i].title, juce::Rectangle<float> (34.0f, y, 250.0f, 36.0f), col::ink, 13.0f, Weight::SemiBold, juce::Justification::centredLeft, 0.01f);
-            label (g, rows[i].hint, juce::Rectangle<float> (300.0f, y, (float) getWidth() - 300.0f - 260.0f, 36.0f), col::ink.withAlpha (0.55f), 10.5f, Weight::Regular, juce::Justification::centredLeft, 0.0f);
+            const float y = (float) (kTop + (int) i * kRow);
+            if (i % 2 == 1) { g.setColour (juce::Colours::white.withAlpha (0.025f)); g.fillRect (juce::Rectangle<float> (22.0f, y, (float) getWidth() - 44.0f, (float) kRow)); }
+            label (g, rows[i].title, juce::Rectangle<float> (36.0f, y, 250.0f, (float) kRow), col::ink, 17.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.02f);
+            label (g, rows[i].hint, juce::Rectangle<float> (290.0f, y + 2.0f, (float) getWidth() - 290.0f - 300.0f, (float) kRow - 4.0f), col::ink.withAlpha (0.8f), 15.0f,
+                   Weight::Narrow, juce::Justification::centredLeft, 0.01f, 2);
         }
     }
     void resized() override
     {
         for (size_t i = 0; i < rows.size(); ++i)
-            rows[i].widget->setBounds ((int) getWidth() - 250, 66 + (int) i * 44 + 4, 216, 28);
-        closeButton.setBounds (getWidth() - 34 - 100, getHeight() - 56, 100, 32);
+            rows[i].widget->setBounds (getWidth() - 286, kTop + (int) i * kRow + 8, 250, kRow - 16);
+        closeButton.setBounds (getWidth() - 36 - 110, getHeight() - 58, 110, 34);
     }
 
 private:
+    static constexpr int kTop = 66, kRow = 46;
     struct Row
     {
-        enum Kind { Knob, Choice, Toggle } kind;
+        enum Kind { Knob, Choice, Toggle, Skin } kind;
         juce::String title, hint;
         std::unique_ptr<juce::Component> widget;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sa;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> ca;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> ba;
     };
+    DialogLookAndFeel lookAndFeel;
     std::vector<Row> rows;
     PlateButton closeButton;
+
+    void addSkinRow()
+    {
+        Row r; r.kind = Row::Skin; r.title = "Skin"; r.hint = "Colours of the panel. Babushka, or all-black like the classic hardware.";
+        auto c = std::make_unique<juce::ComboBox>();
+        for (int i = 0; i < (int) skins().size(); ++i) c->addItem (skins()[(size_t) i].name, i + 1);
+        c->setSelectedId (skinIndex() + 1, juce::dontSendNotification);
+        auto* box = c.get();
+        c->onChange = [this, box] { if (onSkinChange) onSkinChange (box->getSelectedId() - 1); };
+        r.widget = std::move (c);
+        addAndMakeVisible (*r.widget);
+        rows.push_back (std::move (r));
+    }
 
     void addRow (juce::AudioProcessorValueTreeState& apvts, const char* title, const char* hint, const char* id, Row::Kind kind)
     {
@@ -257,12 +315,7 @@ private:
         if (kind == Row::Knob)
         {
             auto s = std::make_unique<juce::Slider> (juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
-            s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 62, 24);
-            s->setColour (juce::Slider::trackColourId, col::amber);
-            s->setColour (juce::Slider::backgroundColourId, juce::Colour (0xff0b0a09));
-            s->setColour (juce::Slider::thumbColourId, col::metalLight);
-            s->setColour (juce::Slider::textBoxTextColourId, col::ledAmber);
-            s->setColour (juce::Slider::textBoxOutlineColourId, col::outline.withAlpha (0.3f));
+            s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 92, 28);
             r.sa = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, id, *s);
             s->setDoubleClickReturnValue (true, dynamic_cast<juce::RangedAudioParameter*> (param)->convertFrom0to1 (param->getDefaultValue()));
             r.widget = std::move (s);
@@ -271,18 +324,12 @@ private:
         {
             auto c = std::make_unique<juce::ComboBox>();
             c->addItemList (dynamic_cast<juce::AudioParameterChoice*> (param)->choices, 1);
-            c->setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff0b0a09));
-            c->setColour (juce::ComboBox::textColourId, col::ledAmber);
-            c->setColour (juce::ComboBox::outlineColourId, col::outline.withAlpha (0.4f));
-            c->setColour (juce::ComboBox::arrowColourId, col::ledAmber);
             r.ca = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (apvts, id, *c);
             r.widget = std::move (c);
         }
         else
         {
             auto b = std::make_unique<juce::ToggleButton> ("");
-            b->setColour (juce::ToggleButton::tickColourId, col::ledAmber);
-            b->setColour (juce::ToggleButton::tickDisabledColourId, col::ink.withAlpha (0.4f));
             r.ba = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (apvts, id, *b);
             r.widget = std::move (b);
         }

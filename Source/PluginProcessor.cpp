@@ -36,6 +36,7 @@ namespace ids
     // Output
     static constexpr const char* vcaMode   = "vcaMode";
     static constexpr const char* reverbMix = "reverbMix";
+    static constexpr const char* reverbDecay = "reverbDecay";
     static constexpr const char* volume    = "volume";
     // Left-hand controller / global
     static constexpr const char* glide        = "glide";
@@ -119,6 +120,13 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     // Output
     choice (ids::vcaMode, "VCA Mode", { "ENV", "KB RLS", "DRONE" }, 0);
     knob (ids::reverbMix, "Spring Reverb Mix", 0.0f);
+    {   // plugin-only: length of the spring tail, 1 = the hardware tank
+        NormalisableRange<float> range (0.3f, 2.5f);
+        range.setSkewForCentre (1.0f);
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ids::reverbDecay, 1 }, "Spring Reverb Decay", range, 1.0f,
+                                                            AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) {
+                                                                return "x" + String (v, 2) + (std::abs (v - 1.0f) < 0.005f ? " (stock)" : ""); })));
+    }
     knob (ids::volume, "Volume", 0.8f);
 
     // Left-hand controller / global settings
@@ -217,6 +225,7 @@ babushka::dsp::Params BabushkaProcessor::readParams() const
     p.cutoff = f (ids::cutoff); p.resonance = f (ids::resonance); p.kbdTrack = i (ids::kbdTrack); p.envAmt = f (ids::envAmt);
     p.attack = f (ids::attack); p.decay = f (ids::decay); p.sustain = f (ids::sustain); p.release = f (ids::release);
     p.vcaMode = i (ids::vcaMode); p.reverbMix = f (ids::reverbMix); p.volume = f (ids::volume);
+    p.reverbDecay = f (ids::reverbDecay);
     p.glide = f (ids::glide); p.glideType = i (ids::glideType); p.legatoGlide = f (ids::legatoGlide) > 0.5f;
     p.bendRange = i (ids::bendRange); p.notePriority = i (ids::notePriority);
     p.fineTune = f (ids::fineTune); p.drift = f (ids::drift);

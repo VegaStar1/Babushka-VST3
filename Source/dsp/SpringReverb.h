@@ -146,9 +146,32 @@ private:
         OnePoleHP loopHP;
         LossShelf loopShelf;
         Drift ripple;
+        float loopSeconds = 0.03f, t60 = 14.0f;
     };
 
-    float fs = 48000.0f;
+    float loopGain (const Spring& sp) const noexcept { return std::pow (10.0f, -3.0f * sp.loopSeconds / (sp.t60 * lossScale)); }
+
+public:
+    // Length of the tail relative to the calibrated tank (1 = the hardware), 0.3 … 2.5; safe to call every block.
+    // Only the flat loop loss can be changed (the loop filters keep theirs), so the setting goes through a table
+    // measured on this model: the factor on the flat loss's T60 that makes the broadband tail (time to −30 dB of the
+    // energy after an impulse, 48 kHz) as many times longer as asked, within ≈ 5 %.
+    void setDecayScale (float scale) noexcept
+    {
+        scale = std::clamp (scale, 0.3f, 2.5f);
+        if (std::abs (scale - decayScale) < 1.0e-6f) return;
+        decayScale = scale;
+        static constexpr float table[][2] = { { 0.3f, 0.207f }, { 0.5f, 0.407f }, { 0.75f, 0.670f }, { 1.0f, 1.0f },
+                                              { 1.5f, 2.253f }, { 2.0f, 4.048f }, { 2.5f, 8.835f } };
+        int i = 0;
+        while (i < 5 && scale > table[i + 1][0]) ++i;
+        const float t = std::log (scale / table[i][0]) / std::log (table[i + 1][0] / table[i][0]);
+        lossScale = table[i][1] * std::pow (table[i + 1][1] / table[i][1], t);
+        for (auto& sp : springs) sp.g = loopGain (sp);
+    }
+
+private:
+    float fs = 48000.0f, decayScale = 1.0f, lossScale = 1.0f;
     Spring springs[2];
     OnePoleHP inHP, outHP;
     OnePoleLP inLP, outLP, outLP2;
@@ -169,8 +192,9 @@ private:
         sp.loopShelf.set (330.0f, 340.0f, fs);
         sp.ripple.prepare (fs, seed, 2.0f, 0.25f);
         // Loop delay ≈ transit + mean dispersion delay (stages / 8.6 kHz, independent of the sample rate).
-        const float loopSeconds = transitSeconds + (float) stages / 8600.0f;
-        sp.g = std::pow (10.0f, -3.0f * loopSeconds / t60);
+        sp.loopSeconds = transitSeconds + (float) stages / 8600.0f;
+        sp.t60 = t60;
+        sp.g = loopGain (sp);
     }
 };
 } // namespace babushka::dsp

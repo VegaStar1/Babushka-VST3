@@ -33,7 +33,8 @@ struct FactoryPreset
 inline bool isGlobalParam (const char* id)
 {
     static const char* kGlobalParams[] = { "oversampling", "bendRange", "notePriority", "fineTune", "drift", "extLevel",
-                                           "extClockMode", "extClockPpqn", "clockOutPpqn", "localOn", "kbOutRange" };
+                                           "extClockMode", "extClockPpqn", "clockOutPpqn", "localOn", "kbOutRange",
+                                           "reverbDecay" };
     for (auto* g : kGlobalParams) if (std::string_view (g) == id) return true;
     return false;
 }

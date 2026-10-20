@@ -68,6 +68,7 @@ struct Params
     // Output
     int   vcaMode = 0;               // 0 = ENV, 1 = KB RLS, 2 = DRONE
     float reverbMix = 0.0f;
+    float reverbDecay = 1.0f;        // extra: tail length relative to the hardware tank
     float volume = 0.8f;
 
     // Left-hand controller / globals
@@ -419,6 +420,7 @@ private:
         lfo.setWave ((Lfo::Wave) p.lfoWave);
         osc1.setWave ((Oscillator::Wave) p.osc1Wave);
         osc2.setWave ((Oscillator::Wave) p.osc2Wave);
+        reverb.setDecayScale (p.reverbDecay);
         glideSeconds = glideTime (p.glide);
         glideCoeff = glideSeconds > 0.0f ? 1.0f - std::exp (-1.0f / (glideSeconds * 0.35f * fsOs)) : 1.0f;
 

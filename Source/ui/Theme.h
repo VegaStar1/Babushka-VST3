@@ -7,6 +7,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <BinaryData.h>
 #include <cmath>
+#include <vector>
 
 namespace babushka::ui
 {
@@ -32,29 +33,84 @@ namespace col
     inline const juce::Colour metalDark { 0xff5b5e62 };
 }
 
-// ---- fonts (Montserrat, SIL Open Font License 1.1; see docs/licenses) -----------------------------------------
-enum class Weight { Regular, SemiBold, Bold };
+// ---- skins --------------------------------------------------------------------------------------------------------
+// The layout never changes; a skin only recolours plates, printed labels, lit pads and wheels.
+struct Skin
+{
+    const char* name;
+    juce::Colour chassis;
+    juce::Colour panel;                                      // dark module plates
+    juce::Colour arp, osc, filter, reverb, rearCv;           // plates that are coloured on the Babushka skin
+    juce::Colour pillOsc, pillFilter, pillWheel, pillArp;    // filled label boxes; transparent = outlined box
+    juce::Colour strip;                                      // title strip
+    juce::Colour sync, play, hold, tap;                      // lit pads
+    juce::Colour wheel;                                      // plastic of the pitch / mod wheels
+};
+
+inline const std::vector<Skin>& skins()
+{
+    static const std::vector<Skin> all {
+        { "Babushka", juce::Colour (0xff0e0e0e), col::panel, col::amber, col::teal, col::olive, col::brick, col::amber,
+          col::teal, col::olive, juce::Colour (0xff62c9d8), col::ledAmber.withAlpha (0.95f), col::cream,
+          col::brick.brighter (0.25f), col::ledGreen, juce::Colour (0xff62c9d8), col::ledAmber, juce::Colour (0xff77797c) },
+        { "Classic Black", juce::Colour (0xff0b0b0b), juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a),
+          juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a),
+          juce::Colours::transparentBlack, juce::Colours::transparentBlack, juce::Colours::transparentBlack, juce::Colours::transparentBlack,
+          juce::Colour (0xff1c1c1c), juce::Colour (0xffff5a2a), juce::Colour (0xffff3b30), juce::Colour (0xffff3b30), juce::Colour (0xffff3b30),
+          juce::Colour (0xffb9bbbd) },
+    };
+    return all;
+}
+inline int& skinIndex() { static int index = 0; return index; }
+inline const Skin& skin() { return skins()[(size_t) juce::jlimit (0, (int) skins().size() - 1, skinIndex())]; }
+
+// Print colour that reads on a plate: dark ink on light plates, cream ink on dark ones.
+inline juce::Colour inkOn (juce::Colour plate) { return plate.getPerceivedBrightness() > 0.42f ? col::inkDark : col::ink; }
+
+// ---- fonts (SIL Open Font License 1.1; see docs/licenses) ----------------------------------------------------------
+// Montserrat for the logotype, display and dialogs; Barlow Semi Condensed for the small panel print, which needs
+// height more than width.
+enum class Weight { Regular, SemiBold, Bold, Narrow, NarrowSemi, NarrowBold };
 
 inline juce::Typeface::Ptr typeface (Weight w)
 {
-    static const juce::Typeface::Ptr regular  = juce::Typeface::createSystemTypefaceFor (BinaryData::MontserratRegular_ttf,  (size_t) BinaryData::MontserratRegular_ttfSize);
-    static const juce::Typeface::Ptr semibold = juce::Typeface::createSystemTypefaceFor (BinaryData::MontserratSemiBold_ttf, (size_t) BinaryData::MontserratSemiBold_ttfSize);
-    static const juce::Typeface::Ptr bold     = juce::Typeface::createSystemTypefaceFor (BinaryData::MontserratBold_ttf,     (size_t) BinaryData::MontserratBold_ttfSize);
-    return w == Weight::Regular ? regular : (w == Weight::SemiBold ? semibold : bold);
+    auto make = [] (const char* data, int size) { return juce::Typeface::createSystemTypefaceFor (data, (size_t) size); };
+    static const juce::Typeface::Ptr faces[] = {
+        make (BinaryData::MontserratRegular_ttf, BinaryData::MontserratRegular_ttfSize),
+        make (BinaryData::MontserratSemiBold_ttf, BinaryData::MontserratSemiBold_ttfSize),
+        make (BinaryData::MontserratBold_ttf, BinaryData::MontserratBold_ttfSize),
+        make (BinaryData::BarlowSemiCondensedMedium_ttf, BinaryData::BarlowSemiCondensedMedium_ttfSize),
+        make (BinaryData::BarlowSemiCondensedSemiBold_ttf, BinaryData::BarlowSemiCondensedSemiBold_ttfSize),
+        make (BinaryData::BarlowSemiCondensedBold_ttf, BinaryData::BarlowSemiCondensedBold_ttfSize) };
+    return faces[(int) w];
 }
 
+// Montserrat sizes are line heights; Barlow sizes are em (point) heights, because Barlow's line is tall for its
+// capitals and the panel print is sized by its capitals.
 inline juce::Font font (Weight w, float height, float kerning = 0.0f)
 {
-    return juce::Font (juce::FontOptions (typeface (w)).withHeight (height).withKerningFactor (kerning));
+    const auto o = juce::FontOptions (typeface (w)).withKerningFactor (kerning);
+    return juce::Font ((int) w >= (int) Weight::Narrow ? o.withPointHeight (height) : o.withHeight (height));
 }
 
-// Engraved / printed panel text. Small caps look: uppercase, a little letter spacing.
+// Printed text. It is squeezed sideways rather than cut when the box is narrow, and in a small window the small
+// print grows a little (up to 25 %) so that it keeps a legible size on screen.
 inline void label (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Colour colour,
-                   float height = 9.0f, Weight w = Weight::SemiBold, juce::Justification j = juce::Justification::centred, float kerning = 0.04f)
+                   float height = 9.0f, Weight w = Weight::SemiBold, juce::Justification j = juce::Justification::centred, float kerning = 0.04f,
+                   int maxLines = 1)
 {
+    const float scale = juce::jmax (0.1f, (float) g.getInternalContext().getPhysicalPixelScaleFactor());
+    float h = juce::jlimit (height, height * 1.25f, 9.5f / scale);
+    if (h > height && maxLines == 1)                   // grow only as far as the box allows without squeezing
+    {
+        const float natural = juce::GlyphArrangement::getStringWidth (font (w, h, kerning), text);
+        if (natural > area.getWidth()) h = juce::jmax (height, h * area.getWidth() / natural);
+    }
+    if (maxLines == 1 && area.getHeight() < h * 1.3f) area = area.withSizeKeepingCentre (area.getWidth(), h * 1.3f);
+    juce::GlyphArrangement ga;
+    ga.addFittedText (font (w, h, kerning), text, area.getX(), area.getY(), area.getWidth(), area.getHeight(), j, maxLines, 0.7f);
     g.setColour (colour);
-    g.setFont (font (w, height, kerning));
-    g.drawText (text, area, j, false);
+    ga.draw (g);
 }
 
 // ---- noise (printed-circuit-board-ish grain on plates) ----------------------------------------------------------
@@ -138,13 +194,18 @@ inline void drawBrushedDisc (juce::Graphics& g, juce::Point<float> c, float radi
     }
 }
 
-// Soft coloured glow for lamps and lit buttons.
+// Coloured glow for lamps and lit buttons: a wide soft halo plus a tighter, hotter core.
 inline void drawGlow (juce::Graphics& g, juce::Point<float> c, float radius, juce::Colour colour, float strength)
 {
     if (strength <= 0.001f) return;
-    juce::ColourGradient grad (colour.withAlpha (0.55f * strength), c.x, c.y, colour.withAlpha (0.0f), c.x + radius, c.y, true);
-    g.setGradientFill (grad);
+    juce::ColourGradient halo (colour.withAlpha (0.50f * strength), c.x, c.y, colour.withAlpha (0.0f), c.x + radius, c.y, true);
+    halo.addColour (0.35, colour.withAlpha (0.26f * strength));
+    g.setGradientFill (halo);
     g.fillEllipse (c.x - radius, c.y - radius, radius * 2, radius * 2);
+    const float r2 = radius * 0.55f;
+    juce::ColourGradient core (colour.brighter (0.4f).withAlpha (0.65f * strength), c.x, c.y, colour.withAlpha (0.0f), c.x + r2, c.y, true);
+    g.setGradientFill (core);
+    g.fillEllipse (c.x - r2, c.y - r2, r2 * 2, r2 * 2);
 }
 
 // Pixel scale of the current drawing target (window scale x display scale), used to size cached images.

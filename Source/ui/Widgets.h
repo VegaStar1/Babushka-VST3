@@ -139,6 +139,7 @@ public:
         setSliderStyle (juce::Slider::RotaryVerticalDrag);
         setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
         setMouseDragSensitivity (230);
+        setVelocityModeParameters (0.2, 1, 0.0, true, juce::ModifierKeys::shiftModifier);   // Shift + drag: fine adjustment
         setScrollWheelEnabled (true);
         setRotaryParameters (juce::degreesToRadians (225.0f), juce::degreesToRadians (495.0f), true);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramId, *this);
@@ -291,13 +292,13 @@ private:
 };
 
 // ---- lit pad (SYNC, PLAY / HOLD / TAP) ----------------------------------------------------------------------------------
+// The component is larger than the pad so the glow can spill onto the panel; only the pad itself takes clicks.
 class Pad : public juce::Component
 {
 public:
-    Pad (juce::Colour colour, float size) : lampColour (colour)
+    Pad (juce::Colour colour, float size) : lampColour (colour), padSize (size)
     {
-        setSize ((int) (size + 20.0f), (int) (size + 20.0f));
-        padSize = size;
+        setSize ((int) (size * 2.6f), (int) (size * 2.6f));
         setMouseCursor (juce::MouseCursor::PointingHandCursor);
     }
     std::function<void()> onPress, onRelease;
@@ -305,24 +306,40 @@ public:
     void setLit (bool on) { if (lit != on) { lit = on; repaint(); } }
     bool isLit() const { return lit; }
 
+    bool hitTest (int x, int y) override { return bezel().contains ((float) x, (float) y); }
+
     void paint (juce::Graphics& g) override
     {
         const auto c = getLocalBounds().toFloat().getCentre();
-        const auto face = juce::Rectangle<float> (padSize - 8.0f, padSize - 8.0f).withCentre (c).translated (0.0f, down ? 1.0f : 0.0f);
-        const auto bezel = juce::Rectangle<float> (padSize, padSize).withCentre (c);
-        drawGlow (g, c, padSize * 0.95f, lampColour, lit ? 1.0f : 0.0f);
+        const auto bz = bezel();
+        const auto face = bz.reduced (4.0f).translated (0.0f, down ? 1.0f : 0.0f);
+        if (lit) drawGlow (g, c, padSize * 1.3f, lampColour, 1.0f);
         g.setColour (juce::Colours::black.withAlpha (0.6f));
-        g.fillRoundedRectangle (bezel.translated (0.0f, 1.6f), 6.5f);
-        juce::ColourGradient bz (juce::Colour (0xff3d3b39), bezel.getX(), bezel.getY(), juce::Colour (0xff0b0b0b), bezel.getX(), bezel.getBottom(), false);
-        g.setGradientFill (bz);
-        g.fillRoundedRectangle (bezel, 6.5f);
-        const auto base = lit ? lampColour : lampColour.withMultipliedBrightness (0.30f).withMultipliedSaturation (0.75f);
-        juce::ColourGradient fg (base.brighter (lit ? 0.45f : 0.12f), face.getX(), face.getY(), base.darker (0.35f), face.getX(), face.getBottom(), false);
-        g.setGradientFill (fg);
-        g.fillRoundedRectangle (face, 4.5f);
-        g.setColour (juce::Colours::white.withAlpha (lit ? 0.38f : 0.10f));                           // soft top reflection
-        g.fillRoundedRectangle (face.reduced (3.0f, 2.0f).withHeight (face.getHeight() * 0.38f), 3.0f);
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.fillRoundedRectangle (bz.translated (0.0f, 1.6f), 6.5f);
+        juce::ColourGradient bg (juce::Colour (0xff3d3b39), bz.getX(), bz.getY(), juce::Colour (0xff0b0b0b), bz.getX(), bz.getBottom(), false);
+        g.setGradientFill (bg);
+        g.fillRoundedRectangle (bz, 6.5f);
+        if (lit)
+        {
+            // lit: a translucent lens with the lamp behind it, hot in the middle, saturated at the edges
+            juce::ColourGradient fg (lampColour.brighter (0.9f).withMultipliedSaturation (0.55f), face.getCentreX(), face.getCentreY() - face.getHeight() * 0.1f,
+                                     lampColour.withMultipliedBrightness (0.9f), face.getX(), face.getY(), true);
+            fg.addColour (0.55, lampColour.brighter (0.25f));
+            g.setGradientFill (fg);
+            g.fillRoundedRectangle (face, 4.5f);
+            g.setColour (lampColour.brighter (0.6f).withAlpha (0.55f));
+            g.drawRoundedRectangle (face.expanded (1.0f), 5.0f, 1.2f);
+        }
+        else
+        {
+            const auto base = lampColour.withMultipliedBrightness (0.32f).withMultipliedSaturation (0.7f);
+            juce::ColourGradient fg (base.brighter (0.12f), face.getX(), face.getY(), base.darker (0.35f), face.getX(), face.getBottom(), false);
+            g.setGradientFill (fg);
+            g.fillRoundedRectangle (face, 4.5f);
+        }
+        g.setColour (juce::Colours::white.withAlpha (lit ? 0.30f : 0.09f));                           // soft top reflection
+        g.fillRoundedRectangle (face.reduced (3.0f, 2.0f).withHeight (face.getHeight() * 0.34f), 3.0f);
+        g.setColour (juce::Colours::black.withAlpha (lit ? 0.35f : 0.55f));
         g.drawRoundedRectangle (face, 4.5f, 1.0f);
     }
 
@@ -334,6 +351,8 @@ private:
     juce::Colour lampColour;
     float padSize = 40.0f;
     bool lit = false, down = false;
+
+    juce::Rectangle<float> bezel() const { return juce::Rectangle<float> (padSize, padSize).withCentre (getLocalBounds().toFloat().getCentre()); }
 };
 
 // ---- vertical fader (SUSTAIN) -------------------------------------------------------------------------------------------
@@ -416,11 +435,13 @@ private:
 };
 
 // ---- wheel (PITCH springs back, MOD stays) ------------------------------------------------------------------------------
+// Seen from above: a ribbed cylinder standing out of a slot. Ribs sit at fixed angles on the cylinder, so they crowd
+// together towards the top and bottom edges and roll with the value; the light comes from the top of the panel.
 class Wheel : public juce::Component, private juce::Timer
 {
 public:
     // value01: 0 … 1 (0.5 = centre for the pitch wheel).
-    Wheel (bool springBack, float height) : spring (springBack)
+    Wheel (bool springBack, float height, juce::Colour plastic) : spring (springBack), tone (plastic)
     {
         setSize (62, (int) height);
         setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
@@ -435,43 +456,71 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        const auto b = getLocalBounds().toFloat().reduced (6.0f, 2.0f);
-        g.setColour (juce::Colour (0xff020202));                                    // slot in the plate
-        g.fillRoundedRectangle (b, 7.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.10f));
-        g.drawRoundedRectangle (b.reduced (0.5f), 7.0f, 1.0f);
-        const auto w = b.reduced (6.0f, 6.0f);
+        const auto b = getLocalBounds().toFloat().reduced (3.0f, 1.0f);
+        // housing: a recessed slot with a bevelled lip
+        g.setColour (juce::Colours::black.withAlpha (0.65f));
+        g.fillRoundedRectangle (b.translated (0.0f, 1.5f), 8.0f);
+        juce::ColourGradient lip (juce::Colour (0xff2c2c2d), b.getX(), b.getY(), juce::Colour (0xff070707), b.getX(), b.getBottom(), false);
+        g.setGradientFill (lip);
+        g.fillRoundedRectangle (b, 8.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.12f));
+        g.drawRoundedRectangle (b.reduced (0.5f), 8.0f, 1.0f);
+        const auto slot = b.reduced (5.0f, 6.0f);
+        g.setColour (juce::Colour (0xff010101));
+        g.fillRoundedRectangle (slot, 5.0f);
+
+        const auto w = slot.reduced (4.0f, 3.0f);
         juce::Graphics::ScopedSaveState s (g);
-        juce::Path clip; clip.addRoundedRectangle (w, 5.0f);
+        juce::Path clip; clip.addRoundedRectangle (w, 3.0f);
         g.reduceClipRegion (clip);
-        // cylinder shading across the width
-        juce::ColourGradient cyl (juce::Colour (0xff1b1b1c), w.getX(), 0, juce::Colour (0xff1b1b1c), w.getRight(), 0, false);
-        cyl.addColour (0.18, juce::Colour (0xff77797c));
-        cyl.addColour (0.42, juce::Colour (0xffd9dbdd));
-        cyl.addColour (0.62, juce::Colour (0xff8c8e91));
-        cyl.addColour (0.88, juce::Colour (0xff333435));
-        g.setGradientFill (cyl);
-        g.fillRect (w);
-        // ridges that roll with the value
-        const float pitch = 7.0f;
-        const float offset = std::fmod (value * 520.0f, pitch);
-        for (float y = w.getY() - pitch + offset; y < w.getBottom() + pitch; y += pitch)
+
+        const float R = w.getHeight() * 0.5f / std::sin (kVisible), cy = w.getCentreY();
+        const float turn = (value - (spring ? 0.5f : 0.0f)) * kTravel;
+        auto yAt = [&] (float theta) { return cy + R * std::sin (theta); };
+        // tread: lit from the top, falling off as the surface turns away
+        const int bands = 48;
+        for (int i = 0; i < bands; ++i)
         {
-            g.setColour (juce::Colours::black.withAlpha (0.38f));
-            g.fillRect (w.getX(), y, w.getWidth(), 2.2f);
-            g.setColour (juce::Colours::white.withAlpha (0.16f));
-            g.fillRect (w.getX(), y + 2.2f, w.getWidth(), 1.0f);
+            const float t0 = -kVisible + 2.0f * kVisible * (float) i / (float) bands, t1 = t0 + 2.0f * kVisible / (float) bands;
+            const float tm = 0.5f * (t0 + t1);
+            const float light = juce::jlimit (0.0f, 1.0f, 0.18f + 0.95f * std::cos (tm + 0.38f) * std::cos (tm));
+            g.setColour (tone.withMultipliedBrightness (0.35f + 0.9f * light));
+            g.fillRect (juce::Rectangle<float>::leftTopRightBottom (w.getX(), yAt (t0), w.getRight(), yAt (t1) + 0.6f));
         }
-        // light falls off at the top and bottom as the wheel turns away
-        juce::ColourGradient fall (juce::Colours::black.withAlpha (0.78f), 0, w.getY(), juce::Colours::black.withAlpha (0.0f), 0, w.getY() + w.getHeight() * 0.28f, false);
-        g.setGradientFill (fall); g.fillRect (w);
-        juce::ColourGradient fall2 (juce::Colours::black.withAlpha (0.78f), 0, w.getBottom(), juce::Colours::black.withAlpha (0.0f), 0, w.getBottom() - w.getHeight() * 0.28f, false);
-        g.setGradientFill (fall2); g.fillRect (w);
-        if (spring)                                                                   // centre notch of the pitch wheel
+        // ribs moulded into the tread
+        const float step = juce::degreesToRadians (7.5f);
+        const float first = std::fmod (turn, step) - std::ceil (kVisible / step) * step;
+        for (float th = first; th < kVisible; th += step)
         {
-            g.setColour (juce::Colour (0xfff0eadb));
-            g.fillRect (w.getX() + 6.0f, w.getCentreY() - 1.2f - (value - 0.5f) * 60.0f, w.getWidth() - 12.0f, 2.4f);
+            if (th < -kVisible) continue;
+            const float c = std::cos (th);
+            const float y = yAt (th), hgt = juce::jmax (0.4f, 2.6f * c);
+            g.setColour (juce::Colours::black.withAlpha (0.55f * c));
+            g.fillRect (w.getX(), y - hgt * 0.5f, w.getWidth(), hgt);
+            const bool facingLight = th < 0.25f;
+            g.setColour (juce::Colours::white.withAlpha ((facingLight ? 0.22f : 0.08f) * c));
+            g.fillRect (w.getX(), y + hgt * 0.5f, w.getWidth(), juce::jmax (0.4f, 1.1f * c));
         }
+        // centre mark of the pitch wheel, or the end stop of the mod wheel, moulded as a broad flat rib
+        {
+            const float th = spring ? turn : turn - kTravel * 0.5f;
+            if (std::abs (th) < kVisible)
+            {
+                const float c = std::cos (th);
+                const float y = yAt (th);
+                const auto mark = tone.getPerceivedBrightness() > 0.55f ? juce::Colour (0xff1a1a1a) : juce::Colour (0xfff2ecdc);
+                g.setColour (spring ? mark.withAlpha (0.9f * c) : juce::Colours::black.withAlpha (0.6f * c));
+                g.fillRect (w.getX() + 3.0f, y - 2.0f * c, w.getWidth() - 6.0f, 4.0f * c);
+            }
+        }
+        // rounded edges of the tread and the shadow of the slot
+        juce::ColourGradient sides (juce::Colours::black.withAlpha (0.55f), w.getX(), 0.0f, juce::Colours::black.withAlpha (0.55f), w.getRight(), 0.0f, false);
+        sides.addColour (0.2, juce::Colours::transparentBlack); sides.addColour (0.8, juce::Colours::transparentBlack);
+        g.setGradientFill (sides); g.fillRect (w);
+        juce::ColourGradient top (juce::Colours::black.withAlpha (0.8f), 0.0f, w.getY(), juce::Colours::transparentBlack, 0.0f, w.getY() + 10.0f, false);
+        g.setGradientFill (top); g.fillRect (w);
+        juce::ColourGradient bottom (juce::Colours::black.withAlpha (0.6f), 0.0f, w.getBottom(), juce::Colours::transparentBlack, 0.0f, w.getBottom() - 8.0f, false);
+        g.setGradientFill (bottom); g.fillRect (w);
     }
 
     void mouseDown (const juce::MouseEvent& e) override { dragging = true; stopTimer(); lastY = e.position.y; hint(); }
@@ -488,13 +537,16 @@ public:
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& w) override { setValue (value + w.deltaY * 0.12f); hint(); }
 
 private:
+    static constexpr float kVisible = 1.15f;     // half of the arc that shows through the slot (radians)
+    static constexpr float kTravel = 1.2f;       // rotation over the full range of the value (radians)
     bool spring, dragging = false;
+    juce::Colour tone;
     float value = 0.0f, lastY = 0.0f;
 
     void setValue (float v)
     {
         v = juce::jlimit (0.0f, 1.0f, v);
-        if (v != value) { value = v; repaint(); if (onChange) onChange (value); }
+        if (std::abs (v - value) > 1.0e-6f) { value = v; repaint(); if (onChange) onChange (value); }
     }
     void timerCallback() override
     {
@@ -510,16 +562,16 @@ private:
 class Lamp : public juce::Component
 {
 public:
-    explicit Lamp (juce::Colour c, float diameter = 7.0f) : colour (c), d (diameter) { setSize ((int) (diameter * 4), (int) (diameter * 4)); setInterceptsMouseClicks (false, false); }
+    explicit Lamp (juce::Colour c, float diameter = 7.0f) : colour (c), d (diameter) { setSize ((int) (diameter * 7), (int) (diameter * 7)); setInterceptsMouseClicks (false, false); }
     void setLevel (float v) { v = juce::jlimit (0.0f, 1.0f, v); if (std::abs (v - level) > 0.02f) { level = v; repaint(); } }
     void paint (juce::Graphics& g) override
     {
         const auto c = getLocalBounds().toFloat().getCentre();
-        drawGlow (g, c, d * 1.9f, colour, level);
+        drawGlow (g, c, d * 3.2f, colour, level);
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillEllipse (c.x - d * 0.5f - 1.0f, c.y - d * 0.5f - 0.5f, d + 2.0f, d + 2.0f);
-        juce::ColourGradient grad (colour.withMultipliedBrightness (0.25f + 0.95f * level).brighter (0.2f * level), c.x - d * 0.2f, c.y - d * 0.25f,
-                                   colour.withMultipliedBrightness (0.12f + 0.55f * level), c.x + d * 0.4f, c.y + d * 0.5f, true);
+        juce::ColourGradient grad (colour.withMultipliedBrightness (0.25f + 0.95f * level).brighter (0.7f * level), c.x - d * 0.1f, c.y - d * 0.15f,
+                                   colour.withMultipliedBrightness (0.12f + 0.75f * level), c.x + d * 0.5f, c.y + d * 0.5f, true);
         g.setGradientFill (grad);
         g.fillEllipse (c.x - d * 0.5f, c.y - d * 0.5f, d, d);
         g.setColour (juce::Colours::white.withAlpha (0.35f));
