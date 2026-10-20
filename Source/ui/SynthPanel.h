@@ -554,8 +554,9 @@ private:
         // NUWMUN mark (vector, traced from the logo artwork)
         const auto& logo = nuwmunLogo();
         const auto lb = logo.getBounds();
-        const float h = r.getHeight() - 10.0f, w = h * lb.getWidth() / lb.getHeight();
-        const juce::Rectangle<float> dest (r.getRight() - 24.0f - w, r.getY() + 5.0f, w, h);
+        const float inset = dark ? 9.5f : 5.0f;            // inside the printed frame on the dark strip
+        const float h = r.getHeight() - 2.0f * inset, w = h * lb.getWidth() / lb.getHeight();
+        const juce::Rectangle<float> dest (r.getRight() - 24.0f - w, r.getY() + inset, w, h);
         g.setColour (print);
         g.fillPath (logo, juce::RectanglePlacement (juce::RectanglePlacement::centred).getTransformToFit (lb, dest));
     }
