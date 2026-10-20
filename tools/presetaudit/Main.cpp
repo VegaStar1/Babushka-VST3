@@ -96,7 +96,7 @@ int main (int argc, char** argv)
           r.tail = std::sqrt (t / (total * block - from)); }
         juce::String notes;
         if (r.bad) notes << "NaN/Inf ";
-        const bool hits = juce::String (pr.category).containsIgnoreCase ("drum") || juce::String (pr.category).containsIgnoreCase ("effect");
+        const bool hits = juce::String (pr.category).containsIgnoreCase ("drum") || juce::String (pr.category) == "FX";
         if (r.loud < (hits ? 0.04 : 0.06)) notes << "TOO QUIET ";          // short hits and clicks measure lower
         if (r.peak > 0.97) notes << "CLIPS ";
         if (r.loud > 0.50) notes << "TOO LOUD ";

@@ -364,13 +364,14 @@ void BabushkaProcessor::handleMidi (const juce::MidiMessage& m)
     if (m.isNoteOn()) { engine.noteOn (m.getNoteNumber(), m.getVelocity()); setHeld (m.getNoteNumber(), true); }
     else if (m.isNoteOff()) { engine.noteOff (m.getNoteNumber()); setHeld (m.getNoteNumber(), false); }
     else if (m.isPitchWheel()) engine.setPitchBend ((float) (m.getPitchWheelValue() - 8192) / 8192.0f);
+    // All Notes Off / All Sound Off are controllers (CC 123 / 120), so they must be tested before the generic CC branch.
+    else if (m.isAllNotesOff() || m.isAllSoundOff()) { engine.allNotesOff(); heldBits[0] = 0; heldBits[1] = 0; }
     else if (m.isController())
     {
         const int cc = m.getControllerNumber(), v = m.getControllerValue();
         if (cc == 1) engine.setModWheelCC ((float) v / 127.0f);
         else if (cc == 64) engine.setSustain (v >= 64);
     }
-    else if (m.isAllNotesOff() || m.isAllSoundOff()) { engine.allNotesOff(); heldBits[0] = 0; heldBits[1] = 0; }
 }
 
 void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)

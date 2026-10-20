@@ -1,4 +1,4 @@
-// Babushka — factory presets (test set).
+// Babushka — factory presets (176).
 //
 // A preset lists only the parameters that differ from the defaults, in real units (choice index, semitones,
 // 0…1 knob value). Everything else — except the "global" settings listed in kGlobalParams — is reset to its
@@ -50,7 +50,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.684f }, { "resonance", 0.15f }, { "envAmt", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.67f }, { "sustain", 0.8f }, { "release", 0.567f }, { "volume", 0.729f } } },
 
         { "Basic", "Sine Oscillator", "The filter self-oscillates and is played from the keyboard (Kbd Track 1:1): a pure sine. Oscillators are off.",
-          { { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 0.95f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.588f }, { "volume", 0.915f } } },
+          { { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 0.95f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.588f }, { "volume", 0.914f } } },
 
         { "Basic", "Mixer Overdrive", "Both oscillators and noise pushed hard into the mixer: the summing amp saturates before the ladder filter, as on the hardware.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.25f }, { "cutoff", 0.643f }, { "resonance", 0.3f }, { "envAmt", 0.25f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.7f }, { "release", 0.481f }, { "volume", 0.647f } } },
@@ -62,12 +62,12 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "mixOsc1", 0.7f }, { "cutoff", 0.559f }, { "resonance", 0.2f }, { "envAmt", 0.5f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.606f }, { "sustain", 0.0f }, { "release", 0.606f }, { "reverbMix", 0.6f }, { "volume", 1.0f } } },
 
         // ---------------------------------------------------------------- Legends
-        { "Legends", "Munich '77", "In the style of Giorgio Moroder's sequenced bass on Donna Summer's 'I Feel Love' (1977): octave-jumping saw 16ths, tight envelope, a touch of spring. Plays by itself; a key transposes; OCT/SEQ picks the chord.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.534f }, { "resonance", 0.25f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.0f }, { "release", 0.417f }, { "reverbMix", 0.15f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.697f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
+        { "Legends", "Munich '77", "In the style of Giorgio Moroder's bass on Donna Summer's 'I Feel Love' (1977, Moog modular): 16' saws a hair apart, a tight envelope; the double-note pulse that a tape delay gave the original is written into the sequence. Plays by itself; a key transposes; OCT/SEQ picks the chord.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.534f }, { "resonance", 0.25f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.0f }, { "release", 0.417f }, { "reverbMix", 0.15f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.697f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
           "",
-          "36 48 43 46 36 48 43 46 36 48 43 46 36 48 43 46",
-          "41 53 48 51 41 53 48 51 41 53 48 51 41 53 48 51",
-          "43 55 50 53 43 55 50 53 43 55 50 53 43 55 50 53" },
+          "36 36 48 48 43 43 46 46 36 36 48 48 43 43 46 46",
+          "41 41 53 53 48 48 51 51 41 41 53 53 48 48 51 51",
+          "43 43 55 55 50 50 53 53 43 43 55 55 50 50 53 53" },
 
         { "Legends", "Midnight Chase", "In the style of Moroder's 'Chase' (Midnight Express, 1978): relentless 16th octave bass with the filter breathing on a slow LFO. Plays by itself.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.4f }, { "cutoff", 0.486f }, { "resonance", 0.4f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.459f }, { "sustain", 0.0f }, { "release", 0.399f }, { "reverbMix", 0.2f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.2f }, { "modWheel", 1.0f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.721f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
@@ -76,18 +76,18 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "38 50 38 50 38 50 38 50",
           "38 38 50 38 38 50 38 50" },
 
-        { "Legends", "Dark Pursuit", "In the style of Gesaffelstein's dark techno basses ('Pursuit', 2013): two saws slammed into the mixer, low resonant filter, short hard envelope, a little glide. Play low, staccato.",
+        { "Legends", "Dark Pursuit", "In the style of Gesaffelstein's dark techno basses ('Pursuit', 2013; his rigs feature Roland SH-101 / MC-202 class monosynths): two saws slammed into the mixer, low resonant filter, short hard envelope, a little glide. Play low, staccato.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", -0.15f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.2f }, { "cutoff", 0.377f }, { "resonance", 0.45f }, { "envAmt", 0.42f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.514f }, { "sustain", 0.25f }, { "release", 0.399f }, { "glide", 0.346f }, { "legatoGlide", 1 }, { "volume", 0.98f } } },
 
         { "Legends", "Black Glory Lead", "In the style of Gesaffelstein's cold distorted leads: hard-synced oscillator 2 through an overdriven mixer, filter opened by the envelope; bend for menace.",
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 4.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.6f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.1f }, { "cutoff", 0.626f }, { "resonance", 0.35f }, { "envAmt", 0.3f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.6f }, { "release", 0.507f }, { "reverbMix", 0.2f }, { "glide", 0.294f }, { "volume", 0.877f } } },
 
-        { "Legends", "Upside Down Arp", "In the style of Kyle Dixon & Michael Stein's 'Stranger Things' theme (2016): a glassy rising 16th arpeggio, a slow LFO opening the filter, long spring. Plays by itself; a key transposes.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "cutoff", 0.559f }, { "resonance", 0.35f }, { "envAmt", 0.3f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.528f }, { "sustain", 0.25f }, { "release", 0.541f }, { "reverbMix", 0.45f }, { "lfoRate", 0.026f }, { "lfoCutoffAmt", 0.28f }, { "modWheel", 1.0f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.544f }, { "arpFreeStep", 2 }, { "volume", 0.955f } },
+        { "Legends", "Upside Down Arp", "In the style of Kyle Dixon & Michael Stein's 'Stranger Things' main title (2016; Prophet-5 and Roland SH-2 on the original): a C major 7 arpeggio at 84 BPM whose filter slowly opens, long spring. Plays by itself; a key transposes.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "cutoff", 0.559f }, { "resonance", 0.35f }, { "envAmt", 0.3f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.528f }, { "sustain", 0.25f }, { "release", 0.541f }, { "reverbMix", 0.45f }, { "lfoRate", 0.026f }, { "lfoCutoffAmt", 0.28f }, { "modWheel", 1.0f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.544f }, { "arpFreeStep", 2 }, { "volume", 0.928f } },
           "",
-          "57 60 64 67 69 67 64 60",
-          "53 57 60 64 65 64 60 57",
-          "52 55 59 62 64 62 59 55" },
+          "48 52 55 59 60 59 55 52",
+          "45 48 52 55 57 55 52 48",
+          "41 45 48 52 53 52 48 45" },
 
         { "Legends", "Hawkins Pulse", "In the style of the pulsing low synth beds of 80s-revival scores ('Stranger Things', 'It Follows'): 8th-note octave bass that slowly opens. Plays by itself.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.413f }, { "resonance", 0.3f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.541f }, { "sustain", 0.1f }, { "release", 0.459f }, { "reverbMix", 0.3f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.32f }, { "modWheel", 1.0f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.594f }, { "arpFreeStep", 1 }, { "volume", 1.0f } },
@@ -96,8 +96,8 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "33 33 45 33 33 45 33 45",
           "33 R 33 R 33 R 36 R" },
 
-        { "Legends", "Lucky Lead", "In the style of Keith Emerson's portamento solo on ELP's 'Lucky Man' (1970): saw and square an octave apart, long glide, filter wide open, vibrato on the wheel.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 2 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.4f }, { "cutoff", 0.836f }, { "resonance", 0.15f }, { "kbdTrack", 2 }, { "attack", 0.25f }, { "decay", 0.703f }, { "sustain", 0.9f }, { "release", 0.606f }, { "reverbMix", 0.25f }, { "glide", 0.601f }, { "glideType", 2 }, { "lfoRate", 0.444f }, { "lfoPitchAmt", 0.112f }, { "modWheel", 0.25f }, { "volume", 0.618f } } },
+        { "Legends", "Lucky Lead", "In the style of Keith Emerson's portamento solo on ELP's 'Lucky Man' (1970, played on his Moog modular): near-unison squares, a resonant filter, a long logarithmic glide; walk slowly up the keys for the famous climbing sweep.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.742f }, { "resonance", 0.45f }, { "kbdTrack", 2 }, { "attack", 0.325f }, { "decay", 0.703f }, { "sustain", 0.9f }, { "release", 0.648f }, { "reverbMix", 0.25f }, { "glide", 0.64f }, { "glideType", 2 }, { "lfoRate", 0.444f }, { "lfoPitchAmt", 0.112f }, { "modWheel", 0.2f }, { "volume", 0.534f } } },
 
         { "Legends", "Funky Worm", "In the style of the Ohio Players' 'Funky Worm' (1972): a thin, high, whining lead with portamento and quick vibrato. Play an octave or two above middle C.",
           { { "osc1Octave", 3 }, { "osc1Wave", 0 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "osc2Freq", 0.0f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.2f }, { "cutoff", 0.706f }, { "resonance", 0.55f }, { "kbdTrack", 2 }, { "attack", 0.325f }, { "decay", 0.648f }, { "sustain", 0.9f }, { "release", 0.541f }, { "reverbMix", 0.15f }, { "glide", 0.523f }, { "lfoRate", 0.461f }, { "lfoPitchAmt", 0.129f }, { "modWheel", 0.5f }, { "volume", 0.828f } } },
@@ -111,8 +111,9 @@ inline const std::vector<FactoryPreset>& factoryPresets()
         { "Legends", "Chameleon Bass", "In the style of Herbie Hancock's 'Chameleon' (1973): a rubbery saw bass with a resonant 'wah' envelope on each note. Play the riff legato.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.55f }, { "cutoff", 0.355f }, { "resonance", 0.62f }, { "envAmt", 0.52f }, { "kbdTrack", 1 }, { "attack", 0.175f }, { "decay", 0.588f }, { "sustain", 0.3f }, { "release", 0.433f }, { "volume", 1.0f } } },
 
-        { "Legends", "French Touch Lead", "In the style of Daft Punk's 'Da Funk' (1995): a squelchy resonant saw pushed into overdrive; play it in the low-mid register and ride CUTOFF.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "mixOsc1", 1.0f }, { "mixNoise", 0.05f }, { "cutoff", 0.519f }, { "resonance", 0.7f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.606f }, { "sustain", 0.5f }, { "release", 0.459f }, { "glide", 0.346f }, { "legatoGlide", 1 }, { "volume", 1.0f } } },
+        { "Legends", "French Touch Lead", "In the style of the distorted lead of Daft Punk's 'Da Funk' (1995), described as a band-passed synth through a distortion pedal: here the high-pass sits before the ladder (cables: MIXER OUT -> HIGH PASS IN -> FILTER IN) and the mixer is driven hard.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.05f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.8f }, { "mixNoise", 0.05f }, { "cutoff", 0.671f }, { "resonance", 0.5f }, { "envAmt", 0.25f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.606f }, { "sustain", 0.6f }, { "release", 0.459f }, { "glide", 0.294f }, { "legatoGlide", 1 }, { "hpCutoff", 0.496f }, { "volume", 1.0f } },
+          "mixerOut:hpfIn hpfOut:filterIn" },
 
         { "Legends", "Grid Runner", "In the style of Daft Punk's 'Tron: Legacy' score ('Derezzed', 2010): driving square/saw 16ths with a bright snappy envelope. Plays by itself; a key transposes.",
           { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.559f }, { "resonance", 0.35f }, { "envAmt", 0.4f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.459f }, { "sustain", 0.0f }, { "release", 0.378f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.737f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
@@ -129,7 +130,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "52 52 55 57 52 52 59 57" },
 
         { "Legends", "Oxygen Lead", "In the style of Jean-Michel Jarre's 'Oxygène' leads (1976): a hollow square with slow vibrato and a soft attack, swimming in the spring.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "cutoff", 0.742f }, { "resonance", 0.25f }, { "kbdTrack", 2 }, { "attack", 0.401f }, { "decay", 0.703f }, { "sustain", 0.85f }, { "release", 0.67f }, { "reverbMix", 0.5f }, { "glide", 0.346f }, { "lfoRate", 0.424f }, { "lfoPitchAmt", 0.102f }, { "lfoPwAmt", 0.25f }, { "modWheel", 0.5f }, { "volume", 0.461f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "cutoff", 0.742f }, { "resonance", 0.25f }, { "kbdTrack", 2 }, { "attack", 0.401f }, { "decay", 0.703f }, { "sustain", 0.85f }, { "release", 0.67f }, { "reverbMix", 0.35f }, { "glide", 0.346f }, { "lfoRate", 0.424f }, { "lfoPitchAmt", 0.102f }, { "lfoPwAmt", 0.25f }, { "modWheel", 0.5f }, { "volume", 0.544f } } },
 
         { "Legends", "Switched-On", "In the style of Wendy Carlos' 'Switched-On Bach' (1968): bright, precise pulse with a crisp attack and full key tracking, for counterpoint.",
           { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "osc2Octave", 2 }, { "osc2Wave", 2 }, { "osc2Freq", 0.02f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.3f }, { "cutoff", 0.643f }, { "resonance", 0.3f }, { "envAmt", 0.35f }, { "kbdTrack", 2 }, { "attack", 0.119f }, { "decay", 0.567f }, { "sustain", 0.6f }, { "release", 0.459f }, { "reverbMix", 0.15f }, { "volume", 0.985f } } },
@@ -141,7 +142,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "34 46 34 46 37 49 37 49",
           "34 34 46 34 34 46 34 46" },
 
-        { "Legends", "BFG Bass", "In the style of Mick Gordon's industrial metal synth bass for 'DOOM' (2016): overdriven saws and noise, sub-heavy, hard-edged envelope. Play low and fast.",
+        { "Legends", "BFG Bass", "In the spirit of Mick Gordon's 'DOOM' (2016) synth bass, which he built by forcing simple waves through chains of distortion: here overdriven saws and noise, sub-heavy, with a hard-edged envelope. Play low and fast.",
           { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", -0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.45f }, { "cutoff", 0.441f }, { "resonance", 0.5f }, { "envAmt", 0.45f }, { "attack", 0.0f }, { "decay", 0.541f }, { "sustain", 0.45f }, { "release", 0.433f }, { "volume", 0.985f } } },
 
         { "Legends", "Carpenter Pulse", "In the style of John Carpenter's self-scored thrillers ('Assault on Precinct 13', 'Escape from New York'): an insistent minor pulse with a slowly opening filter. Plays by itself.",
@@ -152,16 +153,16 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "37 R 37 37 R 37 R 37" },
 
         { "Legends", "Blade Brass", "In the style of Vangelis' Yamaha CS-80 brass in 'Blade Runner' (1982), done mono: saws with a slow filter swell, wheel vibrato and a big spring tail.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.14f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "cutoff", 0.465f }, { "resonance", 0.35f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.544f }, { "decay", 0.751f }, { "sustain", 0.65f }, { "release", 0.751f }, { "reverbMix", 0.55f }, { "glide", 0.383f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.087f }, { "modWheel", 0.3f }, { "volume", 0.537f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.14f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "cutoff", 0.465f }, { "resonance", 0.35f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.544f }, { "decay", 0.751f }, { "sustain", 0.65f }, { "release", 0.751f }, { "reverbMix", 0.35f }, { "glide", 0.383f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.087f }, { "modWheel", 0.3f }, { "volume", 0.662f } } },
 
         { "Legends", "Sandworm Drone", "In the style of the huge low drones of Hans Zimmer's 'Dune' (2021): sub saw and pulse in DRONE mode, a throaty resonant vowel moving very slowly, noise breath.",
-          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.15f }, { "cutoff", 0.396f }, { "resonance", 0.6f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.45f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.22f }, { "modWheel", 1.0f }, { "volume", 0.421f } } },
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.15f }, { "cutoff", 0.396f }, { "resonance", 0.6f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.22f }, { "modWheel", 1.0f }, { "volume", 0.479f } } },
 
         { "Legends", "Braam", "In the style of the trailer 'BRAAM' made famous by 'Inception' (2010): a low overdriven brass blast that swells open. Hold low notes.",
-          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.15f }, { "cutoff", 0.314f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "attack", 0.476f }, { "decay", 0.785f }, { "sustain", 0.7f }, { "release", 0.73f }, { "reverbMix", 0.4f }, { "volume", 0.589f } } },
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.15f }, { "cutoff", 0.314f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "attack", 0.476f }, { "decay", 0.785f }, { "sustain", 0.7f }, { "release", 0.73f }, { "reverbMix", 0.35f }, { "volume", 0.622f } } },
 
-        { "Legends", "Beverly Lead", "In the style of Harold Faltermeyer's 'Axel F' (1984): a bright, punchy square-saw lead with a short filter blip. Play staccato.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.671f }, { "resonance", 0.25f }, { "envAmt", 0.3f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.541f }, { "sustain", 0.6f }, { "release", 0.433f }, { "reverbMix", 0.15f }, { "volume", 0.788f } } },
+        { "Legends", "Thesis On Sound", "A nod to Adrian Younge, who featured the Grandmother in Moog's 'Thesis on Sound' film: a warm, slightly gritty soul lead with slow vibrato and a wet spring, for retro cinematic themes.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "osc2Freq", 0.09f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.5f }, { "cutoff", 0.658f }, { "resonance", 0.3f }, { "envAmt", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.325f }, { "decay", 0.688f }, { "sustain", 0.8f }, { "release", 0.648f }, { "reverbMix", 0.35f }, { "glide", 0.383f }, { "lfoRate", 0.43f }, { "lfoPitchAmt", 0.091f }, { "modWheel", 0.35f }, { "volume", 0.564f } } },
 
         { "Legends", "Chicago Acid", "In the style of Phuture's 'Acid Tracks' (1987) and early Chicago acid: resonant saw sequence with accents and slides. Plays by itself; turn CUTOFF and RESONANCE.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "mixOsc1", 0.7f }, { "cutoff", 0.396f }, { "resonance", 0.8f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 0.05f }, { "release", 0.399f }, { "glide", 0.411f }, { "legatoGlide", 1 }, { "attenuator", 0.35f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.679f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
@@ -171,7 +172,59 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "36 48 36 48A 36 48 39 41" },
 
         { "Legends", "Tape Memory", "In the style of Boards of Canada's hazy, detuned leads: soft triangle and pulse, slow wandering pitch like worn tape, darkened top end.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.18f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "cutoff", 0.643f }, { "resonance", 0.15f }, { "kbdTrack", 1 }, { "attack", 0.425f }, { "decay", 0.703f }, { "sustain", 0.8f }, { "release", 0.688f }, { "reverbMix", 0.45f }, { "lfoRate", 0.219f }, { "lfoPitchAmt", 0.079f }, { "modWheel", 1.0f }, { "volume", 0.402f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.18f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "cutoff", 0.643f }, { "resonance", 0.15f }, { "kbdTrack", 1 }, { "attack", 0.425f }, { "decay", 0.703f }, { "sustain", 0.8f }, { "release", 0.688f }, { "reverbMix", 0.35f }, { "lfoRate", 0.219f }, { "lfoPitchAmt", 0.079f }, { "modWheel", 1.0f }, { "volume", 0.45f } } },
+
+        // ---------------------------------------------------------------- Cinematic
+        { "Cinematic", "Braam Titan", "The trailer BRAAM at full force: 32' and 16' saws a hair apart, mixer in overdrive, the filter tears open in 120 ms and stays wide. Hold low notes.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.18f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.2f }, { "cutoff", 0.342f }, { "resonance", 0.35f }, { "envAmt", 0.65f }, { "kbdTrack", 1 }, { "attack", 0.52f }, { "decay", 0.837f }, { "sustain", 0.75f }, { "release", 0.777f }, { "reverbMix", 0.35f }, { "volume", 0.612f } } },
+
+        { "Cinematic", "Braam Distorted", "Gritty, torn BRAAM: square + saw slammed into the mixer with noise, resonant ladder, aggressive envelope.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 2 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", -0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.45f }, { "cutoff", 0.366f }, { "resonance", 0.55f }, { "envAmt", 0.6f }, { "attack", 0.445f }, { "decay", 0.799f }, { "sustain", 0.65f }, { "release", 0.751f }, { "reverbMix", 0.3f }, { "volume", 0.94f } } },
+
+        { "Cinematic", "Braam Slow Swell", "A BRAAM that swells for two seconds before it peaks: for the build before the hit.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.15f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.15f }, { "cutoff", 0.278f }, { "resonance", 0.4f }, { "envAmt", 0.75f }, { "kbdTrack", 1 }, { "attack", 0.825f }, { "decay", 0.859f }, { "sustain", 0.85f }, { "release", 0.811f }, { "reverbMix", 0.35f }, { "volume", 0.648f } } },
+
+        { "Cinematic", "Braam Hit", "One short, huge BRAAM stab with the spring crashing behind it. Hit and let go.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.3f }, { "cutoff", 0.355f }, { "resonance", 0.4f }, { "envAmt", 0.65f }, { "attack", 0.425f }, { "decay", 0.717f }, { "sustain", 0.0f }, { "release", 0.751f }, { "reverbMix", 0.65f }, { "volume", 0.709f } } },
+
+        { "Cinematic", "Fifth Braam", "Open fifths (oscillator 2 seven semitones up) for a heroic, hollow BRAAM.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 7.03f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.15f }, { "cutoff", 0.329f }, { "resonance", 0.4f }, { "envAmt", 0.65f }, { "kbdTrack", 1 }, { "attack", 0.544f }, { "decay", 0.837f }, { "sustain", 0.8f }, { "release", 0.777f }, { "reverbMix", 0.35f }, { "volume", 0.868f } } },
+
+        { "Cinematic", "Dissonant Braam", "Oscillator 2 one semitone up: a grinding, menacing cluster for horror and tension.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 1.0f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.2f }, { "cutoff", 0.329f }, { "resonance", 0.45f }, { "envAmt", 0.62f }, { "attack", 0.575f }, { "decay", 0.837f }, { "sustain", 0.8f }, { "release", 0.799f }, { "reverbMix", 0.35f }, { "volume", 0.864f } } },
+
+        { "Cinematic", "Horn of Doom", "A massive low horn: slow attack, a resonant 'throat' in the filter, slight pitch sag from the LFO. Hold long notes at C1-C2.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.1f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.9f }, { "mixNoise", 0.2f }, { "cutoff", 0.314f }, { "resonance", 0.6f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.636f }, { "decay", 0.859f }, { "sustain", 0.8f }, { "release", 0.811f }, { "reverbMix", 0.35f }, { "lfoRate", 0.13f }, { "lfoPitchAmt", 0.065f }, { "modWheel", 1.0f }, { "volume", 0.649f } } },
+
+        { "Cinematic", "War Horn", "Battle horn: square and saw an octave apart, strong attack bite and a held, overdriven body.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.08f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.85f }, { "mixNoise", 0.1f }, { "cutoff", 0.413f }, { "resonance", 0.35f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.476f }, { "decay", 0.73f }, { "sustain", 0.75f }, { "release", 0.703f }, { "reverbMix", 0.35f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.058f }, { "modWheel", 0.3f }, { "volume", 0.808f } } },
+
+        { "Cinematic", "Titan Brass", "Epic brass section done mono: wide detuned saws, filter attack slower than the amp so the note blooms, vibrato on the wheel.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "cutoff", 0.428f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "kbdTrack", 1 }, { "attack", 0.5f }, { "decay", 0.769f }, { "sustain", 0.7f }, { "release", 0.717f }, { "reverbMix", 0.35f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.071f }, { "modWheel", 0.2f }, { "volume", 0.551f } } },
+
+        { "Cinematic", "Epic Brass Stab", "Short, punchy brass hit for action cues: big filter blip, quick fall, spring tail.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.12f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.9f }, { "mixNoise", 0.1f }, { "cutoff", 0.441f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "attack", 0.325f }, { "decay", 0.606f }, { "sustain", 0.2f }, { "release", 0.622f }, { "reverbMix", 0.5f }, { "volume", 0.695f } } },
+
+        { "Cinematic", "Dark Brass Swell", "Low brass crescendo that opens over a second and a half: hold under a theme.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.15f }, { "mixOsc1", 0.95f }, { "mixOsc2", 0.9f }, { "cutoff", 0.355f }, { "resonance", 0.4f }, { "envAmt", 0.7f }, { "kbdTrack", 1 }, { "attack", 0.794f }, { "decay", 0.837f }, { "sustain", 0.8f }, { "release", 0.777f }, { "reverbMix", 0.35f }, { "volume", 0.552f } } },
+
+        { "Cinematic", "Trailer Rise", "Brass that keeps rising in pitch and brightness while held: the last seconds before the title card. Cables: + ENV OUT -> attenuator -> both PITCH IN.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "mixNoise", 0.25f }, { "cutoff", 0.297f }, { "resonance", 0.45f }, { "envAmt", 0.8f }, { "attack", 0.925f }, { "decay", 0.811f }, { "sustain", 1.0f }, { "release", 0.703f }, { "reverbMix", 0.35f }, { "attenuator", 0.15f }, { "volume", 0.904f } },
+          "envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
+
+        { "Cinematic", "Low String Ostinato", "Driving cinematic string-bass ostinato, 8ths at 120 BPM, accents pushing the filter. Plays by itself; a key transposes.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.15f }, { "mixOsc1", 0.95f }, { "mixOsc2", 0.9f }, { "cutoff", 0.441f }, { "resonance", 0.3f }, { "envAmt", 0.45f }, { "kbdTrack", 1 }, { "attack", 0.25f }, { "decay", 0.567f }, { "sustain", 0.3f }, { "release", 0.481f }, { "reverbMix", 0.3f }, { "attenuator", 0.3f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.679f }, { "arpFreeStep", 2 }, { "volume", 0.832f } },
+          "kbVelOut:attIn attOut:filterCutoffIn",
+          "38A 38 38 38 38A 38 41 38 38A 38 38 38 36A 36 34 36",
+          "38A 38 38A 38 41A 41 41A 41",
+          "38 R 38 38 R 38 38 R" },
+
+        { "Cinematic", "Chase Pulse", "Relentless 16th-note low pulse with the filter slowly breathing, for chase scenes. Plays by itself.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.95f }, { "mixOsc2", 0.7f }, { "cutoff", 0.413f }, { "resonance", 0.4f }, { "envAmt", 0.35f }, { "attack", 0.0f }, { "decay", 0.459f }, { "sustain", 0.1f }, { "release", 0.399f }, { "reverbMix", 0.25f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.3f }, { "modWheel", 1.0f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.715f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
+          "",
+          "36 36 36 36 36 36 36 36 34 34 34 34 31 31 33 33",
+          "36 36 48 36 36 48 36 48",
+          "36 R 36 36 R 36 36 R" },
 
         // ---------------------------------------------------------------- Bass
         { "Bass", "Classic Bass", "Two saws at 16', closed filter opened by a short envelope. The default analog bass.",
@@ -181,13 +234,13 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.3f }, { "cutoff", 0.465f }, { "resonance", 0.1f }, { "envAmt", 0.15f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.9f }, { "release", 0.459f }, { "volume", 0.585f } } },
 
         { "Bass", "Round Moog Bass", "The warm round bass of countless records: saw + square, resonance a little up, decay to a medium sustain.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", -0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.55f }, { "cutoff", 0.413f }, { "resonance", 0.3f }, { "envAmt", 0.38f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.58f }, { "sustain", 0.55f }, { "release", 0.459f }, { "volume", 0.75f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", -0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.55f }, { "cutoff", 0.413f }, { "resonance", 0.3f }, { "envAmt", 0.38f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.58f }, { "sustain", 0.55f }, { "release", 0.459f }, { "volume", 0.749f } } },
 
         { "Bass", "Pluck Bass", "Short and percussive; the filter envelope does all the work. Good for fast lines.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.342f }, { "resonance", 0.4f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.528f }, { "sustain", 0.0f }, { "release", 0.481f }, { "volume", 1.0f } } },
 
         { "Bass", "Funk Rubber", "Bouncy resonant bass for slap-style lines; a little glide between legato notes.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.396f }, { "resonance", 0.55f }, { "envAmt", 0.5f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.552f }, { "sustain", 0.25f }, { "release", 0.433f }, { "glide", 0.383f }, { "legatoGlide", 1 }, { "volume", 0.936f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.396f }, { "resonance", 0.55f }, { "envAmt", 0.5f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.552f }, { "sustain", 0.25f }, { "release", 0.433f }, { "glide", 0.383f }, { "legatoGlide", 1 }, { "volume", 0.937f } } },
 
         { "Bass", "Overdriven Saw Bass", "Mixer driven into saturation, filter half open: raw and aggressive.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", -0.12f }, { "mixOsc1", 1.0f }, { "mixOsc2", 1.0f }, { "cutoff", 0.508f }, { "resonance", 0.25f }, { "envAmt", 0.35f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.6f }, { "release", 0.459f }, { "volume", 0.771f } } },
@@ -196,7 +249,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.28f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.7f }, { "cutoff", 0.534f }, { "resonance", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 1.0f }, { "release", 0.541f }, { "volume", 0.643f } } },
 
         { "Bass", "Hollow Pulse Bass", "Narrow pulses an octave apart: nasal, hollow, cuts through a mix without much low end.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 3 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.585f }, { "resonance", 0.2f }, { "envAmt", 0.3f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.567f }, { "sustain", 0.5f }, { "release", 0.459f }, { "volume", 0.822f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 3 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.585f }, { "resonance", 0.2f }, { "envAmt", 0.3f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.567f }, { "sustain", 0.5f }, { "release", 0.459f }, { "volume", 0.823f } } },
 
         { "Bass", "Wobble", "Cutoff wobbled by the square-ish sine LFO (mod wheel up). Change MOD RATE for the speed.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", -0.1f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "mixNoise", 0.1f }, { "cutoff", 0.428f }, { "resonance", 0.55f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 0.9f }, { "release", 0.507f }, { "vcaMode", 1 }, { "lfoRate", 0.382f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.52f }, { "modWheel", 1.0f }, { "volume", 0.727f } } },
@@ -211,7 +264,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 3.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.3f }, { "mixOsc2", 0.75f }, { "cutoff", 0.607f }, { "resonance", 0.3f }, { "envAmt", 0.2f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.8f }, { "release", 0.459f }, { "lfoRate", 0.318f }, { "lfoWave", 0 }, { "lfoPitchAmt", 0.289f }, { "modWheel", 0.0f }, { "volume", 0.852f } } },
 
         { "Bass", "Mono Synth Pop", "Bright, slightly buzzy 80s pop bass: pulse + saw, quick envelope, half key tracking.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 3 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.486f }, { "resonance", 0.25f }, { "envAmt", 0.42f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.541f }, { "sustain", 0.35f }, { "release", 0.433f }, { "volume", 0.889f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 3 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.486f }, { "resonance", 0.25f }, { "envAmt", 0.42f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.541f }, { "sustain", 0.35f }, { "release", 0.433f }, { "volume", 0.888f } } },
 
         { "Bass", "Fat Taurus", "Pedal-style low bass: two saws an octave apart at 32' and 16', slow filter envelope blooms on each note.",
           { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.75f }, { "mixOsc2", 0.7f }, { "cutoff", 0.314f }, { "resonance", 0.25f }, { "envAmt", 0.42f }, { "attack", 0.151f }, { "decay", 0.717f }, { "sustain", 0.55f }, { "release", 0.588f }, { "volume", 0.79f } } },
@@ -223,7 +276,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.4f }, { "cutoff", 0.46f }, { "resonance", 0.35f }, { "envAmt", 0.45f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.567f }, { "sustain", 0.4f }, { "release", 0.459f }, { "glide", 0.411f }, { "volume", 0.953f } } },
 
         { "Bass", "Soft Sub Pad Bass", "Slow attack and a dark filter: a swell for long notes under a pad.",
-          { { "osc1Octave", 0 }, { "osc1Wave", 0 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.35f }, { "cutoff", 0.465f }, { "resonance", 0.15f }, { "attack", 0.52f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.67f }, { "reverbMix", 0.15f }, { "volume", 0.761f } } },
+          { { "osc1Octave", 0 }, { "osc1Wave", 0 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.35f }, { "cutoff", 0.465f }, { "resonance", 0.15f }, { "attack", 0.52f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.67f }, { "reverbMix", 0.15f }, { "volume", 0.76f } } },
 
         { "Bass", "Resonant Thump", "Short resonant ping on top of a saw: the click of the attack defines the note.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "mixOsc1", 0.8f }, { "cutoff", 0.355f }, { "resonance", 0.62f }, { "envAmt", 0.6f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.499f }, { "sustain", 0.0f }, { "release", 0.433f }, { "volume", 1.0f } } },
@@ -243,7 +296,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.742f }, { "resonance", 0.2f }, { "envAmt", 0.15f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.67f }, { "sustain", 0.85f }, { "release", 0.567f }, { "reverbMix", 0.18f }, { "glide", 0.411f }, { "lfoRate", 0.444f }, { "lfoPitchAmt", 0.091f }, { "volume", 0.671f } } },
 
         { "Lead", "Square Lead", "Two squares an octave apart: woody and hollow, for melodies in the middle register.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 2 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "cutoff", 0.715f }, { "resonance", 0.15f }, { "envAmt", 0.15f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.8f }, { "release", 0.567f }, { "reverbMix", 0.15f }, { "glide", 0.383f }, { "lfoRate", 0.438f }, { "lfoPitchAmt", 0.087f }, { "volume", 0.704f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 2 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "cutoff", 0.715f }, { "resonance", 0.15f }, { "envAmt", 0.15f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.8f }, { "release", 0.567f }, { "reverbMix", 0.15f }, { "glide", 0.383f }, { "lfoRate", 0.438f }, { "lfoPitchAmt", 0.087f }, { "volume", 0.703f } } },
 
         { "Lead", "Whistle", "Self-oscillating filter played from the keyboard, with vibrato and glide: a whistling sine lead.",
           { { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 0.95f }, { "kbdTrack", 2 }, { "attack", 0.369f }, { "decay", 0.648f }, { "sustain", 1.0f }, { "release", 0.588f }, { "reverbMix", 0.25f }, { "glide", 0.435f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.102f }, { "modWheel", 0.6f }, { "volume", 0.97f } } },
@@ -252,13 +305,13 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "cutoff", 0.585f }, { "resonance", 0.72f }, { "envAmt", 0.35f }, { "kbdTrack", 2 }, { "attack", 0.25f }, { "decay", 0.688f }, { "sustain", 0.5f }, { "release", 0.588f }, { "reverbMix", 0.2f }, { "glide", 0.411f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.091f }, { "volume", 1.0f } } },
 
         { "Lead", "Screaming Sync", "Sync lead with the filter envelope also sweeping: rock solo territory. Bend up with the pitch wheel.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "osc2Freq", 4.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.9f }, { "cutoff", 0.715f }, { "resonance", 0.35f }, { "envAmt", 0.35f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.7f }, { "release", 0.541f }, { "reverbMix", 0.15f }, { "lfoRate", 0.449f }, { "lfoPitchAmt", 0.112f }, { "modWheel", 0.2f }, { "volume", 0.896f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "osc2Freq", 4.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.9f }, { "cutoff", 0.715f }, { "resonance", 0.35f }, { "envAmt", 0.35f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.7f }, { "release", 0.541f }, { "reverbMix", 0.15f }, { "lfoRate", 0.449f }, { "lfoPitchAmt", 0.112f }, { "modWheel", 0.2f }, { "volume", 0.897f } } },
 
         { "Lead", "Soft Flute", "Triangle with breath noise and a slow attack; vibrato from the wheel.",
           { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.4f }, { "mixNoise", 0.12f }, { "cutoff", 0.706f }, { "kbdTrack", 2 }, { "attack", 0.445f }, { "decay", 0.622f }, { "sustain", 0.9f }, { "release", 0.567f }, { "reverbMix", 0.3f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.091f }, { "modWheel", 0.5f }, { "volume", 0.707f } } },
 
         { "Lead", "Nasal Pulse Lead", "Narrow pulse with a bit of resonance: reedy, oboe-like.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.695f }, { "resonance", 0.3f }, { "envAmt", 0.15f }, { "kbdTrack", 2 }, { "attack", 0.325f }, { "decay", 0.648f }, { "sustain", 0.8f }, { "release", 0.541f }, { "reverbMix", 0.2f }, { "lfoRate", 0.444f }, { "lfoPitchAmt", 0.079f }, { "modWheel", 0.4f }, { "volume", 0.914f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.695f }, { "resonance", 0.3f }, { "envAmt", 0.15f }, { "kbdTrack", 2 }, { "attack", 0.325f }, { "decay", 0.648f }, { "sustain", 0.8f }, { "release", 0.541f }, { "reverbMix", 0.2f }, { "lfoRate", 0.444f }, { "lfoPitchAmt", 0.079f }, { "modWheel", 0.4f }, { "volume", 0.913f } } },
 
         { "Lead", "PWM Lead", "Pulse-width modulation by the LFO for a chorus-like, moving square.",
           { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.77f }, { "resonance", 0.1f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.85f }, { "release", 0.588f }, { "reverbMix", 0.2f }, { "glide", 0.346f }, { "lfoRate", 0.26f }, { "lfoWave", 0 }, { "lfoPwAmt", 0.7f }, { "modWheel", 1.0f }, { "volume", 0.567f } } },
@@ -276,10 +329,10 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "osc2Freq", 6.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.1f }, { "mixOsc2", 0.8f }, { "cutoff", 0.814f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.8f }, { "release", 0.541f }, { "reverbMix", 0.25f }, { "glide", 0.383f }, { "lfoRate", 0.453f }, { "lfoPitchAmt", 0.112f }, { "modWheel", 0.4f }, { "volume", 0.845f } } },
 
         { "Lead", "Chiptune Square", "Square at 4' with a fast arpeggio feel from the square LFO on pitch (wheel up = an octave trill).",
-          { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.913f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.9f }, { "release", 0.378f }, { "lfoRate", 0.539f }, { "lfoWave", 3 }, { "lfoPitchAmt", 0.707f }, { "modWheel", 0.0f }, { "volume", 0.525f } } },
+          { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.913f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.9f }, { "release", 0.378f }, { "lfoRate", 0.539f }, { "lfoWave", 3 }, { "lfoPitchAmt", 0.707f }, { "modWheel", 0.0f }, { "volume", 0.526f } } },
 
         { "Lead", "Dirty Lead", "Overdriven mixer and resonant filter: distorted edge without any effect.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", -0.12f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.9f }, { "mixNoise", 0.15f }, { "cutoff", 0.671f }, { "resonance", 0.45f }, { "envAmt", 0.25f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.75f }, { "release", 0.541f }, { "glide", 0.346f }, { "volume", 0.741f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", -0.12f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.9f }, { "mixNoise", 0.15f }, { "cutoff", 0.671f }, { "resonance", 0.45f }, { "envAmt", 0.25f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.75f }, { "release", 0.541f }, { "glide", 0.346f }, { "volume", 0.742f } } },
 
         { "Lead", "Wah Lead", "The LFO opens and closes the filter like a wah pedal; the mod wheel sets the depth.",
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.559f }, { "resonance", 0.6f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.9f }, { "release", 0.567f }, { "reverbMix", 0.15f }, { "lfoRate", 0.389f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.44f }, { "modWheel", 0.7f }, { "volume", 0.841f } } },
@@ -305,13 +358,13 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "mixOsc1", 0.6f }, { "cutoff", 0.486f }, { "resonance", 0.86f }, { "envAmt", 0.35f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.0f }, { "release", 0.588f }, { "reverbMix", 0.35f }, { "volume", 1.0f } } },
 
         { "Keys & Plucks", "Plucked String", "Saw + pulse through a fast envelope with key tracking: a guitar-like pluck.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.4f }, { "cutoff", 0.508f }, { "resonance", 0.2f }, { "envAmt", 0.55f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.0f }, { "release", 0.648f }, { "reverbMix", 0.25f }, { "volume", 0.994f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.4f }, { "cutoff", 0.508f }, { "resonance", 0.2f }, { "envAmt", 0.55f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.0f }, { "release", 0.648f }, { "reverbMix", 0.25f }, { "volume", 0.993f } } },
 
         { "Keys & Plucks", "Organ Drawbar", "Square + square an octave up, filter open, KB RLS VCA: an organ with no envelope at all.",
           { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 2 }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.814f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.352f }, { "vcaMode", 1 }, { "reverbMix", 0.25f }, { "lfoRate", 0.456f }, { "lfoPitchAmt", 0.058f }, { "modWheel", 0.0f }, { "volume", 0.582f } } },
 
         { "Keys & Plucks", "Glass Bell FM", "Oscillator 1 frequency-modulates oscillator 2: inharmonic bell. Cable: OSC 1 WAVE OUT -> OSC 2 LIN FM IN.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "osc2Freq", 7.0f }, { "mixOsc1", 0.0f }, { "mixOsc2", 0.7f }, { "cutoff", 0.856f }, { "attack", 0.0f }, { "decay", 0.769f }, { "sustain", 0.0f }, { "release", 0.751f }, { "reverbMix", 0.4f }, { "volume", 0.666f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "osc2Freq", 7.0f }, { "mixOsc1", 0.0f }, { "mixOsc2", 0.7f }, { "cutoff", 0.856f }, { "attack", 0.0f }, { "decay", 0.769f }, { "sustain", 0.0f }, { "release", 0.751f }, { "reverbMix", 0.4f }, { "volume", 0.665f } },
           "osc1WaveOut:osc2LinFmIn" },
 
         { "Keys & Plucks", "Dub Chord", "Minor-seventh-ish stab (osc 2 +3 semitones) drowned in spring reverb.",
@@ -325,45 +378,45 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.5f }, { "cutoff", 0.544f }, { "resonance", 0.15f }, { "envAmt", 0.25f }, { "attack", 0.695f }, { "decay", 0.777f }, { "sustain", 0.75f }, { "release", 0.777f }, { "reverbMix", 0.35f }, { "lfoRate", 0.177f }, { "lfoPwAmt", 0.4f }, { "modWheel", 1.0f }, { "volume", 0.419f } } },
 
         { "Pads & Drones", "Slow Strings", "Detuned saws with a slow attack and a gentle vibrato: a mono string ensemble.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.15f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.706f }, { "resonance", 0.1f }, { "kbdTrack", 1 }, { "attack", 0.663f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.751f }, { "reverbMix", 0.4f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.071f }, { "modWheel", 0.5f }, { "volume", 0.481f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.15f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.706f }, { "resonance", 0.1f }, { "kbdTrack", 1 }, { "attack", 0.663f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.751f }, { "reverbMix", 0.35f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.071f }, { "modWheel", 0.5f }, { "volume", 0.503f } } },
 
         { "Pads & Drones", "Dark Drone", "DRONE VCA: plays without a key. Two saws, a fifth apart, very slow filter LFO. Use the keys to change the pitch.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 7.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "cutoff", 0.486f }, { "resonance", 0.4f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.4f }, { "lfoRate", 0.014f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.32f }, { "modWheel", 1.0f }, { "volume", 0.858f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 7.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "cutoff", 0.486f }, { "resonance", 0.4f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.014f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.32f }, { "modWheel", 1.0f }, { "volume", 0.906f } } },
 
         { "Pads & Drones", "Breathing Pad", "Slow attack and release; the filter LFO makes the pad breathe.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "mixNoise", 0.05f }, { "cutoff", 0.559f }, { "resonance", 0.3f }, { "attack", 0.75f }, { "decay", 0.811f }, { "sustain", 0.85f }, { "release", 0.811f }, { "reverbMix", 0.45f }, { "lfoRate", 0.096f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.24f }, { "modWheel", 1.0f }, { "volume", 0.719f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "mixNoise", 0.05f }, { "cutoff", 0.559f }, { "resonance", 0.3f }, { "attack", 0.75f }, { "decay", 0.811f }, { "sustain", 0.85f }, { "release", 0.811f }, { "reverbMix", 0.35f }, { "lfoRate", 0.096f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.24f }, { "modWheel", 1.0f }, { "volume", 0.817f } } },
 
         { "Pads & Drones", "Choir Vowel", "Pulse + noise through a resonant filter wobbled slowly: an \"aah\" vowel.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "mixNoise", 0.12f }, { "cutoff", 0.626f }, { "resonance", 0.6f }, { "kbdTrack", 1 }, { "attack", 0.636f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.73f }, { "reverbMix", 0.4f }, { "lfoRate", 0.148f }, { "lfoCutoffAmt", 0.12f }, { "modWheel", 1.0f }, { "volume", 0.646f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "mixNoise", 0.12f }, { "cutoff", 0.626f }, { "resonance", 0.6f }, { "kbdTrack", 1 }, { "attack", 0.636f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.73f }, { "reverbMix", 0.35f }, { "lfoRate", 0.148f }, { "lfoCutoffAmt", 0.12f }, { "modWheel", 1.0f }, { "volume", 0.683f } } },
 
         { "Pads & Drones", "Sub Drone", "Low triangle drone with a pulsing square LFO on the filter, very slow. DRONE VCA.",
           { { "osc1Octave", 0 }, { "osc1Wave", 0 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.03f }, { "mixOsc1", 0.8f }, { "mixOsc2", 0.3f }, { "cutoff", 0.413f }, { "resonance", 0.3f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.2f }, { "lfoRate", 0.13f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.16f }, { "modWheel", 1.0f }, { "volume", 0.813f } } },
 
         { "Pads & Drones", "Shimmer Swell", "High saws swelling into the spring with a slow vibrato: cinematic air.",
-          { { "osc1Octave", 3 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.5f }, { "cutoff", 0.788f }, { "attack", 0.794f }, { "decay", 0.811f }, { "sustain", 0.9f }, { "release", 0.837f }, { "reverbMix", 0.6f }, { "lfoRate", 0.424f }, { "lfoPitchAmt", 0.065f }, { "modWheel", 0.6f }, { "volume", 0.311f } } },
+          { { "osc1Octave", 3 }, { "osc1Wave", 1 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.5f }, { "cutoff", 0.788f }, { "attack", 0.794f }, { "decay", 0.811f }, { "sustain", 0.9f }, { "release", 0.837f }, { "reverbMix", 0.35f }, { "lfoRate", 0.424f }, { "lfoPitchAmt", 0.065f }, { "modWheel", 0.6f }, { "volume", 0.409f } } },
 
         { "Pads & Drones", "Ocean Pad", "Noise swept by a slow filter LFO under a soft saw: waves under a chord.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "mixOsc1", 0.45f }, { "mixNoise", 0.85f }, { "cutoff", 0.643f }, { "resonance", 0.3f }, { "attack", 0.77f }, { "decay", 0.811f }, { "sustain", 0.9f }, { "release", 0.837f }, { "reverbMix", 0.5f }, { "lfoRate", 0.055f }, { "lfoCutoffAmt", 0.36f }, { "modWheel", 1.0f }, { "volume", 1.0f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "mixOsc1", 0.45f }, { "mixNoise", 0.85f }, { "cutoff", 0.643f }, { "resonance", 0.3f }, { "attack", 0.77f }, { "decay", 0.811f }, { "sustain", 0.9f }, { "release", 0.837f }, { "reverbMix", 0.35f }, { "lfoRate", 0.055f }, { "lfoCutoffAmt", 0.36f }, { "modWheel", 1.0f }, { "volume", 1.0f } } },
 
         { "Pads & Drones", "Organ Drone", "Square fifths in DRONE mode, slow PWM: a held harmonium.",
           { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 7.0f }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.45f }, { "cutoff", 0.684f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.2f }, { "lfoPwAmt", 0.5f }, { "modWheel", 1.0f }, { "volume", 0.587f } } },
 
         { "Pads & Drones", "Tension Rise", "Slow attack and a filter that keeps opening: a riser for a film cue. Hold the note.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "mixNoise", 0.1f }, { "cutoff", 0.297f }, { "resonance", 0.5f }, { "envAmt", 0.85f }, { "attack", 0.945f }, { "decay", 0.94f }, { "sustain", 1.0f }, { "release", 0.777f }, { "reverbMix", 0.4f }, { "volume", 1.0f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "mixNoise", 0.1f }, { "cutoff", 0.297f }, { "resonance", 0.5f }, { "envAmt", 0.85f }, { "attack", 0.945f }, { "decay", 0.94f }, { "sustain", 1.0f }, { "release", 0.777f }, { "reverbMix", 0.35f }, { "volume", 1.0f } } },
 
         { "Pads & Drones", "Cosmic Drift", "Two triangles with a wandering pitch from the S/H LFO: lo-fi tape drift.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.3f }, { "cutoff", 0.725f }, { "attack", 0.619f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.777f }, { "reverbMix", 0.5f }, { "lfoRate", 0.26f }, { "lfoPitchAmt", 0.091f }, { "modWheel", 1.0f }, { "attenuator", 0.012f }, { "volume", 0.327f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.3f }, { "cutoff", 0.725f }, { "attack", 0.619f }, { "decay", 0.73f }, { "sustain", 0.9f }, { "release", 0.777f }, { "reverbMix", 0.35f }, { "lfoRate", 0.26f }, { "lfoPitchAmt", 0.091f }, { "modWheel", 1.0f }, { "attenuator", 0.012f }, { "volume", 0.387f } },
           "modShOut:attIn attOut:osc1PitchIn" },
 
         // ---------------------------------------------------------------- Brass & Strings
         { "Brass & Strings", "Brass Swell", "Detuned saws with a slow filter swell and singing resonance.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.46f }, { "resonance", 0.5f }, { "envAmt", 0.6f }, { "attack", 0.575f }, { "decay", 0.703f }, { "sustain", 0.55f }, { "release", 0.67f }, { "reverbMix", 0.4f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.058f }, { "modWheel", 0.25f }, { "volume", 0.736f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.46f }, { "resonance", 0.5f }, { "envAmt", 0.6f }, { "attack", 0.575f }, { "decay", 0.703f }, { "sustain", 0.55f }, { "release", 0.67f }, { "reverbMix", 0.35f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.058f }, { "modWheel", 0.25f }, { "volume", 0.784f } } },
 
         { "Brass & Strings", "Brass Stab", "Fast filter blip and a short decay: funk horn section hits.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.527f }, { "resonance", 0.2f }, { "envAmt", 0.5f }, { "attack", 0.226f }, { "decay", 0.567f }, { "sustain", 0.3f }, { "release", 0.507f }, { "reverbMix", 0.2f }, { "volume", 0.922f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.527f }, { "resonance", 0.2f }, { "envAmt", 0.5f }, { "attack", 0.226f }, { "decay", 0.567f }, { "sustain", 0.3f }, { "release", 0.507f }, { "reverbMix", 0.2f }, { "volume", 0.921f } } },
 
         { "Brass & Strings", "French Horn", "Mellow: triangle + saw, low cutoff, slow filter rise and gentle vibrato.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.508f }, { "resonance", 0.1f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.476f }, { "decay", 0.67f }, { "sustain", 0.8f }, { "release", 0.622f }, { "reverbMix", 0.35f }, { "lfoRate", 0.43f }, { "lfoPitchAmt", 0.065f }, { "modWheel", 0.4f }, { "volume", 0.657f } } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.508f }, { "resonance", 0.1f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.476f }, { "decay", 0.67f }, { "sustain", 0.8f }, { "release", 0.622f }, { "reverbMix", 0.35f }, { "lfoRate", 0.43f }, { "lfoPitchAmt", 0.065f }, { "modWheel", 0.4f }, { "volume", 0.658f } } },
 
         { "Brass & Strings", "Solo Cello", "Saw with a slow bow attack, half key tracking and delayed vibrato from the wheel.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.35f }, { "cutoff", 0.643f }, { "resonance", 0.15f }, { "kbdTrack", 1 }, { "attack", 0.544f }, { "decay", 0.703f }, { "sustain", 0.9f }, { "release", 0.622f }, { "reverbMix", 0.35f }, { "glide", 0.346f }, { "lfoRate", 0.438f }, { "lfoPitchAmt", 0.079f }, { "modWheel", 0.5f }, { "volume", 0.783f } } },
@@ -391,13 +444,13 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "mixOsc1", 0.7f }, { "cutoff", 0.428f }, { "resonance", 0.75f }, { "envAmt", 0.5f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.05f }, { "release", 0.433f }, { "reverbMix", 0.15f }, { "arpPlay", 1 }, { "arpMode", 0 }, { "arpDirection", 1 }, { "arpOctSeq", 1 }, { "arpRate", 0.694f }, { "arpFreeStep", 2 }, { "volume", 1.0f } } },
 
         { "Arpeggios", "Bass Arp", "Hold a chord in the low register: driving 1/16 bass arpeggio, one octave, 124 BPM.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.5f }, { "cutoff", 0.396f }, { "resonance", 0.35f }, { "envAmt", 0.45f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 0.1f }, { "release", 0.433f }, { "arpPlay", 1 }, { "arpMode", 0 }, { "arpDirection", 0 }, { "arpOctSeq", 0 }, { "arpRate", 0.691f }, { "arpFreeStep", 2 }, { "volume", 0.903f } } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.5f }, { "cutoff", 0.396f }, { "resonance", 0.35f }, { "envAmt", 0.45f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 0.1f }, { "release", 0.433f }, { "arpPlay", 1 }, { "arpMode", 0 }, { "arpDirection", 0 }, { "arpOctSeq", 0 }, { "arpRate", 0.691f }, { "arpFreeStep", 2 }, { "volume", 0.902f } } },
 
         { "Arpeggios", "Pluck Cascade", "Hold a chord: fast 1/16 plucks at 150 BPM up three octaves into the spring.",
           { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.3f }, { "cutoff", 0.585f }, { "resonance", 0.3f }, { "envAmt", 0.45f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.0f }, { "release", 0.541f }, { "reverbMix", 0.4f }, { "arpPlay", 1 }, { "arpMode", 0 }, { "arpDirection", 0 }, { "arpOctSeq", 2 }, { "arpRate", 0.763f }, { "arpFreeStep", 2 }, { "volume", 1.0f } } },
 
         { "Arpeggios", "Sync Arp", "Hold a chord: synced oscillator 2 whose pitch is swept slowly by the LFO, 1/16 at 118 BPM.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 3.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.8f }, { "cutoff", 0.788f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.2f }, { "release", 0.433f }, { "reverbMix", 0.25f }, { "lfoRate", 0.078f }, { "lfoWave", 0 }, { "attenuator", 0.15f }, { "arpPlay", 1 }, { "arpMode", 0 }, { "arpDirection", 1 }, { "arpOctSeq", 1 }, { "arpRate", 0.673f }, { "arpFreeStep", 2 }, { "volume", 0.899f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 3.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.8f }, { "cutoff", 0.788f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.2f }, { "release", 0.433f }, { "reverbMix", 0.25f }, { "lfoRate", 0.078f }, { "lfoWave", 0 }, { "attenuator", 0.15f }, { "arpPlay", 1 }, { "arpMode", 0 }, { "arpDirection", 1 }, { "arpOctSeq", 1 }, { "arpRate", 0.673f }, { "arpFreeStep", 2 }, { "volume", 0.9f } },
           "modWaveOut:attIn attOut:osc2PitchIn" },
 
         { "Arpeggios", "Quarter Pulse", "Hold a chord: slow 1/4 arpeggio at 80 BPM with long release: ambient steps.",
@@ -422,7 +475,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "40 40 52 40 50 40 47 40" },
 
         { "Sequences", "Octave Disco", "Plays by itself: octave-bouncing disco bass at 124 BPM. A key transposes.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.45f }, { "cutoff", 0.476f }, { "resonance", 0.3f }, { "envAmt", 0.4f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.499f }, { "sustain", 0.0f }, { "release", 0.433f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.691f }, { "arpFreeStep", 2 }, { "volume", 0.946f } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.05f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.45f }, { "cutoff", 0.476f }, { "resonance", 0.3f }, { "envAmt", 0.4f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.499f }, { "sustain", 0.0f }, { "release", 0.433f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.691f }, { "arpFreeStep", 2 }, { "volume", 0.947f } },
           "",
           "36 48 36 48 39 51 39 51 41 53 41 53 43 55 43 55",
           "36 48 36 48 36 48 36 48",
@@ -464,14 +517,14 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "38 45 50 45 38 46 50 46" },
 
         { "Sequences", "Gallop", "Plays by itself: galloping eighth + two sixteenths rhythm, 140 BPM; heavy and driving.",
-          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.75f }, { "mixOsc2", 0.7f }, { "cutoff", 0.454f }, { "resonance", 0.3f }, { "envAmt", 0.45f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.459f }, { "sustain", 0.0f }, { "release", 0.378f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.737f }, { "arpFreeStep", 2 }, { "volume", 0.988f } },
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.75f }, { "mixOsc2", 0.7f }, { "cutoff", 0.454f }, { "resonance", 0.3f }, { "envAmt", 0.45f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.459f }, { "sustain", 0.0f }, { "release", 0.378f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.737f }, { "arpFreeStep", 2 }, { "volume", 0.989f } },
           "",
           "36T 36 36 36 36T 36 36 36 36T 36 36 36 39T 39 39 39",
           "36 R 36 36 36 R 36 36",
           "36 36 36 36 34 34 34 34" },
 
         { "Sequences", "Bleep Melody", "Plays by itself: square bleep melody at 130 BPM, chiptune flavour.",
-          { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.856f }, { "attack", 0.0f }, { "decay", 0.399f }, { "sustain", 0.0f }, { "release", 0.378f }, { "reverbMix", 0.2f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.709f }, { "arpFreeStep", 2 }, { "volume", 0.981f } },
+          { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.856f }, { "attack", 0.0f }, { "decay", 0.399f }, { "sustain", 0.0f }, { "release", 0.378f }, { "reverbMix", 0.2f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.709f }, { "arpFreeStep", 2 }, { "volume", 0.98f } },
           "",
           "72 R 76 79 R 76 72 R 74 R 77 81 R 77 74 R",
           "72 79 76 79 72 79 76 79",
@@ -501,7 +554,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "mixerOut:hpfIn hpfOut:vcaIn" },
 
         { "Drums & Percussion", "Open Hat", "Noise through the high-pass, longer decay (cables: MIXER OUT -> HIGH PASS IN -> VCA IN).",
-          { { "mixOsc1", 0.0f }, { "mixNoise", 0.9f }, { "cutoff", 0.599f }, { "attack", 0.0f }, { "decay", 0.606f }, { "sustain", 0.0f }, { "release", 0.606f }, { "hpCutoff", 0.924f }, { "volume", 0.992f } },
+          { { "mixOsc1", 0.0f }, { "mixNoise", 0.9f }, { "cutoff", 0.599f }, { "attack", 0.0f }, { "decay", 0.606f }, { "sustain", 0.0f }, { "release", 0.606f }, { "hpCutoff", 0.924f }, { "volume", 0.993f } },
           "mixerOut:hpfIn hpfOut:vcaIn" },
 
         { "Drums & Percussion", "Clap", "Noise burst chopped by a fast square LFO on the filter: the flam of a hand clap, into the spring.",
@@ -523,40 +576,85 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "mixOsc1", 0.0f }, { "mixNoise", 0.9f }, { "cutoff", 0.599f }, { "attack", 0.325f }, { "decay", 0.433f }, { "sustain", 0.0f }, { "release", 0.433f }, { "hpCutoff", 0.867f }, { "volume", 1.0f } },
           "mixerOut:hpfIn hpfOut:vcaIn" },
 
-        // ---------------------------------------------------------------- Sound Effects
-        { "Sound Effects", "Wind", "Noise in DRONE mode, resonant filter moved by the slow sine LFO: wind through a gap. No key needed.",
-          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.626f }, { "resonance", 0.5f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.4f }, { "lfoRate", 0.055f }, { "lfoCutoffAmt", 0.4f }, { "modWheel", 1.0f }, { "volume", 1.0f } } },
+        // ---------------------------------------------------------------- FX
+        { "FX", "Wind", "Noise in DRONE mode, resonant filter moved by the slow sine LFO: wind through a gap. No key needed.",
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.626f }, { "resonance", 0.5f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.055f }, { "lfoCutoffAmt", 0.4f }, { "modWheel", 1.0f }, { "volume", 1.0f } } },
 
-        { "Sound Effects", "Surf", "Noise swelling and falling with the slow LFO on the VCA (cable: MOD WAVE OUT -> VCA AMT IN), DRONE mode: waves on a beach.",
-          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.757f }, { "resonance", 0.1f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.45f }, { "lfoRate", 0.036f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.2f }, { "modWheel", 1.0f }, { "volume", 1.0f } },
+        { "FX", "Surf", "Noise swelling and falling with the slow LFO on the VCA (cable: MOD WAVE OUT -> VCA AMT IN), DRONE mode: waves on a beach.",
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.757f }, { "resonance", 0.1f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.036f }, { "lfoWave", 0 }, { "lfoCutoffAmt", 0.2f }, { "modWheel", 1.0f }, { "volume", 1.0f } },
           "modWaveOut:vcaAmtIn" },
 
-        { "Sound Effects", "Droid Chatter", "Random pitches from S/H on both oscillators at a fast rate: a chattering little robot. Hold a key.",
-          { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.4f }, { "cutoff", 0.856f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.459f }, { "reverbMix", 0.2f }, { "lfoRate", 0.494f }, { "attenuator", 0.6f }, { "volume", 0.471f } },
+        { "FX", "Droid Chatter", "Random pitches from S/H on both oscillators at a fast rate: a chattering little robot. Hold a key.",
+          { { "osc1Octave", 3 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 0 }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.4f }, { "cutoff", 0.856f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.459f }, { "reverbMix", 0.2f }, { "lfoRate", 0.494f }, { "attenuator", 0.6f }, { "volume", 0.47f } },
           "modShOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
 
-        { "Sound Effects", "Siren", "Triangle LFO sweeps the pitch up and down an octave (wheel controls the depth). Hold a key.",
+        { "FX", "Siren", "Triangle LFO sweeps the pitch up and down an octave (wheel controls the depth). Hold a key.",
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.4f }, { "cutoff", 0.788f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "reverbMix", 0.25f }, { "lfoRate", 0.2f }, { "lfoWave", 0 }, { "lfoPitchAmt", 0.707f }, { "modWheel", 1.0f }, { "volume", 0.472f } } },
 
-        { "Sound Effects", "UFO", "Sync tone wobbling fast from the LFO plus glide: a flying saucer.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "osc2Freq", 5.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.7f }, { "cutoff", 0.814f }, { "resonance", 0.4f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "reverbMix", 0.5f }, { "glide", 0.677f }, { "lfoRate", 0.469f }, { "lfoPitchAmt", 0.354f }, { "modWheel", 1.0f }, { "volume", 0.757f } } },
+        { "FX", "UFO", "Sync tone wobbling fast from the LFO plus glide: a flying saucer.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "osc2Freq", 5.0f }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.7f }, { "cutoff", 0.814f }, { "resonance", 0.4f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "reverbMix", 0.35f }, { "glide", 0.677f }, { "lfoRate", 0.469f }, { "lfoPitchAmt", 0.354f }, { "modWheel", 1.0f }, { "volume", 0.845f } } },
 
-        { "Sound Effects", "Laser Gun", "Very fast downward pitch sweep from the envelope (cables: + ENV OUT -> attenuator -> PITCH IN).",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.3f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.887f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 0.0f }, { "release", 0.507f }, { "reverbMix", 0.3f }, { "attenuator", 0.45f }, { "volume", 0.994f } },
+        { "FX", "Laser Gun", "Very fast downward pitch sweep from the envelope (cables: + ENV OUT -> attenuator -> PITCH IN).",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.3f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.887f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 0.0f }, { "release", 0.507f }, { "reverbMix", 0.3f }, { "attenuator", 0.45f }, { "volume", 0.995f } },
           "envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
 
-        { "Sound Effects", "Rising Alarm", "Ramp LFO on pitch: a repeating rising sweep. Hold a key.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.814f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "reverbMix", 0.2f }, { "lfoRate", 0.312f }, { "lfoWave", 2 }, { "lfoPitchAmt", 0.707f }, { "modWheel", 1.0f }, { "volume", 0.643f } } },
+        { "FX", "Rising Alarm", "Ramp LFO on pitch: a repeating rising sweep. Hold a key.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.814f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "reverbMix", 0.2f }, { "lfoRate", 0.312f }, { "lfoWave", 2 }, { "lfoPitchAmt", 0.707f }, { "modWheel", 1.0f }, { "volume", 0.644f } } },
 
-        { "Sound Effects", "Geiger Counter", "Random clicks: the S/H out triggers the envelope (cable: MOD S/H OUT -> TRIGGER IN) of a short noise click. DRONE off: hold a key.",
-          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.788f }, { "resonance", 0.5f }, { "attack", 0.0f }, { "decay", 0.318f }, { "sustain", 0.0f }, { "release", 0.318f }, { "lfoRate", 0.617f }, { "volume", 1.0f } },
+        { "FX", "Geiger Counter", "Random clicks: the S/H out triggers the envelope (cable: MOD S/H OUT -> TRIGGER IN) of a short noise click. DRONE off: hold a key.",
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.742f }, { "resonance", 0.8f }, { "envAmt", 0.3f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.378f }, { "sustain", 0.0f }, { "release", 0.378f }, { "lfoRate", 0.617f }, { "volume", 1.0f } },
           "modShOut:envTriggerIn" },
 
-        { "Sound Effects", "Thunder", "Low rumbling noise in a long envelope into the spring tank.",
+        { "FX", "Thunder", "Low rumbling noise in a long envelope into the spring tank.",
           { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.519f }, { "resonance", 0.35f }, { "envAmt", 0.3f }, { "attack", 0.425f }, { "decay", 0.892f }, { "sustain", 0.0f }, { "release", 0.892f }, { "reverbMix", 0.55f }, { "volume", 1.0f } } },
 
-        { "Sound Effects", "Spring Crash", "A short burst of noise slammed into 100 % wet spring: the sound of kicking the tank.",
+        { "FX", "Spring Crash", "A short burst of noise slammed into 100 % wet spring: the sound of kicking the tank.",
           { { "mixOsc1", 0.3f }, { "mixNoise", 1.0f }, { "cutoff", 0.856f }, { "envAmt", 0.2f }, { "attack", 0.0f }, { "decay", 0.433f }, { "sustain", 0.0f }, { "release", 0.433f }, { "reverbMix", 1.0f }, { "volume", 1.0f } } },
+
+        { "FX", "Riser", "Hold a key: pitch and filter climb together over about six seconds, noise underneath. Cables: + ENV OUT -> attenuator -> both PITCH IN.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "mixNoise", 0.3f }, { "cutoff", 0.387f }, { "resonance", 0.35f }, { "envAmt", 0.75f }, { "attack", 0.945f }, { "decay", 0.811f }, { "sustain", 1.0f }, { "release", 0.67f }, { "reverbMix", 0.35f }, { "attenuator", 0.3f }, { "volume", 1.0f } },
+          "envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
+
+        { "FX", "Downlifter", "Starts two octaves up and falls away over three seconds while the filter closes. Cables: + ENV OUT -> attenuator -> both PITCH IN.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.15f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.2f }, { "cutoff", 0.428f }, { "resonance", 0.3f }, { "envAmt", 0.7f }, { "attack", 0.0f }, { "decay", 0.859f }, { "sustain", 0.0f }, { "release", 0.859f }, { "reverbMix", 0.4f }, { "attenuator", 0.25f }, { "volume", 0.803f } },
+          "envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
+
+        { "FX", "Noise Sweep Up", "White noise through the resonant filter, opening over three seconds while the key is held: the classic build-up.",
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.355f }, { "resonance", 0.5f }, { "envAmt", 0.95f }, { "attack", 0.869f }, { "decay", 0.73f }, { "sustain", 1.0f }, { "release", 0.703f }, { "reverbMix", 0.35f }, { "volume", 1.0f } } },
+
+        { "FX", "Noise Sweep Down", "White noise that starts bright and sweeps down over four seconds: a wash after a drop.",
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.256f }, { "resonance", 0.55f }, { "envAmt", 0.95f }, { "attack", 0.0f }, { "decay", 0.892f }, { "sustain", 0.0f }, { "release", 0.892f }, { "reverbMix", 0.45f }, { "volume", 1.0f } } },
+
+        { "FX", "Sub Drop", "A deep triangle that falls two octaves over a second and a half: hit it on the downbeat. Cables: + ENV OUT -> attenuator -> both PITCH IN.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 0 }, { "osc2Octave", 0 }, { "osc2Wave", 0 }, { "mixOsc1", 0.9f }, { "mixOsc2", 0.5f }, { "cutoff", 0.585f }, { "attack", 0.0f }, { "decay", 0.785f }, { "sustain", 0.0f }, { "release", 0.785f }, { "attenuator", 0.25f }, { "volume", 0.848f } },
+          "envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
+
+        { "FX", "Impact Boom", "Low pitch-dropping thump plus a noise burst into a 70 % wet spring: a cinematic hit. Cables: + ENV OUT -> attenuator -> both PITCH IN.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 0 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "mixOsc1", 0.9f }, { "mixOsc2", 0.3f }, { "mixNoise", 0.5f }, { "cutoff", 0.527f }, { "resonance", 0.2f }, { "envAmt", 0.4f }, { "attack", 0.0f }, { "decay", 0.717f }, { "sustain", 0.0f }, { "release", 0.717f }, { "reverbMix", 0.7f }, { "attenuator", 0.3f }, { "volume", 0.813f } },
+          "envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn" },
+
+        { "FX", "Reverse Swell", "Swells in over 1.5 s and cuts off dead, into the spring: sounds like a reversed note. Release the key on the beat.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.12f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "cutoff", 0.46f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "attack", 0.794f }, { "decay", 0.189f }, { "sustain", 0.0f }, { "release", 0.189f }, { "reverbMix", 0.55f }, { "volume", 0.461f } } },
+
+        { "FX", "Laser Riser", "Synced oscillator whose pitch rises with a slow envelope: a screaming sweep. Cables: + ENV OUT -> attenuator -> OSC 2 PITCH IN.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Sync", 1 }, { "mixOsc1", 0.2f }, { "mixOsc2", 0.85f }, { "cutoff", 0.856f }, { "resonance", 0.2f }, { "attack", 0.901f }, { "decay", 0.73f }, { "sustain", 1.0f }, { "release", 0.622f }, { "reverbMix", 0.3f }, { "attenuator", 0.35f }, { "volume", 0.874f } },
+          "envPosOut:attIn attOut:osc2PitchIn" },
+
+        { "FX", "Glitch Stutter", "Hold a key: a fast square LFO chops the sound (DRONE VCA, MOD WAVE OUT -> VCA AMT IN) while S/H throws random pitches (MOD S/H OUT -> attenuator -> PITCH IN).",
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 2 }, { "osc2Wave", 1 }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.4f }, { "cutoff", 0.814f }, { "resonance", 0.3f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "lfoRate", 0.523f }, { "lfoWave", 3 }, { "attenuator", 0.3f }, { "volume", 0.961f } },
+          "modWaveOut:vcaAmtIn modShOut:attIn attOut:osc1PitchIn" },
+
+        { "FX", "Radio Static", "Crackling short-wave noise: the S/H jumps the cutoff of a resonant noise filter. DRONE VCA, no key needed. Cables: MOD S/H OUT -> attenuator -> CUTOFF IN.",
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.742f }, { "resonance", 0.6f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.2f }, { "lfoRate", 0.575f }, { "attenuator", 0.5f }, { "volume", 1.0f } },
+          "modShOut:attIn attOut:filterCutoffIn" },
+
+        { "FX", "Heartbeat", "Low thumps re-triggered by the LFO square at about 70 BPM: hold a key. Cable: MOD WAVE OUT -> TRIGGER IN.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 0 }, { "mixOsc1", 0.9f }, { "cutoff", 0.413f }, { "resonance", 0.3f }, { "envAmt", 0.3f }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.0f }, { "release", 0.481f }, { "lfoRate", 0.287f }, { "lfoWave", 3 }, { "volume", 1.0f } },
+          "modWaveOut:envTriggerIn" },
+
+        { "FX", "Bubbles", "The self-oscillating filter pinged by the LFO square at random pitches from S/H: underwater bubbles. Hold a key. Cables: MOD WAVE OUT -> TRIGGER IN, MOD S/H OUT -> attenuator -> CUTOFF IN.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "mixOsc1", 0.3f }, { "cutoff", 0.643f }, { "resonance", 0.9f }, { "envAmt", 0.4f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.399f }, { "sustain", 0.0f }, { "release", 0.399f }, { "reverbMix", 0.35f }, { "lfoRate", 0.469f }, { "lfoWave", 3 }, { "attenuator", 0.45f }, { "volume", 1.0f } },
+          "modWaveOut:envTriggerIn modShOut:attIn attOut:filterCutoffIn" },
 
         // ---------------------------------------------------------------- Patch Bay
         { "Patch Bay", "Gated Drone", "DRONE VCA chopped by the square LFO through VCA AMT IN. Cable: MOD WAVE OUT -> VCA AMT IN.",
@@ -592,7 +690,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "osc1WaveOut:osc2LinFmIn" },
 
         { "Patch Bay", "LFO from Oscillator", "Oscillator 2 is taken out of the mixer and used as a fast vibrato source for oscillator 1 (through the attenuator).",
-          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 0 }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.0f }, { "cutoff", 0.742f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.9f }, { "release", 0.588f }, { "reverbMix", 0.2f }, { "attenuator", 0.02f }, { "volume", 0.883f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 0 }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.0f }, { "cutoff", 0.742f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.648f }, { "sustain", 0.9f }, { "release", 0.588f }, { "reverbMix", 0.2f }, { "attenuator", 0.02f }, { "volume", 0.884f } },
           "osc2WaveOut:attIn attOut:osc1PitchIn" },
 
         { "Patch Bay", "Clocked S/H Filter", "The S/H steps the cutoff on every LFO cycle: the classic random filter. Cables: MOD S/H OUT -> attenuator -> CUTOFF IN. Hold a key.",
