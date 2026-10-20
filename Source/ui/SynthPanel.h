@@ -14,11 +14,13 @@
 
 namespace babushka::ui
 {
-// ---- small plate button (PRESETS, SETTINGS, arrows) ------------------------------------------------------------
+// ---- small plate button (SETTINGS, arrows) --------------------------------------------------------------------
 class PlateButton : public juce::Component
 {
 public:
-    PlateButton (const juce::String& t, float textHeight = 13.0f) : text (t), height (textHeight) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+    // gearIcon: no text, a gear drawn in the middle (SETTINGS)
+    PlateButton (const juce::String& t, float textHeight = 13.0f, bool gearIcon = false) : text (t), height (textHeight), gear (gearIcon)
+    { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
     std::function<void()> onClick;
     void setText (const juce::String& t) { text = t; repaint(); }
     void paint (juce::Graphics& g) override
@@ -31,12 +33,36 @@ public:
         g.fillRoundedRectangle (r, 4.0f);
         g.setColour (col::outline.withAlpha (0.45f));
         g.drawRoundedRectangle (r, 4.0f, 1.0f);
-        label (g, text, r.translated (0.0f, down ? 1.0f : 0.0f), col::ink, height, Weight::NarrowBold, juce::Justification::centred, 0.1f);
+        auto content = r.translated (0.0f, down ? 1.0f : 0.0f);
+        if (gear)
+            drawGear (g, content.getCentre(), 0.32f * juce::jmin (content.getWidth(), content.getHeight()));
+        else
+            label (g, text, content, col::ink, height, Weight::NarrowBold, juce::Justification::centred, 0.1f);
     }
     void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); }
     void mouseUp (const juce::MouseEvent& e) override { down = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
-    juce::String text; float height; bool down = false;
+    juce::String text; float height; bool gear, down = false;
+
+    static void drawGear (juce::Graphics& g, juce::Point<float> c, float radius)
+    {
+        constexpr int teeth = 8;
+        const float outer = radius, inner = radius * 0.74f, hole = radius * 0.34f;
+        juce::Path p;
+        for (int i = 0; i < teeth * 4; ++i)
+        {
+            // each tooth: rise, top, fall, root (quarter steps of the tooth pitch)
+            const float a = juce::MathConstants<float>::twoPi * ((float) i - 1.5f) / (float) (teeth * 4);
+            const float rr = (i % 4 == 0 || i % 4 == 1) ? outer : inner;
+            const juce::Point<float> q (c.x + rr * std::sin (a), c.y - rr * std::cos (a));
+            if (i == 0) p.startNewSubPath (q); else p.lineTo (q);
+        }
+        p.closeSubPath();
+        p.addEllipse (c.x - hole, c.y - hole, 2.0f * hole, 2.0f * hole);
+        p.setUsingNonZeroWinding (false);
+        g.setColour (col::ink);
+        g.fillPath (p);
+    }
 };
 
 // ---- preset display: amber LCD with the preset name; a click opens the preset browser ------------------------------
@@ -142,14 +168,14 @@ public:
         buildLayout();
         presetPrev.onClick = std::move (prev);
         presetNext.onClick = std::move (next);
-        presetDisplay.onClick = openPresets;
-        presetsButton.onClick = std::move (openPresets);
+        presetDisplay.onClick = std::move (openPresets);
         settingsButton.onClick = std::move (openSettings);
-        for (juce::Component* b : { (juce::Component*) &presetPrev, (juce::Component*) &presetNext, (juce::Component*) &presetsButton,
+        for (juce::Component* b : { (juce::Component*) &presetPrev, (juce::Component*) &presetNext,
                                     (juce::Component*) &settingsButton, (juce::Component*) &presetDisplay }) addAndMakeVisible (*b);
-        // rear strip, right: [<] display [>]  PRESETS / SETTINGS, with equal margins inside the plate (726 … 1418)
-        presetPrev.setBounds (746, 984, 36, 32);  presetDisplay.setBounds (792, 967, 432, 66);  presetNext.setBounds (1234, 984, 36, 32);
-        presetsButton.setBounds (1290, 963, 110, 32);  settingsButton.setBounds (1290, 1003, 110, 32);
+        // rear strip, right: [<] display [>]  [gear] = SETTINGS, the row centred in the plate (726 … 1418, 56 px each side)
+        // and on y = 1000. The preset browser opens from the display.
+        presetPrev.setBounds (782, 984, 36, 32);  presetDisplay.setBounds (828, 967, 432, 66);  presetNext.setBounds (1270, 984, 36, 32);
+        settingsButton.setBounds (1322, 980, 40, 40);
         setSize (kW, kH);
         startTimerHz (30);
     }
@@ -176,7 +202,7 @@ private:
     std::unique_ptr<Wheel> pitchWheel, modWheel;
     std::unique_ptr<ParamLink> modLink;
     KeyboardWidget keyboard;
-    PlateButton presetPrev { "<", 17.0f }, presetNext { ">", 17.0f }, presetsButton { "PRESETS" }, settingsButton { "SETTINGS" };
+    PlateButton presetPrev { "<", 17.0f }, presetNext { ">", 17.0f }, settingsButton { {}, 13.0f, true };
     PresetDisplay presetDisplay;
     Pad* syncPad = nullptr; Pad* playPad = nullptr; Pad* holdPad = nullptr; Pad* tapPad = nullptr;
     std::unique_ptr<ParamLink> syncLink;
@@ -517,7 +543,7 @@ private:
         jack (Jack::ClockIn, 462, 990, "CLOCK IN", cvInk); jack (Jack::OnOffIn, 531, 990, "ON / OFF IN", cvInk);
         jack (Jack::ResetIn, 600, 990, "RESET IN", cvInk); jack (Jack::ClockOut, 669, 990, "CLOCK OUT", cvInk);
         module ({ 726, 944, 692, 100 }, S.panel, "");
-        textAt ("PRESET", 1007, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
+        textAt ("PRESET", 1044, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
     }
 
     // Logotype in the manner of the hardware: the first half of the name solid, the second half in outline;
