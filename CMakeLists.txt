@@ -29,7 +29,9 @@ juce_add_plugin(Babushka
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
-    VST3_CATEGORIES Instrument Synth Mono)
+    VST3_CATEGORIES Instrument Synth Mono
+    ICON_BIG Source/ui/art/app_icon_1024.png          # Standalone app icon: the NUWMUN mark on a panel-black tile
+    ICON_SMALL Source/ui/art/app_icon_256.png)
 
 # Fonts embedded in the editor (Montserrat and Barlow Semi Condensed, SIL Open Font License 1.1 — see docs/licenses)
 # and the NUWMUN logo (vector).
@@ -69,6 +71,14 @@ if(BABUSHKA_HOST_TEST)
     target_include_directories(babushka_hosttest PRIVATE Source)
     target_compile_definitions(babushka_hosttest PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(babushka_hosttest PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics
+                          PUBLIC juce::juce_recommended_config_flags)
+
+    # Plays every factory preset and reports level / clipping / silence (optionally writes WAV files).
+    juce_add_console_app(babushka_presetaudit PRODUCT_NAME "babushka_presetaudit")
+    target_sources(babushka_presetaudit PRIVATE tools/presetaudit/Main.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+    target_include_directories(babushka_presetaudit PRIVATE Source)
+    target_compile_definitions(babushka_presetaudit PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    target_link_libraries(babushka_presetaudit PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics juce::juce_dsp
                           PUBLIC juce::juce_recommended_config_flags)
 
     # Renders the editor (several states) to PNG files; used while working on the look of the interface.
