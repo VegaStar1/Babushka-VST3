@@ -1,9 +1,15 @@
-// Babushka — monophonic voice + output section (core sound engine, no patch matrix yet).
+// Babushka — monophonic voice + output section with the 41-point patch panel.
 //
 // Signal path (hard-wired "normalled" path of the hardware):
 //   VCO1 + VCO2 (+sync) + Noise -> Mixer (overdrives) -> Ladder LPF -> VCA -> Spring reverb mix -> Volume
 // Modulation: Mod Osc (LFO) -> pitch / cutoff / pulse width, depths scaled by the MOD wheel.
 // The voice runs oversampled (2x/4x); reverb and output run at the host rate.
+//
+// Patching (see Patch.h): every module publishes its outputs in volts into outV[]; every input reads the
+// sum of the outputs that are cabled to it, or its normalled internal source when nothing is plugged in.
+// Modules run in a fixed order each oversampled sample, so a cable from a later module to an earlier one
+// is delayed by one sample (like a real feedback patch, and stable). With no cables the signal path is
+// exactly the hard-wired one above.
 //
 // Values marked "ASSUMPTION" are not specified in the manual and must be calibrated against
 // recordings of the hardware.
@@ -16,6 +22,7 @@
 #include "LadderFilter.h"
 #include "Lfo.h"
 #include "Oscillator.h"
+#include "Patch.h"
 #include "SpringReverb.h"
 
 #include <array>
@@ -54,9 +61,14 @@ struct Params
     // Envelope
     float attack = 0.0f, decay = 0.35f, sustain = 1.0f, release = 0.25f;
 
+    // Utilities (patchable)
+    float hpCutoff = 0.0f;           // HIGH PASS knob: 16 Hz … 8 kHz (ASSUMPTION: range not in the manual)
+    float attenuator = 0.0f;         // ATTENUATOR knob −1 … +1 (centre = fully attenuated; −1 = inverted)
+
     // Output
     int   vcaMode = 0;               // 0 = ENV, 1 = KB RLS, 2 = DRONE
     float reverbMix = 0.0f;
+    float reverbDecay = 1.0f;        // extra: tail length relative to the hardware tank
     float volume = 0.8f;
 
     // Left-hand controller / globals
@@ -67,6 +79,9 @@ struct Params
     int   notePriority = 0;          // 0 = last, 1 = low, 2 = high
     float fineTune = 0.0f;           // semitones, ±1
     float drift = 0.25f;             // extra: analogue drift amount (0 = stable)
+    // Global settings of the hardware (manual p. 38)
+    bool  localOn = true;            // off: keyboard, pitch wheel and ARP/SEQ only drive KB OUT / GATE OUT / KB VEL OUT
+    int   kbOutRange = 0;            // KB OUT voltage range: 0 = −5…+5 V, 1 = 0…+10 V
 };
 
 class Engine
@@ -85,8 +100,14 @@ public:
         lfo.prepare (fsOs);
         reverb.prepare (fsBase);
         arp.prepare (fsBase);
-        filterDc.setCutoff (4.0f, fsOs);
-        outDc.setCutoff (5.0f, fsBase);
+        // AC coupling: measured on a recorded square wave (flat tops sag ≈17 % over a half-period at 66 Hz)
+        // the whole hardware chain behaves like one high-pass at ≈5.5 Hz; the two blockers add up to that.
+        filterDc.setCutoff (1.5f, fsOs);
+        outDc.setCutoff (4.0f, fsBase);
+        // Patch outputs marked "AC coupled" in the manual (oscillator, filter, high-pass and reverb outputs).
+        for (auto& b : acOut) b.setCutoff (2.0f, fsOs);
+        revOutDc.setCutoff (2.0f, fsBase);
+        accentDecay = std::exp (-1.0f / (0.06f * fsOs));    // ASSUMPTION: accent envelope release ≈ 60 ms
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
         noise.seed (0xBAB05CAu);
 
@@ -104,12 +125,23 @@ public:
     void reset()
     {
         filter.reset(); env.reset(); kbRls.reset(); lfo.reset(); reverb.reset(); decimator.reset();
-        filterDc.reset(); outDc.reset();
+        filterDc.reset(); outDc.reset(); revOutDc.reset();
+        for (auto& b : acOut) b.reset();
+        hpf.reset();
         heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f;
         for (auto& h : held) h = { -1, false };
+        std::fill (std::begin (outV), std::end (outV), 0.0f);
+        trigHigh = syncHigh = clockHigh = resetHigh = false;
+        velHeld = 0.0f; accentLevel = 0.0f; revAcc = 0.0f; revIn = 0.0f; clockOutHigh = false;
     }
 
     void setParams (const Params& p) noexcept { params = p; }
+
+    // Compiled cables; cheap enough to call from the audio thread at the start of a block.
+    void setPatch (const PatchState& p) noexcept { routing = Routing::compile (p); }
+    const Routing& currentRouting() const noexcept { return routing; }
+    // Last voltage published on an output jack (for meters / tests).
+    float outputVolts (Jack j) const noexcept { const int i = (int) j - kFirstOutput; return i >= 0 && i < kNumOutputs ? outV[i] : 0.0f; }
 
     void setArpParams (const ArpSeqParams& p)
     {
@@ -122,8 +154,9 @@ public:
 
     // ---- MIDI / keyboard --------------------------------------------------------------------
     // Keys go to the ARP/SEQ when it is running, otherwise straight to the voice (REC also records).
-    void noteOn (int note)
+    void noteOn (int note, int velocity = 100)
     {
+        noteVel[(size_t) (note & 127)] = (uint8_t) std::min (std::max (velocity, 1), 127);
         const bool captured = arp.capturesKeys();
         arp.keyOn (note);
         if (! captured) voiceOn (note);
@@ -138,6 +171,7 @@ public:
 
     void voiceOn (int note)
     {
+        velHeld = 5.0f * (float) noteVel[(size_t) (note & 127)] / 127.0f;   // KB VEL OUT: 0 … +5 V
         removeHeld (note);
         if (heldCount < (int) held.size()) held[(size_t) heldCount++] = { note, false };
         updateKey (true);
@@ -175,18 +209,30 @@ public:
     void process (float* out, int numSamples) noexcept { process (out, nullptr, numSamples); }
 
     // ext: optional INSTRUMENT IN signal (host rate), may be nullptr.
-    void process (float* out, const float* ext, int numSamples) noexcept
+    // euroOut / reverbOut: optional extra outputs (host rate): EURORACK OUT (after the reverb MIX, before
+    // VOLUME; ±1 ≈ ±5 V) and REVERB OUT (spring tank, always 100 % wet).
+    void process (float* out, const float* ext, int numSamples, float* euroOut = nullptr, float* reverbOut = nullptr) noexcept
     {
         updateBlockConstants();
         ArpSeq::Event ev[4];
         for (int n = 0; n < numSamples; ++n)
         {
+            servicePatchedControl();
             const int ne = arp.tick (ev);
-            for (int e = 0; e < ne; ++e) { if (ev[e].type == 1) voiceOn (ev[e].note); else voiceOff (ev[e].note, false); }
+            for (int e = 0; e < ne; ++e)
+            {
+                if (ev[e].type == 1)
+                {
+                    voiceOn (ev[e].note);
+                    if (arp.sequencerRunning() && arp.lastStepAccented()) accentLevel = 1.0f;   // accent → KB VEL OUT
+                }
+                else voiceOff (ev[e].note, false);
+            }
 
             tickSmoothers();
             // INSTRUMENT IN: preamp → mixer. Linear interpolation up to the oversampled rate.
             const float extNow = ext != nullptr ? ext[n] * extGain (params.extLevel) : 0.0f;
+            revAcc = 0.0f;
             for (int i = 0; i < os; ++i)
             {
                 const float t = (float) (i + 1) / (float) os;
@@ -196,10 +242,21 @@ public:
             const float voice = decimator.process (osBuf.data());
 
             // Output section: VCA out -> reverb (normalled REVERB IN) -> dry/wet MIX -> VOLUME.
-            const float wet = reverb.process (voice);
+            // A cable in REVERB IN replaces the VCA output as the reverb source (averaged down to the host rate).
+            revIn = revAcc * (1.0f / (float) os);
+            const float wet = reverb.process (routing.inputPatched[(int) Jack::ReverbIn] ? revIn : voice);
             const float mix = sRevMix.v;
             float y = voice * (1.0f - mix) + wet * mix;
-            y = outDc.process (y) * volumeGain (sVolume.v) * 1.6f;
+            y = outDc.process (y);
+            if (reverbOut != nullptr || isUsed (Jack::ReverbOut))
+            {
+                const float r = revOutDc.process (wet);                                                // always 100 % wet, AC coupled
+                if (reverbOut != nullptr) reverbOut[n] = r;
+                if (isUsed (Jack::ReverbOut)) setOut (Jack::ReverbOut, r * 5.0f);
+            }
+            if (euroOut != nullptr) euroOut[n] = y;                                                    // after MIX, before VOLUME
+            if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, y * 5.0f);
+            y = y * volumeGain (sVolume.v) * 1.6f;
             out[n] = safetyLimit (y);
         }
     }
@@ -220,13 +277,24 @@ private:
     ArpSeq arp;
     Decimator decimator;
     float extPrev = 0.0f;
-    DcBlocker filterDc, outDc;
+    DcBlocker filterDc, outDc, revOutDc;
+    DcBlocker acOut[3];                 // AC-coupled patch outputs: Osc 1, Osc 2, Filter
+    OnePoleHP hpf;                      // Utilities: static 6 dB/oct high-pass
     Drift drift1, drift2;
     Rng noise;
     std::vector<float> osBuf;
 
     Smoother sCutoff, sRes, sMix1, sMix2, sMixN, sEnvAmt, sOsc2Freq, sLfoPitch, sLfoCut, sLfoPw,
              sWheel, sRevMix, sVolume, sLfoRate;
+
+    // Patch panel
+    Routing routing;
+    float outV[kNumOutputs] {};         // last voltage on every output jack
+    bool trigHigh = false, syncHigh = false, clockHigh = false, resetHigh = false;
+    bool clockOutHigh = false;
+    float revAcc = 0.0f, revIn = 0.0f;
+    std::array<uint8_t, 128> noteVel = [] { std::array<uint8_t, 128> a {}; a.fill (100); return a; }();
+    float velHeld = 0.0f, accentLevel = 0.0f, accentDecay = 0.999f;
 
     // Keyboard
     std::array<HeldNote, 32> held {};
@@ -265,7 +333,7 @@ private:
         const int note = priorityNote();
         if (note < 0)
         {
-            if (gate) { gate = false; env.gateOff(); kbRls.gateOff(); }
+            if (gate) { gate = false; if (! routing.inputPatched[(int) Jack::EnvTriggerIn]) env.gateOff(); kbRls.gateOff(); }
             return;
         }
         const bool legato = gate;
@@ -288,8 +356,11 @@ private:
         if (! gate && fromNoteOn)
         {
             gate = true;
-            env.gateOn();
-            kbRls.gateOn();
+            if (params.localOn)                                                     // Local Off: no hard-wired gate
+            {
+                if (! routing.inputPatched[(int) Jack::EnvTriggerIn]) env.gateOn();   // TRIGGER IN replaces the keyboard gate
+                kbRls.gateOn();
+            }
         }
     }
 
@@ -313,15 +384,43 @@ private:
         return x < 0.0f ? -y : y;
     }
 
+    // ---- patch helpers -----------------------------------------------------------------------
+    bool isUsed (Jack out) const noexcept { return routing.outputUsed[(int) out - kFirstOutput]; }
+    void setOut (Jack out, float volts) noexcept { outV[(int) out - kFirstOutput] = std::isfinite (volts) ? clampf (volts, -16.0f, 16.0f) : 0.0f; }
+    // Sum of everything cabled to an input (0 when nothing drives it).
+    float readIn (Jack in) const noexcept
+    {
+        const int i = (int) in; float sum = 0.0f;
+        for (int k = 0; k < routing.sourceCount[i]; ++k) sum += outV[routing.source[i][k]];
+        return sum;
+    }
+
+    // ARP/SEQ rear-panel jacks, once per host sample.
+    void servicePatchedControl() noexcept
+    {
+        const bool clockP = routing.inputPatched[(int) Jack::ClockIn], onOffP = routing.inputPatched[(int) Jack::OnOffIn],
+                   resetP = routing.inputPatched[(int) Jack::ResetIn];
+        if (clockP) { const bool hi = readIn (Jack::ClockIn) > 1.2f; if (hi && ! clockHigh) arp.externalClockEdge(); clockHigh = hi; }
+        else clockHigh = false;
+        if (resetP) { const bool hi = readIn (Jack::ResetIn) > 2.5f; if (hi && ! resetHigh) arp.resetPattern(); resetHigh = hi; }
+        else resetHigh = false;
+        const bool wasCapturing = arp.capturesKeys();
+        arp.setExternalControl (clockP, onOffP, onOffP && readIn (Jack::OnOffIn) > 2.5f);
+        if (! wasCapturing && arp.capturesKeys()) releaseVoiceKeys();
+        if (isUsed (Jack::ClockOut)) setOut (Jack::ClockOut, arp.clockOutHigh() ? 5.0f : 0.0f);
+    }
+
     void updateBlockConstants() noexcept
     {
         const auto& p = params;
+        hpf.setCutoff (16.0f * std::pow (500.0f, clampf (p.hpCutoff, 0.0f, 1.0f)), fsOs);
         env.setParameters (envTime (p.attack, 0.001f), envTime (p.decay, 0.002f), p.sustain, envTime (p.release, 0.002f));
         // KB RLS: instant (1 ms anti-click) attack to the sustain level, envelope release time.
         kbRls.setParameters (0.001f, 0.001f, p.sustain, envTime (p.release, 0.002f));
         lfo.setWave ((Lfo::Wave) p.lfoWave);
         osc1.setWave ((Oscillator::Wave) p.osc1Wave);
         osc2.setWave ((Oscillator::Wave) p.osc2Wave);
+        reverb.setDecayScale (p.reverbDecay);
         glideSeconds = glideTime (p.glide);
         glideCoeff = glideSeconds > 0.0f ? 1.0f - std::exp (-1.0f / (glideSeconds * 0.35f * fsOs)) : 1.0f;
 
@@ -347,9 +446,16 @@ private:
         sRevMix.process (p.reverbMix); sVolume.process (p.volume); sLfoRate.process (p.lfoRate);
     }
 
+    // ASSUMPTION: linear FM depth is not given in the manual; 100 Hz per volt (±5 V audio → ±500 Hz).
+    static constexpr float kLinFmHzPerVolt = 100.0f;
+    // ASSUMPTION: PWM IN 0 … +5 V moves the duty cycle by up to +0.45 (matches the internal LFO path).
+    static constexpr float kPwmPerVolt = 0.09f;
+
     float tickVoice (float extIn) noexcept
     {
         const auto& p = params;
+        const auto& rt = routing;
+        auto patched = [&rt] (Jack j) noexcept { return rt.inputPatched[(int) j]; };
 
         // Glide
         if (glideActive)
@@ -363,58 +469,125 @@ private:
             if (std::abs (targetPitch - currentPitch) < 1.0e-4f) { currentPitch = targetPitch; glideActive = false; }
         }
 
+        // Keyboard / ARP / SEQ outputs. KB OUT carries the glided pitch, 1 V/oct, 0 V = middle C (ASSUMPTION).
+        accentLevel *= accentDecay;
+        if (isUsed (Jack::GateOut)) setOut (Jack::GateOut, gate ? 8.0f : 0.0f);
+        if (isUsed (Jack::KbOut))
+        {
+            const float v = (currentPitch - 60.0f) * (1.0f / 12.0f);
+            setOut (Jack::KbOut, p.kbOutRange == 1 ? clampf (v + 5.0f, 0.0f, 10.0f) : clampf (v, -5.0f, 5.0f));
+        }
+        if (isUsed (Jack::KbVelOut)) setOut (Jack::KbVelOut, arp.sequencerRunning() ? 5.0f * accentLevel : velHeld);
+
+        // Attenuator (bipolar; its input is normalled to +8 V, so unpatched it is a DC source).
+        if (patched (Jack::AttenuatorIn) || isUsed (Jack::AttenuatorOut))
+            setOut (Jack::AttenuatorOut, p.attenuator * (patched (Jack::AttenuatorIn) ? readIn (Jack::AttenuatorIn) : 8.0f));
+
+        // Envelope trigger: any signal above +1.2 V is a trigger; it replaces the keyboard gate.
+        if (patched (Jack::EnvTriggerIn))
+        {
+            const bool hi = readIn (Jack::EnvTriggerIn) > 1.2f;
+            if (hi && ! trigHigh) env.gateOn(); else if (! hi && trigHigh) env.gateOff();
+            trigHigh = hi;
+        }
+        else if (trigHigh) { trigHigh = false; if (! gate) env.gateOff(); }
+
         // Noise and Mod Osc
         const float whiteNoise = noise.gaussianish() * 0.45f;
-        const float lfoOut = lfo.process (lfoRateHz (sLfoRate.v), whiteNoise);
+        float lfoHz = lfoRateHz (sLfoRate.v);
+        if (patched (Jack::ModRateIn)) lfoHz = std::min (lfoHz * std::exp2 (clampf (readIn (Jack::ModRateIn), -10.0f, 10.0f)), 0.45f * fsOs);   // 1 V/oct
+        if (patched (Jack::ModSyncIn))
+        {
+            const bool hi = readIn (Jack::ModSyncIn) > 1.2f;
+            if (hi && ! syncHigh) lfo.sync();
+            syncHigh = hi;
+        }
+        else syncHigh = false;
+        const float lfoOut = lfo.process (lfoHz, whiteNoise);
+        if (isUsed (Jack::ModWaveOut)) setOut (Jack::ModWaveOut, lfoOut * 5.0f);
+        if (isUsed (Jack::ModShOut))   setOut (Jack::ModShOut, clampf (lfo.sampleAndHold() * (2.5f / 0.45f), -5.0f, 5.0f));
         const float wheel = sWheel.v;
         const float pitchMod = lfoOut * sLfoPitch.v * sLfoPitch.v * wheel * 24.0f;  // ASSUMPTION: max ±2 oct
         const float cutMod   = lfoOut * sLfoCut.v * wheel * 5.0f;                    // ASSUMPTION: max ±5 oct
         const float pwMod    = lfoOut * sLfoPw.v * wheel * 0.45f;
 
-        // Pitch: 8' = keyboard pitch. 32' … 4' / 16' … 2'.
-        const float basePitch = currentPitch + bend * (float) p.bendRange + p.fineTune + pitchMod;
+        // Pitch: 8' = keyboard pitch. 32' … 4' / 16' … 2'. PITCH IN is summed with the keyboard CV (1 V/oct).
+        // Local Off: the internal voice sees neither the keyboard CV nor the pitch wheel (0 V = middle C).
+        const float kbCv = p.localOn ? currentPitch : 60.0f;
+        const float basePitch = kbCv + (p.localOn ? bend * (float) p.bendRange : 0.0f) + p.fineTune + pitchMod;
         const float d = p.drift * 0.03f;  // up to ±3 cents at drift = 1
-        const float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process();
-        const float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process();
+        float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process();
+        float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process();
+        if (patched (Jack::Osc1PitchIn)) pitch1 += 12.0f * readIn (Jack::Osc1PitchIn);
+        if (patched (Jack::Osc2PitchIn)) pitch2 += 12.0f * readIn (Jack::Osc2PitchIn);
 
         // Narrow pulse widths measured on hardware ≈16 % (osc 1) and ≈18 % (osc 2) (SOS review).
-        osc1.setPulseWidth ((p.osc1Wave == 3 ? 0.16f : 0.5f) + pwMod);
+        float pw1 = (p.osc1Wave == 3 ? 0.16f : 0.5f) + pwMod;
+        if (patched (Jack::Osc1PwmIn)) pw1 += kPwmPerVolt * readIn (Jack::Osc1PwmIn);
+        osc1.setPulseWidth (pw1);
         osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : 0.5f) + pwMod);
 
         bool wrapped = false; float wrapFrac = 0.0f;
         const float o1 = osc1.process (midiToHz (pitch1) / fsOs, wrapped, wrapFrac);
-        const float dt2 = midiToHz (pitch2) / fsOs;
+        float dt2 = midiToHz (pitch2) / fsOs;
+        if (patched (Jack::Osc2LinFmIn)) dt2 += kLinFmHzPerVolt * readIn (Jack::Osc2LinFmIn) / fsOs;   // linear FM
         bool w2; float f2;
         const float o2 = (p.osc2Sync && wrapped) ? osc2.processSynced (dt2, wrapFrac) : osc2.process (dt2, w2, f2);
+        if (isUsed (Jack::Osc1WaveOut)) setOut (Jack::Osc1WaveOut, acOut[0].process (o1) * 5.0f);
+        if (isUsed (Jack::Osc2WaveOut)) setOut (Jack::Osc2WaveOut, acOut[1].process (o2) * 5.0f);
 
         // Mixer (CP3-style summing amp, limited headroom): gentle drive above ~1 o'clock,
         // overdrive near max; a loud input compresses the others. Slight asymmetry adds 2nd harmonic.
-        const float sum = o1 * mixerGain (sMix1.v) + o2 * mixerGain (sMix2.v) + whiteNoise * mixerGain (sMixN.v) + extIn;
+        // A cable in an input replaces that source (the knob then sets the level of the new signal).
+        const float m1 = patched (Jack::MixOsc1In)  ? readIn (Jack::MixOsc1In) * 0.2f  : o1;
+        const float m2 = patched (Jack::MixOsc2In)  ? readIn (Jack::MixOsc2In) * 0.2f  : o2;
+        const float mn = patched (Jack::MixNoiseIn) ? readIn (Jack::MixNoiseIn) * 0.2f : whiteNoise;
+        const float sum = m1 * mixerGain (sMix1.v) + m2 * mixerGain (sMix2.v) + mn * mixerGain (sMixN.v) + extIn;
         constexpr float drive = 1.2f, bias = 0.12f;
         const float mixed = (std::tanh (sum * drive + bias) - std::tanh (bias)) * (1.0f / drive);
+        if (isUsed (Jack::MixerOut)) setOut (Jack::MixerOut, mixed * 5.0f);
+
+        // Utilities: static 6 dB/oct high-pass (patch-only: nothing is normalled to its input).
+        if (patched (Jack::HpfIn) || isUsed (Jack::HpfOut))
+            setOut (Jack::HpfOut, hpf.process (patched (Jack::HpfIn) ? readIn (Jack::HpfIn) * 0.2f : 0.0f) * 5.0f);
 
         // Filter cutoff: knob 10 Hz … 11 kHz; envelope amount bipolar ±6 oct (ASSUMPTION);
-        // key tracking 0 / ½ / 1 oct per oct around middle C.
+        // key tracking 0 / ½ / 1 oct per oct around middle C. CUTOFF IN: 1 V/oct; ENV AMT IN: ±5 V = ±1 on the knob.
         const float e = env.process();
         const float kb = kbRls.process();
+        if (isUsed (Jack::EnvPosOut)) setOut (Jack::EnvPosOut, e * 8.0f);
+        if (isUsed (Jack::EnvNegOut)) setOut (Jack::EnvNegOut, -e * 8.0f);
         const float track = p.kbdTrack == 0 ? 0.0f : (p.kbdTrack == 1 ? 0.5f : 1.0f);
+        float envAmt = sEnvAmt.v;
+        if (patched (Jack::FilterEnvAmtIn)) envAmt += 0.2f * readIn (Jack::FilterEnvAmtIn);
         float octaves = sCutoff.v * std::log2 (11000.0f / 10.0f)
-                        + sEnvAmt.v * 6.0f * e
-                        + track * (currentPitch - 60.0f) * (1.0f / 12.0f)
+                        + envAmt * 6.0f * e
+                        + track * (kbCv - 60.0f) * (1.0f / 12.0f)
                         + cutMod;
+        if (patched (Jack::FilterCutoffIn)) octaves += readIn (Jack::FilterCutoffIn);
         const float cutoffHz = std::min (10.0f * std::exp2 (octaves), 24000.0f);
         // Resonance: self-oscillation starts near 89 % of the knob (k = 4).
         const float k = 4.5f * sRes.v;
         const float fcTuned = std::min (cutoffHz * LadderFilter::tuningCompensation (k), 24000.0f);
 
         // Drive scaling: mixer level ±1 ≈ 0.6 in ladder units (clean-ish when moderate, saturates when hot).
-        float y = filter.process (mixed * 0.6f, fcTuned, k) * (1.0f / 0.6f);
+        const float fIn = patched (Jack::FilterIn) ? readIn (Jack::FilterIn) * 0.2f : mixed;
+        float y = filter.process (fIn * 0.6f, fcTuned, k) * (1.0f / 0.6f);
         y = filterDc.process (y);
+        if (isUsed (Jack::FilterOut)) setOut (Jack::FilterOut, acOut[2].process (y) * 5.0f);
 
         // VCA (902-style): gain from ENV / KB RLS / DRONE, mild output saturation and tiny bleed.
+        // VCA AMT IN: in DRONE it alone sets the level (0 … +8 V); in ENV / KB RLS it multiplies the envelope.
         float gain = p.vcaMode == 0 ? e : (p.vcaMode == 1 ? kb : 1.0f);
+        if (patched (Jack::VcaAmtIn))
+        {
+            const float c = readIn (Jack::VcaAmtIn) * (1.0f / 8.0f);
+            gain = p.vcaMode == 2 ? std::max (c, 0.0f) : gain * c;
+        }
         gain = gain + 1.0e-4f;
-        const float v = y * gain * 1.25f;
+        const float vIn = patched (Jack::VcaIn) ? readIn (Jack::VcaIn) * 0.2f : y;
+        const float v = vIn * gain * 1.25f;
+        if (patched (Jack::ReverbIn)) revAcc += readIn (Jack::ReverbIn) * 0.2f;
         return std::tanh (v * 0.8f) * (1.0f / 0.8f) * 0.8f;
     }
 };

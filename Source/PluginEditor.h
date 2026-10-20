@@ -2,10 +2,12 @@
 
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "PluginProcessor.h"
+#include "ui/SynthPanel.h"
 
-// Temporary functional panel: controls grouped by hardware module.
-// The final skinned UI (own design, not a copy of the hardware panel) comes in a later phase.
-class BabushkaEditor : public juce::AudioProcessorEditor, private juce::Timer
+namespace babushka::ui { class SettingsOverlay; class PresetOverlay; class HintBubble; class Backdrop; }
+
+// The instrument: a skeuomorphic front panel drawn in a fixed logical size and scaled to the window.
+class BabushkaEditor : public juce::AudioProcessorEditor, private babushka::ui::HintSink
 {
 public:
     explicit BabushkaEditor (BabushkaProcessor&);
@@ -14,35 +16,28 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    void showPresets (bool show);
+    void showSettings (bool show);
+    void setSkin (int index);                                       // index into babushka::ui::skins(); remembered per user
+    babushka::ui::CableLayer& cableLayer() { return *cables; }     // for tests
+    babushka::ui::SynthPanel& synthPanel() { return *panel; }
+
 private:
-    struct Control
-    {
-        juce::String paramId;
-        std::unique_ptr<juce::Component> widget;
-        std::unique_ptr<juce::Label> label;
-        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAtt;
-        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAtt;
-        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> buttonAtt;
-    };
-    struct Section
-    {
-        juce::String title;
-        std::vector<std::unique_ptr<Control>> controls;
-        juce::Rectangle<int> bounds;
-        int extraHeight = 0;                                       // room for non-parameter widgets
-        std::function<void (juce::Rectangle<int>)> layoutExtra;
-    };
+    void showHint (juce::Component& from, const juce::String& text) override;
+    void hideHint() override;
+    void updateBackdrop();
+    void buildPanel();
+    static juce::PropertiesFile::Options uiSettingsOptions();
 
     BabushkaProcessor& processor;
-    std::vector<Section> sections;
-    juce::LookAndFeel_V4 lnf;
+    struct Content : public juce::Component { } content;           // logical size kW x kH, scaled into the window
+    std::unique_ptr<babushka::ui::SynthPanel> panel;
+    std::unique_ptr<babushka::ui::CableLayer> cables;
+    std::unique_ptr<babushka::ui::HintBubble> bubble;
+    std::unique_ptr<babushka::ui::Backdrop> backdrop;
+    std::unique_ptr<babushka::ui::PresetOverlay> presets;
+    std::unique_ptr<babushka::ui::SettingsOverlay> settings;
+    juce::PropertiesFile uiSettings { uiSettingsOptions() };      // per-user look of the editor (skin)
 
-    // ARP/SEQ step-entry buttons, tap tempo and status line.
-    juce::TextButton tapButton { "TAP" }, tieButton { "TIE" }, restButton { "REST" }, accentButton { "ACCENT" };
-    juce::Label arpInfo;
-    juce::Array<double> tapTimes;
-
-    void addSection (const juce::String& title, std::initializer_list<const char*> paramIds);
-    void timerCallback() override;
-    void handleTap();
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BabushkaEditor)
 };

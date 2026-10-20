@@ -10,7 +10,9 @@
 // Clock: free tempo 20–280 BPM, or host-synced note divisions (same table as the hardware's CC 90).
 //
 // ASSUMPTIONS (not in the manual): gate length 50 % of a step; free-tempo step = 1/8 note
-// (selectable); ACCENT has no internal routing (it will drive KB VEL OUT once patching exists).
+// (selectable). ACCENT is an envelope on KB VEL OUT (Engine). Rear-panel jacks: CLOCK IN (clock mode:
+// edges advance the clock by 1/PPQN of a beat; step-advance mode: one step per edge), ON/OFF IN (> 2.5 V
+// plays), RESET IN (> 2.5 V → start of the pattern), CLOCK OUT (PPQN pulses per quarter note).
 #pragma once
 
 #include "Common.h"
@@ -40,6 +42,10 @@ struct ArpSeqParams
     int octSeq = 0;        // ARP: 1/2/3 octaves; SEQ/REC: sequence 1/2/3
     float rate = 0.5f;     // knob 0..1
     int freeStep = 1;      // free tempo step: 0 = 1/4, 1 = 1/8, 2 = 1/16
+    // Global settings of the hardware (manual p. 38):
+    bool extStepAdvance = false;   // CLOCK IN mode: false = clock, true = step-advance
+    int  extPpqn = 2;              // pulses per quarter note expected on CLOCK IN
+    int  clockOutPpqn = 2;         // pulses per quarter note sent on CLOCK OUT
 };
 
 class ArpSeq
@@ -89,7 +95,20 @@ public:
     // Host transport at the start of the next process() call.
     void setTransport (bool playing, double ppq, double bpm) noexcept { hostPlaying = playing; hostPpq = ppq; hostBpm = bpm > 0 ? bpm : 120.0; }
 
-    bool running() const noexcept { return params.play && (params.mode == 0 || params.mode == 1); }
+    bool running() const noexcept { return (onOffPatched ? onOffHigh : params.play) && (params.mode == 0 || params.mode == 1); }
+    bool sequencerRunning() const noexcept { return running() && params.mode == 1; }
+
+    // ---- rear-panel patch jacks (called by the engine once per host sample) --------------------
+    void externalClockEdge() noexcept { if (clockPatched) ++pendingEdges; }
+    void resetPattern() noexcept { stepCounter = 0; pingDir = 1; lastStepIndex = -1; }
+    void setExternalControl (bool clockIn, bool onOffIn, bool onOffHighNow) noexcept
+    {
+        const bool wasRunning = running();
+        clockPatched = clockIn; onOffPatched = onOffIn; onOffHigh = onOffHighNow;
+        if (! clockIn) pendingEdges = 0;
+        if (wasRunning != running()) { stopRequested = true; phase = 1.0; stepCounter = 0; pingDir = 1; lastStepIndex = -1; stepElapsed = 0.0; }
+    }
+    bool clockOutHigh() const noexcept { return clockOutPhase < 0.5; }
     bool capturesKeys() const noexcept { return running(); }   // keys go to ARP/SEQ instead of the voice
 
     // ---- keyboard ---------------------------------------------------------------------------
@@ -149,13 +168,37 @@ public:
             if (sounding >= 0) { out[n++] = { 2, sounding }; sounding = -1; }
             gateOpen = false;
         }
-        if (! running()) { advanceHost(); return n; }
+        {   // CLOCK OUT: PPQN pulses per quarter note at the current tempo (50 % duty), always running.
+            const double bpm = params.sync ? hostBpm : (double) freeBpm (params.rate);
+            clockOutPhase += bpm / 60.0 / fs * (double) std::max (params.clockOutPpqn, 1);
+            clockOutPhase -= std::floor (clockOutPhase);
+        }
+        if (! running()) { pendingEdges = 0; advanceHost(); return n; }
 
         const double beatsPerSample = (params.sync ? hostBpm : 0.0) / 60.0 / fs;
         bool newStep = false;
         double fracInStep = 0.0;
 
-        if (params.sync && hostPlaying)
+        if (clockPatched)
+        {
+            // External clock: every edge is 1/PPQN of a beat (clock mode) or one step (step-advance mode).
+            stepElapsed += 1.0;
+            const double stepBeats = params.freeStep == 0 ? 1.0 : (params.freeStep == 1 ? 0.5 : 0.25);
+            while (pendingEdges > 0)
+            {
+                --pendingEdges;
+                if (params.extStepAdvance) newStep = true;
+                else
+                {
+                    phase += (1.0 / (double) std::max (params.extPpqn, 1)) / stepBeats;
+                    if (phase >= 1.0) { phase -= std::floor (phase); newStep = true; }
+                }
+            }
+            if (newStep) { if (stepElapsed > 8.0) stepLenEstimate = stepElapsed; stepElapsed = 0.0; }
+            fracInStep = stepLenEstimate > 0.0 ? stepElapsed / stepLenEstimate : 0.0;   // gate length from the measured step time
+            lastStepIndex = -1;
+        }
+        else if (params.sync && hostPlaying)
         {
             const double stepBeats = divisionBeats (divisionIndex (params.rate));
             const double pos = hostPpq / stepBeats;
@@ -208,6 +251,9 @@ private:
     long long lastStepIndex = -1;
     bool hostPlaying = false; double hostPpq = 0.0, hostBpm = 120.0;
     int stepCounter = 0, pingDir = 1, transpose = 0;
+    bool clockPatched = false, onOffPatched = false, onOffHigh = false;
+    int pendingEdges = 0;
+    double stepElapsed = 0.0, stepLenEstimate = 12000.0, clockOutPhase = 0.0;
     int sounding = -1; bool gateOpen = false, currentTie = false, stopRequested = false, lastAccent = false;
 
     int seqIndex() const noexcept { return std::min (std::max (params.octSeq, 0), 2); }

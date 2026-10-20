@@ -112,6 +112,93 @@ int main (int argc, char** argv)
         writeWav (dir + "/test_spring_ir.wav", ir, fs);
     }
 
+    // ---------------- 3b. Calibration against recordings of the hardware ----------------------
+    // Targets come from analysis of recorded Grandmother material (see docs/analysis/hardware-recordings.md).
+    {
+        // Spring tank: T60 per octave band, estimated like the recordings: band-pass, smoothed energy,
+        // linear fit of the dB decay from 0.3 s after the peak down to 30 dB below it.
+        SpringReverb rv; rv.prepare ((float) fs);
+        Rng nr; nr.seed (1234);
+        std::vector<float> wet ((size_t) fs * 14);
+        for (size_t i = 0; i < wet.size(); ++i) wet[i] = rv.process (i < (size_t) fs / 20 ? 0.5f * nr.bipolar() : 0.0f);
+
+        struct Band { float lo, hi, target, tolLo, tolHi; };
+        const Band bands[] = { {  60,  120, 8.4f, 0.7f, 1.4f }, { 120,  240, 10.5f, 0.7f, 1.4f }, { 240,  480, 6.8f, 0.7f, 1.4f },
+                               { 480,  960, 4.4f, 0.7f, 1.4f }, { 960, 1920,  3.6f, 0.7f, 1.4f }, { 1920, 3840, 2.5f, 0.7f, 1.4f },
+                               { 3840, 7680, 1.1f, 0.7f, 1.8f } };
+        std::printf ("Spring tank T60 per octave band (hardware recordings -> model):\n");
+        int springFail = 0;
+        for (const Band& b : bands)
+        {
+            // Two cascaded RBJ band-pass biquads (constant 0 dB peak), centre = geometric mean, Q = 1.4.
+            const double f0 = std::sqrt ((double) b.lo * b.hi), w0 = 6.283185307179586 * f0 / fs, q = 1.4;
+            const double al = std::sin (w0) / (2 * q), a0 = 1 + al;
+            const double bb0 = al / a0, bb2 = -al / a0, aa1 = -2 * std::cos (w0) / a0, aa2 = (1 - al) / a0;
+            std::vector<double> e (wet.size());
+            double z1[2] = { 0, 0 }, z2[2] = { 0, 0 };
+            for (size_t i = 0; i < wet.size(); ++i)
+            {
+                double v = wet[i];
+                for (int s = 0; s < 2; ++s) { const double o = bb0 * v + z1[s]; z1[s] = -aa1 * o + z2[s]; z2[s] = bb2 * v - aa2 * o; v = o; }
+                e[i] = v * v;
+            }
+            const double a = 1.0 - std::exp (-6.283185307179586 * 15.0 / fs);
+            double s1 = 0, s2 = 0;
+            for (double& x : e) { s1 += a * (x - s1); s2 += a * (s1 - s2); x = 10.0 * std::log10 (s2 + 1e-14); }
+            size_t pk = 0; for (size_t i = 0; i < (size_t) (1.2 * fs); ++i) if (e[i] > e[pk]) pk = i;
+            double sx = 0, sy = 0, sxx = 0, sxy = 0; int n = 0;
+            for (size_t i = pk + (size_t) (0.3 * fs); i < std::min (e.size(), pk + (size_t) (4.0 * fs)); ++i)
+                if (e[i] > e[pk] - 30.0) { const double t = (double) i / fs; sx += t; sy += e[i]; sxx += t * t; sxy += t * e[i]; ++n; }
+            const double slope = n > 100 ? (n * sxy - sx * sy) / (n * sxx - sx * sx) : 0.0;
+            const double t60 = slope < 0 ? -60.0 / slope : 99.0;
+            const bool ok = t60 >= b.target * b.tolLo && t60 <= b.target * b.tolHi;
+            std::printf ("  %5.0f-%5.0f Hz: recorded %5.1f s, model %5.1f s  %s\n", b.lo, b.hi, b.target, t60, ok ? "OK" : "FAIL");
+            if (! ok) ++springFail;
+        }
+        std::printf ("  spring T60 calibration: %s\n", springFail == 0 ? "ALL PASSED" : "FAILURES");
+
+        // The tank must sound the same at every host rate: steady sines of 8 frequencies, wet/dry level per rate.
+        double byRate[3]; int ri = 0;
+        for (int rate : { 44100, 48000, 96000 })
+        {
+            double sum = 0; int n = 0;
+            for (double f : { 98.0, 131.0, 165.0, 220.0, 294.0, 392.0, 523.0, 880.0 })
+            {
+                SpringReverb r2; r2.prepare ((float) rate);
+                double ed = 0, ew = 0;
+                for (int i = 0; i < rate * 4; ++i)
+                {
+                    const float x = 0.3f * (float) std::sin (6.283185307179586 * f * i / rate), w2 = r2.process (x);
+                    if (i >= rate * 2) { ed += (double) x * x; ew += (double) w2 * w2; }
+                }
+                sum += 10.0 * std::log10 (ew / ed); ++n;
+            }
+            byRate[ri++] = sum / n;
+        }
+        const double spread = std::max ({ byRate[0], byRate[1], byRate[2] }) - std::min ({ byRate[0], byRate[1], byRate[2] });
+        std::printf ("  tank level on tones at 44.1 / 48 / 96 kHz: %+.1f / %+.1f / %+.1f dB, spread %.1f dB  %s\n",
+                     byRate[0], byRate[1], byRate[2], spread, spread < 1.5 ? "OK" : "FAIL");
+    }
+    {
+        // AC coupling: a recorded 66 Hz square wave sags ≈17 % over a half-period (≈5.5 Hz single-pole equivalent).
+        Params p; p.osc1Octave = 2; p.osc1Wave = 2; p.mixOsc1 = 0.35f; p.mixOsc2 = 0.0f; p.cutoff = 1.0f; p.resonance = 0.0f;
+        p.vcaMode = 2; p.volume = 1.0f; p.drift = 0.0f; p.reverbMix = 0.0f;
+        auto y = renderSeq (p, notes ({ { 0.0, 3.0, 36 } }), 3.0);
+        double hi0 = 0, hi1 = 0; int nc = 0;
+        std::vector<int> ed;
+        for (size_t i = (size_t) fs * 2 + 1; i < y.size(); ++i) if (y[i - 1] < 0 && y[i] >= 0) ed.push_back ((int) i);
+        for (size_t k = 0; k + 1 < ed.size(); ++k)
+        {
+            const int a = ed[k]; const double per = ed[k + 1] - a;
+            hi0 += y[(size_t) (a + (int) (0.06 * per))]; hi1 += y[(size_t) (a + (int) (0.44 * per))]; ++nc;
+        }
+        const double ratio = nc > 0 ? hi1 / hi0 : 0.0, period = 1.0 / 65.406;
+        const double corner = -std::log (ratio) / (0.38 * period) / 6.283185307179586;
+        const bool ok = corner > 4.5 && corner < 6.5;
+        std::printf ("Output coupling: square-wave sag %.3f over 0.38 period -> %.2f Hz equivalent (recorded ≈5.5 Hz)  %s\n",
+                     ratio, corner, ok ? "OK" : "FAIL");
+    }
+
     // ---------------- 4. Musical demos ----------------------------------------------------------
     {   // Classic bass: two saws 16', slight detune, low cutoff, env sweep.
         Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 1; p.osc2Freq = 0.08f;
@@ -195,6 +282,35 @@ int main (int argc, char** argv)
         }
         Params p; p.mixOsc1 = 0.6f; p.cutoff = 0.7f; p.sustain = 1.0f;
         auto rms = [] (const std::vector<float>& y) { double a = 0; for (size_t i = y.size() / 4; i < y.size(); ++i) a += y[i] * y[i]; return std::sqrt (a / (y.size() * 0.75)); };
+        // The spring is a long, resonant tank, so a single held note can land on a peak or in a dip of its
+        // response; the level is judged on the average over several notes (and must not depend on the rate).
+        double sumDb = 0; int nNotes = 0;
+        for (int note : { 36, 41, 48, 53, 60, 67, 72 })
+        {
+            Params q = p; q.reverbMix = 0.0f;
+            const double d = rms (renderSeq (q, notes ({ { 0.0, 3.0, note } }), 3.0));
+            q.reverbMix = 1.0f;
+            const double w = rms (renderSeq (q, notes ({ { 0.0, 3.0, note } }), 3.0));
+            sumDb += 20.0 * std::log10 (w / d); ++nNotes;
+        }
+        const double meanDb = sumDb / nNotes;
+        std::printf ("Spring level, 100%% wet vs dry on held notes: mean %+.1f dB over %d notes (%s)\n", meanDb, nNotes, std::abs (meanDb) < 3.0 ? "OK" : "FAIL");
+        {
+            // Held notes at MIX 50 %: the level must not jump from key to key (comb peaks / dry-wet cancellation of the tank).
+            Params h; h.osc1Octave = 2; h.osc1Wave = 2; h.osc2Octave = 1; h.osc2Wave = 3; h.osc2Freq = 0.12f; h.mixOsc1 = 0.55f;
+            h.mixOsc2 = 0.45f; h.cutoff = 0.742f; h.resonance = 0.25f; h.kbdTrack = 2; h.sustain = 0.85f; h.reverbMix = 0.5f; h.volume = 0.544f;
+            std::vector<double> db;
+            for (int note = 36; note <= 72; ++note)
+            {
+                const auto y = renderSeq (h, notes ({ { 0.0, 4.0, note } }), 4.0);
+                double a = 0; for (size_t i = y.size() / 2; i < y.size(); ++i) a += y[i] * y[i];
+                db.push_back (10.0 * std::log10 (a / (y.size() / 2)));
+            }
+            double mean = 0; for (double v : db) mean += v / db.size();
+            const double lo = *std::min_element (db.begin(), db.end()) - mean, hi = *std::max_element (db.begin(), db.end()) - mean;
+            std::printf ("Spring on held notes, MIX 50%%, notes 36-72: level %+.1f / %+.1f dB around the mean  %s\n", lo, hi,
+                         lo > -4.0 && hi < 4.0 ? "OK" : "FAIL");
+        }
         auto dry = renderSeq (p, notes ({ { 0.0, 3.0, 48 } }), 3.0);
         p.reverbMix = 1.0f;
         auto wet = renderSeq (p, notes ({ { 0.0, 3.0, 48 } }), 3.0);
@@ -203,6 +319,253 @@ int main (int argc, char** argv)
         float hp = 0; for (float v : hot) hp = std::max (hp, std::abs (v));
         std::printf ("Levels: dry rms %.3f, 100%% wet rms %.3f (ratio %.1f dB); hottest patch peak %.3f\n",
                      rms (dry), rms (wet), 20 * std::log10 (rms (wet) / rms (dry)), hp);
+    }
+
+    // ---------------- 5d. Patch panel -------------------------------------------------------------
+    {
+        int failures = 0;
+        auto check = [&] (const char* name, bool ok, const char* detail) {
+            std::printf ("  %-44s %s  %s\n", name, ok ? "OK  " : "FAIL", detail);
+            if (! ok) ++failures; };
+        auto cables = [] (std::initializer_list<std::pair<Jack, Jack>> list) {
+            PatchState ps; for (auto& [a, b] : list) ps.add (a, b); return ps; };
+        auto run = [&] (const Params& p, const PatchState& ps, std::initializer_list<std::pair<int, int>> keys, double seconds,
+                        std::vector<float>* probe = nullptr, Jack probeJack = Jack::KbOut, int vel = 100) {
+            Engine e; e.prepare (fs, 2); e.setParams (p); e.setPatch (ps);
+            const int total = (int) (seconds * fs);
+            std::vector<float> out ((size_t) total);
+            for (auto [note, v] : keys) e.noteOn (note, v > 0 ? v : vel);
+            const int block = probe ? 1 : 64;
+            for (int pos = 0; pos < total; pos += block)
+            {
+                e.process (out.data() + pos, std::min (block, total - pos));
+                if (probe) probe->push_back (e.outputVolts (probeJack));
+            }
+            return out; };
+        auto rmsOf = [] (const std::vector<float>& x, size_t from) {
+            double a = 0; for (size_t i = from; i < x.size(); ++i) a += (double) x[i] * x[i]; return std::sqrt (a / (double) (x.size() - from)); };
+        auto brightness = [&] (const std::vector<float>& x, size_t from) {      // rms of the first difference / rms
+            double a = 0, b = 0; for (size_t i = from + 1; i < x.size(); ++i) { const double d = x[i] - x[i - 1]; a += d * d; b += (double) x[i] * x[i]; }
+            return std::sqrt (a / std::max (b, 1.0e-12)); };
+        auto pitchHz = [&] (const std::vector<float>& y) {
+            int c = 0; double t0 = 0, t1 = 0;
+            for (size_t i = y.size() / 2 + 1; i < y.size(); ++i)
+                if (y[i - 1] < 0 && y[i] >= 0) { const double t = (double) i - 1 + y[i - 1] / (y[i - 1] - y[i]); if (! c) t0 = t; t1 = t; ++c; }
+            return c > 1 ? (c - 1) / ((t1 - t0) / fs) : 0.0; };
+        auto maxDiff = [] (const std::vector<float>& a, const std::vector<float>& b) {
+            double m = 0; for (size_t i = 0; i < a.size(); ++i) m = std::max (m, (double) std::abs (a[i] - b[i])); return m; };
+        char buf[160];
+
+        std::printf ("Patch panel (41 points: %d inputs, %d outputs, 4 mult):\n", kNumInputs, kNumOutputs);
+        check ("jack counts", kNumJacks == 41 && kNumInputs == 21 && kNumOutputs == 16, "21 + 16 + 4 mult");
+        {   // serialisation
+            PatchState a = cables ({ { Jack::Osc2WaveOut, Jack::HpfIn }, { Jack::HpfOut, Jack::MixOsc2In }, { Jack::KbOut, Jack::Mult1 }, { Jack::Mult2, Jack::ModRateIn } });
+            const auto b = PatchState::fromString (a.toString());
+            check ("save / load of cables", a.toString() == b.toString() && b.count == 4, a.toString().c_str());
+        }
+
+        Params base; base.osc1Octave = 2; base.osc1Wave = 1; base.mixOsc1 = 0.5f; base.cutoff = 0.7f; base.drift = 0.0f; base.sustain = 1.0f;
+        const auto ref = run (base, PatchState(), { { 60, 0 } }, 1.0);
+
+        // normalled connections re-made with cables must (almost) reproduce the hard-wired path
+        {
+            auto y = run (base, cables ({ { Jack::MixerOut, Jack::FilterIn } }), { { 60, 0 } }, 1.0);
+            const double d = maxDiff (ref, y);
+            std::snprintf (buf, sizeof buf, "max difference %.2e", d);
+            check ("MIXER OUT -> FILTER IN equals normalled", d < 1.0e-4, buf);
+        }
+        {
+            auto y = run (base, cables ({ { Jack::Osc1WaveOut, Jack::MixOsc1In } }), { { 60, 0 } }, 1.0);
+            const double d = maxDiff (ref, y) / rmsOf (ref, 0);
+            std::snprintf (buf, sizeof buf, "max difference %.2f of rms (AC coupling + 1 sample delay)", d);
+            check ("OSC 1 WAVE OUT -> MIXER OSC 1 IN", d < 0.08, buf);
+        }
+        {
+            auto y = run (base, cables ({ { Jack::GateOut, Jack::EnvTriggerIn } }), { { 60, 0 } }, 1.0);
+            const double d = maxDiff (ref, y) / rmsOf (ref, 0);
+            std::snprintf (buf, sizeof buf, "max difference %.3f of rms", d);
+            check ("GATE OUT -> TRIGGER IN equals normalled", d < 0.03, buf);
+        }
+        {   // 1 V/oct: KB OUT (note 72 = +1 V) into OSC 1 PITCH IN through the mult doubles the pitch
+            Params q = base; q.cutoff = 1.0f; q.mixOsc1 = 0.3f; q.osc1Wave = 0;
+            const double f0 = pitchHz (run (q, PatchState(), { { 72, 0 } }, 1.5));
+            const double f1 = pitchHz (run (q, cables ({ { Jack::KbOut, Jack::Mult1 }, { Jack::Mult2, Jack::Osc1PitchIn } }), { { 72, 0 } }, 1.5));
+            std::snprintf (buf, sizeof buf, "%.1f Hz -> %.1f Hz (x%.3f)", f0, f1, f1 / f0);
+            check ("KB OUT -> mult -> OSC 1 PITCH IN (1 V/oct)", std::abs (f1 / f0 - 2.0) < 0.01, buf);
+        }
+        {   // High pass patched into the mixer removes bass
+            Params q = base; q.mixOsc1 = 0.0f; q.mixOsc2 = 0.5f; q.osc2Octave = 0; q.cutoff = 1.0f;
+            const auto cab = cables ({ { Jack::Osc2WaveOut, Jack::HpfIn }, { Jack::HpfOut, Jack::MixOsc2In } });
+            q.hpCutoff = 0.0f; const double lo = rmsOf (run (q, cab, { { 36, 0 } }, 1.0), fs / 2);
+            q.hpCutoff = 0.8f; const double hi = rmsOf (run (q, cab, { { 36, 0 } }, 1.0), fs / 2);
+            std::snprintf (buf, sizeof buf, "rms %.3f -> %.3f with the knob up", lo, hi);
+            check ("HIGH PASS in the oscillator 2 path", hi < 0.5 * lo, buf);
+        }
+        {   // LFO into VCA AMT IN: tremolo in DRONE mode
+            Params q = base; q.vcaMode = 2; q.lfoRate = 0.45f; q.lfoWave = 0;
+            auto plain = run (q, PatchState(), { { 48, 0 } }, 2.0);
+            auto trem = run (q, cables ({ { Jack::ModWaveOut, Jack::VcaAmtIn } }), { { 48, 0 } }, 2.0);
+            auto spread = [&] (const std::vector<float>& x) {
+                double lo = 1e9, hi = 0; const size_t w = (size_t) fs / 50;
+                for (size_t i = (size_t) fs / 2; i + w < x.size(); i += w) { double a = 0; for (size_t k = 0; k < w; ++k) a += (double) x[i + k] * x[i + k]; a = std::sqrt (a / (double) w); lo = std::min (lo, a); hi = std::max (hi, a); }
+                return hi / std::max (lo, 1.0e-9); };
+            std::snprintf (buf, sizeof buf, "level ripple x%.1f (plain x%.2f)", spread (trem), spread (plain));
+            check ("MOD WAVE OUT -> VCA AMT IN (tremolo)", spread (trem) > 4.0 && spread (plain) < 1.3, buf);
+        }
+        {   // Velocity -> cutoff
+            Params q = base; q.cutoff = 0.35f; q.mixOsc1 = 0.5f;
+            const auto cab = cables ({ { Jack::KbVelOut, Jack::FilterCutoffIn } });
+            const double soft = brightness (run (q, cab, { { 48, 20 } }, 1.0), fs / 2), hard = brightness (run (q, cab, { { 48, 127 } }, 1.0), fs / 2);
+            const double none = brightness (run (q, PatchState(), { { 48, 20 } }, 1.0), fs / 2);
+            std::snprintf (buf, sizeof buf, "brightness: no cable %.3f, soft key %.3f, hard key %.3f", none, soft, hard);
+            check ("KB VEL OUT -> CUTOFF IN", hard > 1.5 * soft, buf);
+        }
+        {   // Attenuator: centre = 0 V, +1 = +8 V, -1 = -8 V (input normalled to +8 V)
+            std::vector<float> pr; Params q = base;
+            q.attenuator = 1.0f; run (q, cables ({ { Jack::AttenuatorOut, Jack::FilterCutoffIn } }), { { 48, 0 } }, 0.05, &pr, Jack::AttenuatorOut);
+            const float up = pr.back(); pr.clear();
+            q.attenuator = -1.0f; run (q, cables ({ { Jack::AttenuatorOut, Jack::FilterCutoffIn } }), { { 48, 0 } }, 0.05, &pr, Jack::AttenuatorOut);
+            const float dn = pr.back(); pr.clear();
+            q.attenuator = 0.0f; run (q, cables ({ { Jack::AttenuatorOut, Jack::FilterCutoffIn } }), { { 48, 0 } }, 0.05, &pr, Jack::AttenuatorOut);
+            std::snprintf (buf, sizeof buf, "%+.2f V / %+.2f V / %+.2f V at +1 / -1 / 0", up, dn, pr.back());
+            check ("ATTENUATOR (bipolar, normalled to +8 V)", std::abs (up - 8.0f) < 0.01f && std::abs (dn + 8.0f) < 0.01f && std::abs (pr.back()) < 0.01f, buf);
+        }
+        {   // Keyboard outputs
+            std::vector<float> g, v, k; Params q = base;
+            run (q, cables ({ { Jack::GateOut, Jack::AttenuatorIn } }), { { 60, 127 } }, 0.05, &g, Jack::GateOut);
+            run (q, cables ({ { Jack::KbVelOut, Jack::AttenuatorIn } }), { { 60, 64 } }, 0.05, &v, Jack::KbVelOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 72, 0 } }, 0.05, &k, Jack::KbOut);
+            std::snprintf (buf, sizeof buf, "gate %.1f V, velocity 64 -> %.2f V, note 72 -> %.2f V", g.back(), v.back(), k.back());
+            check ("GATE / KB VEL / KB OUT levels", std::abs (g.back() - 8.0f) < 0.01f && std::abs (v.back() - 2.52f) < 0.02f && std::abs (k.back() - 1.0f) < 0.01f, buf);
+        }
+        {   // LFO rate follows the keyboard (1 V/oct) when KB OUT is patched into RATE IN
+            std::vector<float> w0, w1; Params q = base; q.lfoRate = 0.55f;
+            const auto cab = cables ({ { Jack::ModWaveOut, Jack::AttenuatorIn } });
+            run (q, cab, {}, 3.0, &w0, Jack::ModWaveOut);
+            const auto cab2 = cables ({ { Jack::ModWaveOut, Jack::AttenuatorIn }, { Jack::KbOut, Jack::ModRateIn } });
+            std::vector<float> a, b2;
+            run (q, cab2, { { 60, 0 } }, 3.0, &a, Jack::ModWaveOut);
+            run (q, cab2, { { 72, 0 } }, 3.0, &b2, Jack::ModWaveOut);
+            auto freq = [&] (const std::vector<float>& x) { int c = 0; for (size_t i = 1; i < x.size(); ++i) if (x[i - 1] < 0 && x[i] >= 0) ++c; return c / 3.0; };
+            std::snprintf (buf, sizeof buf, "%.2f Hz (C4) -> %.2f Hz (C5), free-running %.2f Hz", freq (a), freq (b2), freq (w0));
+            check ("KB OUT -> RATE IN (LFO tracks keyboard)", std::abs (freq (b2) / freq (a) - 2.0) < 0.05, buf);
+        }
+        {   // S/H is sampled again every time SYNC IN restarts the LFO (GATE OUT -> SYNC IN: a new random value per key)
+            Engine e; e.prepare (fs, 2); Params q = base; q.lfoRate = 0.0f; e.setParams (q);
+            e.setPatch (cables ({ { Jack::GateOut, Jack::ModSyncIn }, { Jack::ModShOut, Jack::AttenuatorIn } }));
+            std::vector<float> o (fs / 4); std::vector<float> seen;
+            for (int k = 0; k < 6; ++k)
+            {
+                e.noteOn (60 + k); e.process (o.data(), (int) o.size()); seen.push_back (e.outputVolts (Jack::ModShOut));
+                e.noteOff (60 + k); e.process (o.data(), (int) o.size());
+            }
+            int distinct = 0; for (size_t i = 0; i < seen.size(); ++i) { bool dup = false; for (size_t j = 0; j < i; ++j) if (std::abs (seen[i] - seen[j]) < 1e-4f) dup = true; if (! dup) ++distinct; }
+            std::snprintf (buf, sizeof buf, "%d different S/H values in 6 key presses", distinct);
+            check ("GATE OUT -> SYNC IN re-samples S/H", distinct >= 5, buf);
+        }
+        {   // Clock out: 120 BPM, PPQN 2 -> 4 pulses per second
+            Engine e; e.prepare (fs, 2); Params q = base; e.setParams (q); e.setPatch (cables ({ { Jack::ClockOut, Jack::AttenuatorIn } }));
+            ArpSeqParams ap; ap.rate = ArpSeq::knobForBpm (120.0f); e.setArpParams (ap);
+            std::vector<float> o (fs * 3); int edges = 0; bool high = false;
+            for (int pos = 0; pos < (int) o.size(); ++pos) { e.process (o.data() + pos, 1); const bool h = e.outputVolts (Jack::ClockOut) > 2.5f; if (h && ! high) ++edges; high = h; }
+            std::snprintf (buf, sizeof buf, "%d pulses in 3 s (expect 12)", edges);
+            check ("CLOCK OUT (120 BPM, 2 PPQN)", edges >= 11 && edges <= 13, buf);
+        }
+        {   // Clock in / on-off in / reset in drive the arpeggiator
+            ArpSeq a; a.prepare (48000.0f);
+            ArpSeqParams ap; ap.play = false; ap.mode = 0; ap.freeStep = 1; ap.extPpqn = 2; a.setParams (ap);
+            a.keyOn (60); a.keyOn (64); a.keyOn (67);
+            a.setExternalControl (true, true, true);                // clock patched, ON/OFF high
+            std::vector<int> notes, at; ArpSeq::Event ev[4];
+            for (int i = 0; i < 48000; ++i)
+            {
+                if (i % 12000 == 100) a.externalClockEdge();         // 4 edges per second = 120 BPM at 2 PPQN
+                const int n = a.tick (ev);
+                for (int k = 0; k < n; ++k) if (ev[k].type == 1) { notes.push_back (ev[k].note); at.push_back (i); }
+            }
+            std::snprintf (buf, sizeof buf, "notes %d %d %d %d at %d %d %d %d", notes.size() > 0 ? notes[0] : 0, notes.size() > 1 ? notes[1] : 0,
+                           notes.size() > 2 ? notes[2] : 0, notes.size() > 3 ? notes[3] : 0, at.size() > 0 ? at[0] : 0, at.size() > 1 ? at[1] : 0,
+                           at.size() > 2 ? at[2] : 0, at.size() > 3 ? at[3] : 0);
+            check ("CLOCK IN + ON/OFF IN start the arpeggiator", notes.size() == 4 && notes[0] == 60 && notes[1] == 64 && notes[2] == 67 && notes[3] == 60 && at[1] - at[0] == 12000, buf);
+
+            ArpSeq b; b.prepare (48000.0f);
+            ap.extStepAdvance = true; b.setParams (ap);
+            b.keyOn (60); b.keyOn (64); b.keyOn (67);
+            b.setExternalControl (true, true, true);
+            std::vector<int> n2;
+            for (int i = 0; i < 20000; ++i)
+            {
+                if (i == 100 || i == 5000 || i == 5100 || i == 9000) b.externalClockEdge();   // irregular edges
+                if (i == 9500) b.resetPattern();
+                if (i == 12000) b.externalClockEdge();
+                const int n = b.tick (ev);
+                for (int k = 0; k < n; ++k) if (ev[k].type == 1) n2.push_back (ev[k].note);
+            }
+            std::snprintf (buf, sizeof buf, "%zu steps: %d %d %d %d %d", n2.size(), n2.size() > 0 ? n2[0] : 0, n2.size() > 1 ? n2[1] : 0,
+                           n2.size() > 2 ? n2[2] : 0, n2.size() > 3 ? n2[3] : 0, n2.size() > 4 ? n2[4] : 0);
+            // 4 edges walk 60 64 67 60; RESET IN sends the pattern back to its first note, so the next edge plays 60 again
+            check ("STEP-ADVANCE + RESET IN", n2.size() == 5 && n2[0] == 60 && n2[1] == 64 && n2[2] == 67 && n2[3] == 60 && n2[4] == 60, buf);
+        }
+        {   // Local Off: the keyboard no longer plays the internal voice; KB / GATE OUT still work and cables restore it
+            Params q = base; q.localOn = false;
+            std::vector<float> g, k;
+            const double silent = rmsOf (run (q, PatchState(), { { 60, 0 } }, 1.0), 0);
+            const double viaCable = rmsOf (run (q, cables ({ { Jack::GateOut, Jack::EnvTriggerIn } }), { { 60, 0 } }, 1.0), 0);
+            run (q, cables ({ { Jack::GateOut, Jack::AttenuatorIn } }), { { 60, 0 } }, 0.05, &g, Jack::GateOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 72, 0 } }, 0.05, &k, Jack::KbOut);
+            std::snprintf (buf, sizeof buf, "silent %.5f, GATE OUT -> TRIGGER IN %.3f, gate %.1f V, KB OUT %.2f V", silent, viaCable, g.back(), k.back());
+            check ("LOCAL OFF", silent < 1.0e-3 && viaCable > 0.05 && std::abs (g.back() - 8.0f) < 0.01f && std::abs (k.back() - 1.0f) < 0.01f, buf);
+        }
+        {   // KB OUT range 0…+10 V
+            std::vector<float> a, b2, c; Params q = base; q.kbOutRange = 1;
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 60, 0 } }, 0.05, &a, Jack::KbOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 72, 0 } }, 0.05, &b2, Jack::KbOut);
+            run (q, cables ({ { Jack::KbOut, Jack::AttenuatorIn } }), { { 0, 0 } }, 0.05, &c, Jack::KbOut);
+            std::snprintf (buf, sizeof buf, "note 60 %.2f V, note 72 %.2f V, note 0 %.2f V", a.back(), b2.back(), c.back());
+            check ("KB OUT range 0 ... +10 V", std::abs (a.back() - 5.0f) < 0.01f && std::abs (b2.back() - 6.0f) < 0.01f && std::abs (c.back() - 0.0f) < 0.01f, buf);
+        }
+        {   // Extra outputs: EURORACK OUT ignores VOLUME, REVERB OUT is the tank at 100 % wet whatever the MIX knob says
+            auto measure = [&] (float volume, double& mainRms, double& euroRms, double& revRms) {
+                Engine e; e.prepare (fs, 2); Params q = base; q.volume = volume; q.reverbMix = 0.0f; e.setParams (q); e.noteOn (48);
+                std::vector<float> m (fs), eu (fs), rv (fs);
+                for (int pos = 0; pos < fs; pos += 64) e.process (m.data() + pos, nullptr, 64, eu.data() + pos, rv.data() + pos);
+                mainRms = rmsOf (m, fs / 2); euroRms = rmsOf (eu, fs / 2); revRms = rmsOf (rv, fs / 2); };
+            double m1, e1, r1, m2, e2, r2;
+            measure (0.9f, m1, e1, r1); measure (0.45f, m2, e2, r2);
+            std::snprintf (buf, sizeof buf, "main %.3f -> %.3f, euro %.3f -> %.3f, reverb out %.3f (MIX = 0)", m1, m2, e1, e2, r1);
+            check ("EURORACK OUT / REVERB OUT buses", std::abs (e1 - e2) < 1.0e-4 && m2 < 0.5 * m1 && r1 > 0.02, buf);
+        }
+        {   // Fuzz: random cables and parameters, 60 s
+            Engine e; e.prepare (fs, 2); Rng r; r.seed (777);
+            std::vector<float> o (256); double maxAbs = 0; bool bad = false;
+            for (int blk = 0; blk < fs * 60 / 256; ++blk)
+            {
+                if (blk % 40 == 0)
+                {
+                    PatchState ps; const int n = (int) (r.unipolar() * 12);
+                    for (int i = 0; i < n; ++i) ps.add ((Jack) (int) (r.unipolar() * kNumJacks), (Jack) (int) (r.unipolar() * kNumJacks));
+                    e.setPatch (ps);
+                    Params q; q.osc1Octave = (int) (r.unipolar() * 4); q.osc2Octave = (int) (r.unipolar() * 4);
+                    q.osc1Wave = (int) (r.unipolar() * 4); q.osc2Wave = (int) (r.unipolar() * 4); q.osc2Sync = r.unipolar() > 0.5f;
+                    q.mixOsc1 = r.unipolar(); q.mixOsc2 = r.unipolar(); q.mixNoise = r.unipolar();
+                    q.lfoRate = r.unipolar(); q.lfoWave = (int) (r.unipolar() * 4); q.modWheel = r.unipolar();
+                    q.lfoPitchAmt = r.unipolar(); q.lfoCutoffAmt = r.unipolar(); q.lfoPwAmt = r.unipolar();
+                    q.cutoff = r.unipolar(); q.resonance = r.unipolar(); q.envAmt = r.bipolar(); q.kbdTrack = (int) (r.unipolar() * 3);
+                    q.attack = r.unipolar(); q.decay = r.unipolar(); q.sustain = r.unipolar(); q.release = r.unipolar();
+                    q.vcaMode = (int) (r.unipolar() * 3); q.reverbMix = r.unipolar(); q.volume = 1.0f;
+                    q.hpCutoff = r.unipolar(); q.attenuator = r.bipolar();
+                    e.setParams (q);
+                    ArpSeqParams ap; ap.play = r.unipolar() > 0.5f; ap.mode = (int) (r.unipolar() * 2); ap.rate = r.unipolar();
+                    e.setArpParams (ap);
+                    if (r.unipolar() > 0.4f) e.noteOn (24 + (int) (r.unipolar() * 84), 1 + (int) (r.unipolar() * 126)); else e.allNotesOff();
+                }
+                e.process (o.data(), (int) o.size());
+                for (float v : o) { if (! std::isfinite (v)) bad = true; maxAbs = std::max (maxAbs, (double) std::abs (v)); }
+            }
+            std::snprintf (buf, sizeof buf, "max |out| %.3f", maxAbs);
+            check ("fuzz: 60 s of random cables and parameters", ! bad && maxAbs <= 1.21, buf);
+        }
+        std::printf ("  patch panel tests: %s\n", failures == 0 ? "ALL PASSED" : "FAILURES");
     }
 
     // ---------------- 5c. Arpeggiator / sequencer logic -------------------------------------

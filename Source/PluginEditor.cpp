@@ -1,183 +1,135 @@
 #include "PluginEditor.h"
+#include "ui/Overlays.h"
 
-namespace
-{
-    const juce::Colour kBg      { 0xff1d1b1a };
-    const juce::Colour kPanel   { 0xff2b2725 };
-    const juce::Colour kAccent  { 0xffd9772b };
-    const juce::Colour kText    { 0xffece3d8 };
-    constexpr int kCell = 86, kCellH = 96, kHeader = 26, kPad = 8;
-}
+using namespace babushka::ui;
 
 BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p), processor (p)
 {
-    lnf.setColour (juce::Slider::rotarySliderFillColourId, kAccent);
-    lnf.setColour (juce::Slider::thumbColourId, kAccent);
-    lnf.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    lnf.setColour (juce::ComboBox::backgroundColourId, kBg);
-    lnf.setColour (juce::ComboBox::outlineColourId, kAccent.withAlpha (0.5f));
-    lnf.setColour (juce::Label::textColourId, kText);
-    lnf.setColour (juce::ToggleButton::tickColourId, kAccent);
-    setLookAndFeel (&lnf);
+    setOpaque (true);
+    skinIndex() = juce::jlimit (0, (int) skins().size() - 1, uiSettings.getIntValue ("skin", 0));
+    bubble = std::make_unique<HintBubble>();
+    cables = std::make_unique<CableLayer> (p);
+    cables->hints = this;
+    cables->setBounds (0, 0, kW, kH);
 
-    addSection ("MODULATION",  { "lfoRate", "lfoWave", "lfoPitchAmt", "lfoCutoffAmt", "lfoPwAmt", "modWheel" });
-    addSection ("OSCILLATOR 1", { "osc1Octave", "osc1Wave" });
-    addSection ("OSCILLATOR 2", { "osc2Octave", "osc2Wave", "osc2Freq", "osc2Sync" });
-    addSection ("MIXER",       { "mixOsc1", "mixOsc2", "mixNoise", "extLevel" });
-    addSection ("FILTER",      { "cutoff", "resonance", "kbdTrack", "envAmt" });
-    addSection ("ENVELOPE",    { "attack", "decay", "sustain", "release" });
-    addSection ("OUTPUT",      { "vcaMode", "reverbMix", "volume" });
-    addSection ("CONTROLLER / GLOBAL", { "glide", "glideType", "legatoGlide", "bendRange", "notePriority", "fineTune", "drift", "oversampling" });
-    addSection ("ARP / SEQ",   { "arpPlay", "arpHold", "arpMode", "arpDirection", "arpOctSeq", "arpRate", "arpSync", "arpFreeStep" });
-
-    for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton })
-    {
-        b->setColour (juce::TextButton::buttonColourId, kBg);
-        b->setColour (juce::TextButton::textColourOffId, kText);
-        addAndMakeVisible (*b);
-    }
-    tapButton.onClick    = [this] { handleTap(); };
-    tieButton.onClick    = [this] { processor.requestRecTie(); };
-    restButton.onClick   = [this] { processor.requestRecRest(); };
-    accentButton.onClick = [this] { processor.requestRecAccent(); };
-    tieButton.setTooltip ("REC mode: extend the last note by one step");
-    restButton.setTooltip ("REC mode: add a rest");
-    accentButton.setTooltip ("REC mode: accent the next note");
-    arpInfo.setFont (juce::FontOptions (12.0f));
-    arpInfo.setColour (juce::Label::textColourId, kText.withAlpha (0.8f));
-    addAndMakeVisible (arpInfo);
-
-    auto& arpSection = sections.back();
-    arpSection.extraHeight = 58;
-    arpSection.layoutExtra = [this] (juce::Rectangle<int> r) {
-        auto row = r.removeFromTop (26);
-        const int w = row.getWidth() / 4;
-        for (auto* b : { &tapButton, &tieButton, &restButton, &accentButton })
-            b->setBounds (row.removeFromLeft (w).reduced (3, 0));
-        arpInfo.setBounds (r.reduced (3, 2));
-    };
+    addAndMakeVisible (content);
+    content.setBounds (0, 0, kW, kH);
+    buildPanel();
+    content.addAndMakeVisible (*cables);
+    backdrop = std::make_unique<Backdrop>();
+    backdrop->onClick = [this] { showPresets (false); showSettings (false); };
+    backdrop->setBounds (0, 0, kW, kH);
+    content.addChildComponent (*backdrop);
+    content.addChildComponent (*bubble);
 
     setResizable (true, true);
-    setResizeLimits (720, 480, 1800, 1400);
-    setSize (1040, 940);
-    startTimerHz (10);
-    timerCallback();
+    setResizeLimits (kW * 3 / 5, kH * 3 / 5, kW * 5 / 4, kH * 5 / 4);
+    getConstrainer()->setFixedAspectRatio ((double) kW / (double) kH);
+    setSize ((int) (kW * 0.8), (int) (kH * 0.8));
 }
 
-BabushkaEditor::~BabushkaEditor() { stopTimer(); setLookAndFeel (nullptr); }
+BabushkaEditor::~BabushkaEditor() = default;
 
-void BabushkaEditor::timerCallback()
+juce::PropertiesFile::Options BabushkaEditor::uiSettingsOptions()
 {
-    const int mode = (int) processor.apvts.getRawParameterValue ("arpMode")->load();
-    juce::String t = processor.getArpRateText();
-    if (mode != 0)
-        t << "   |   seq " << (int) processor.apvts.getRawParameterValue ("arpOctSeq")->load() + 1
-          << ": " << processor.getCurrentSequenceLength() << " / 256 steps";
-    if (mode == 2) t << "   |   REC: play keys to enter notes";
-    arpInfo.setText (t, juce::dontSendNotification);
+    juce::PropertiesFile::Options o;
+    o.applicationName = "Babushka";
+    o.filenameSuffix = ".settings";
+    o.folderName = "Babushka";
+    o.osxLibrarySubFolder = "Application Support";
+    o.commonToAllUsers = false;
+    return o;
 }
 
-// TAP: at least three taps in a row set the free tempo (as on the hardware).
-void BabushkaEditor::handleTap()
+// The panel holds all of the printed artwork, so a change of skin simply builds a new one (cables keep their state).
+void BabushkaEditor::buildPanel()
 {
-    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    if (! tapTimes.isEmpty() && now - tapTimes.getLast() > 2.0) tapTimes.clear();
-    tapTimes.add (now);
-    if (tapTimes.size() > 4) tapTimes.remove (0);
-    if (tapTimes.size() >= 3)
-    {
-        const double avg = (tapTimes.getLast() - tapTimes.getFirst()) / (tapTimes.size() - 1);
-        if (avg > 0.0) processor.setArpTempoFromTap (60.0 / avg);
-    }
+    if (panel != nullptr) content.removeChildComponent (panel.get());
+    babushka::ui::HintSink& sink = *this;
+    panel = std::make_unique<SynthPanel> (processor, sink,
+                                          [this] { processor.stepPreset (-1); },
+                                          [this] { processor.stepPreset (+1); },
+                                          [this] { showPresets (true); },
+                                          [this] { showSettings (true); });
+    content.addAndMakeVisible (*panel, 0);
+    cables->setJacks (panel->jackSites());
 }
 
-void BabushkaEditor::addSection (const juce::String& title, std::initializer_list<const char*> paramIds)
+void BabushkaEditor::setSkin (int index)
 {
-    Section s; s.title = title;
-    for (auto* id : paramIds)
-    {
-        auto* param = processor.apvts.getParameter (id);
-        jassert (param != nullptr);
-        auto c = std::make_unique<Control>();
-        c->paramId = id;
-        c->label = std::make_unique<juce::Label> (juce::String(), param->getName (32));
-        c->label->setJustificationType (juce::Justification::centred);
-        c->label->setFont (juce::FontOptions (12.0f));
-
-        if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (param))
-        {
-            auto box = std::make_unique<juce::ComboBox>();
-            box->addItemList (choice->choices, 1);
-            c->comboAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (processor.apvts, id, *box);
-            c->widget = std::move (box);
-        }
-        else if (dynamic_cast<juce::AudioParameterBool*> (param) != nullptr)
-        {
-            auto b = std::make_unique<juce::ToggleButton> ("on");
-            c->buttonAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, id, *b);
-            c->widget = std::move (b);
-        }
-        else
-        {
-            auto sl = std::make_unique<juce::Slider> (juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
-            sl->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 16);
-            sl->setNumDecimalPlacesToDisplay (2);
-            c->sliderAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (processor.apvts, id, *sl);
-            sl->setDoubleClickReturnValue (true, param->convertFrom0to1 (param->getDefaultValue()));
-            c->widget = std::move (sl);
-        }
-        addAndMakeVisible (*c->widget);
-        addAndMakeVisible (*c->label);
-        s.controls.push_back (std::move (c));
-    }
-    sections.push_back (std::move (s));
+    index = juce::jlimit (0, (int) skins().size() - 1, index);
+    if (index == skinIndex()) return;
+    skinIndex() = index;
+    uiSettings.setValue ("skin", index);
+    uiSettings.saveIfNeeded();
+    hideHint();
+    buildPanel();
+    content.repaint();
 }
 
-void BabushkaEditor::paint (juce::Graphics& g)
-{
-    g.fillAll (kBg);
-    g.setColour (kAccent);
-    g.setFont (juce::FontOptions (22.0f, juce::Font::bold));
-    g.drawText ("BABUSHKA", 14, 6, 300, 30, juce::Justification::centredLeft);
-    g.setColour (kText.withAlpha (0.55f));
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("semi-modular analog voice  |  core build 0.1", 170, 6, 400, 30, juce::Justification::centredLeft);
+void BabushkaEditor::paint (juce::Graphics& g) { g.fillAll (juce::Colour (0xff070707)); }
 
-    for (auto& s : sections)
-    {
-        g.setColour (kPanel);
-        g.fillRoundedRectangle (s.bounds.toFloat(), 6.0f);
-        g.setColour (kAccent);
-        g.setFont (juce::FontOptions (12.5f, juce::Font::bold));
-        g.drawText (s.title, s.bounds.getX() + 10, s.bounds.getY() + 4, s.bounds.getWidth() - 20, 18, juce::Justification::centredLeft);
-    }
-}
+
 
 void BabushkaEditor::resized()
 {
-    // Flow layout: sections wrap across rows; each section is a grid of cells.
-    const int top = 42, width = getWidth() - 2 * kPad;
-    int x = kPad, y = top, rowH = 0;
-    for (auto& s : sections)
-    {
-        const int n = (int) s.controls.size();
-        const int cols = std::min (n, 4);
-        const int rows = (n + cols - 1) / cols;
-        const int w = cols * kCell + 12, h = kHeader + rows * kCellH + 6 + s.extraHeight;
-        if (x + w > kPad + width) { x = kPad; y += rowH + kPad; rowH = 0; }
-        s.bounds = { x, y, w, h };
-        for (int i = 0; i < n; ++i)
-        {
-            auto& c = *s.controls[(size_t) i];
-            const int cx = x + 6 + (i % cols) * kCell, cy = y + kHeader + (i / cols) * kCellH;
-            c.label->setBounds (cx, cy, kCell, 16);
-            const bool isKnob = dynamic_cast<juce::Slider*> (c.widget.get()) != nullptr;
-            if (isKnob) c.widget->setBounds (cx + 4, cy + 16, kCell - 8, kCellH - 20);
-            else        c.widget->setBounds (cx + 4, cy + 34, kCell - 8, 24);
-        }
-        if (s.layoutExtra)
-            s.layoutExtra ({ x + 6, y + kHeader + rows * kCellH, w - 12, s.extraHeight });
-        x += w + kPad;
-        rowH = std::max (rowH, h);
-    }
+    const float s = (float) getWidth() / (float) kW;
+    content.setTransform (juce::AffineTransform::scale (s));
+    content.setBounds (0, 0, kW, kH);
 }
+
+// Dialogs sit over the instrument on a dimmed backdrop.
+void BabushkaEditor::showPresets (bool show)
+{
+    if (show && presets == nullptr)
+    {
+        presets = std::make_unique<PresetOverlay> (processor);
+        presets->onClose = [this] { showPresets (false); };
+        content.addChildComponent (*presets);
+    }
+    if (settings != nullptr && show) showSettings (false);
+    if (presets != nullptr)
+    {
+        presets->setCentrePosition (kW / 2, kH / 2);
+        presets->setVisible (show);
+        if (show) presets->toFront (true);
+    }
+    updateBackdrop();
+}
+
+void BabushkaEditor::updateBackdrop()
+{
+    const bool on = (presets != nullptr && presets->isVisible()) || (settings != nullptr && settings->isVisible());
+    backdrop->setVisible (on);
+    if (on) backdrop->toFront (false);
+    if (presets != nullptr && presets->isVisible()) presets->toFront (false);
+    if (settings != nullptr && settings->isVisible()) settings->toFront (false);
+    bubble->toFront (false);
+}
+
+void BabushkaEditor::showSettings (bool show)
+{
+    if (show && settings == nullptr)
+    {
+        settings = std::make_unique<SettingsOverlay> (processor);
+        settings->onClose = [this] { showSettings (false); };
+        settings->onSkinChange = [this] (int index) { setSkin (index); };
+        content.addChildComponent (*settings);
+    }
+    if (presets != nullptr && show) showPresets (false);
+    if (settings != nullptr)
+    {
+        settings->setCentrePosition (kW / 2, kH / 2);
+        settings->setVisible (show);
+        if (show) settings->toFront (true);
+    }
+    updateBackdrop();
+}
+
+void BabushkaEditor::showHint (juce::Component&, const juce::String& text)
+{
+    const auto mouse = content.getLocalPoint (nullptr, juce::Desktop::getInstance().getMainMouseSource().getScreenPosition());
+    bubble->show (text, mouse);
+}
+
+void BabushkaEditor::hideHint() { bubble->hide(); }

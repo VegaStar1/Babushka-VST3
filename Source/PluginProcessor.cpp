@@ -36,6 +36,7 @@ namespace ids
     // Output
     static constexpr const char* vcaMode   = "vcaMode";
     static constexpr const char* reverbMix = "reverbMix";
+    static constexpr const char* reverbDecay = "reverbDecay";
     static constexpr const char* volume    = "volume";
     // Left-hand controller / global
     static constexpr const char* glide        = "glide";
@@ -57,6 +58,16 @@ namespace ids
     static constexpr const char* arpRate     = "arpRate";
     static constexpr const char* arpSync     = "arpSync";
     static constexpr const char* arpFreeStep = "arpFreeStep";
+    // Utilities (patchable)
+    static constexpr const char* hpCutoff   = "hpCutoff";
+    static constexpr const char* attenuator = "attenuator";
+    // Global clock settings (CLOCK IN / CLOCK OUT jacks)
+    static constexpr const char* extClockMode = "extClockMode";
+    static constexpr const char* extClockPpqn = "extClockPpqn";
+    static constexpr const char* clockOutPpqn = "clockOutPpqn";
+    // Global settings (manual p. 38)
+    static constexpr const char* localOn    = "localOn";
+    static constexpr const char* kbOutRange = "kbOutRange";
 }
 
 APVTS::ParameterLayout BabushkaProcessor::createLayout()
@@ -109,6 +120,13 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     // Output
     choice (ids::vcaMode, "VCA Mode", { "ENV", "KB RLS", "DRONE" }, 0);
     knob (ids::reverbMix, "Spring Reverb Mix", 0.0f);
+    {   // plugin-only: length of the spring tail, 1 = the hardware tank
+        NormalisableRange<float> range (0.3f, 2.5f);
+        range.setSkewForCentre (1.0f);
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ids::reverbDecay, 1 }, "Spring Reverb Decay", range, 1.0f,
+                                                            AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) {
+                                                                return "x" + String (v, 2) + (std::abs (v - 1.0f) < 0.005f ? " (stock)" : ""); })));
+    }
     knob (ids::volume, "Volume", 0.8f);
 
     // Left-hand controller / global settings
@@ -123,6 +141,12 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     knob (ids::drift, "Analog Drift", 0.25f);
     choice (ids::oversampling, "Quality", { "Eco (1x)", "Normal (2x)", "High (4x)" }, 1);
 
+    // Utilities
+    knob (ids::hpCutoff, "High Pass", 0.0f);
+    p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ids::attenuator, 1 }, "Attenuator",
+                                                        NormalisableRange<float> (-1.0f, 1.0f), 0.0f,
+                                                        AudioParameterFloatAttributes().withStringFromValueFunction (twoDecimals)));
+
     // External input (rear INSTRUMENT IN → mixer). The level knob is plugin-only.
     knob (ids::extLevel, "Ext In Level", 0.5f);
 
@@ -135,12 +159,19 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     knob (ids::arpRate, "Arp/Seq Rate", babushka::dsp::ArpSeq::knobForBpm (120.0f));
     p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::arpSync, 1 }, "Arp/Seq Host Sync", false));
     choice (ids::arpFreeStep, "Free Tempo Step", { "1/4", "1/8", "1/16" }, 1);
+    choice (ids::extClockMode, "Clock In Mode", { "Clock", "Step-Advance" }, 0);
+    p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ids::extClockPpqn, 1 }, "Clock In PPQN", 1, 48, 2));
+    p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ids::clockOutPpqn, 1 }, "Clock Out PPQN", 1, 48, 2));
+    p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::localOn, 1 }, "Local On", true));
+    choice (ids::kbOutRange, "KB Out Range", { "-5 to +5 V", "0 to +10 V" }, 0);
 
     return { p.begin(), p.end() };
 }
 
 BabushkaProcessor::BabushkaProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                                       .withOutput ("Eurorack Out", juce::AudioChannelSet::mono(), false)
+                                       .withOutput ("Reverb Out", juce::AudioChannelSet::mono(), false)
                                        .withInput ("Ext In", juce::AudioChannelSet::stereo(), false)),
       apvts (*this, nullptr, "BABUSHKA", createLayout())
 {
@@ -150,7 +181,12 @@ bool BabushkaProcessor::isBusesLayoutSupported (const BusesLayout& layouts) cons
 {
     const auto out = layouts.getMainOutputChannelSet();
     const auto in  = layouts.getMainInputChannelSet();
-    const bool outOk = out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo();
+    bool outOk = out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo();
+    for (int b = 1; b < layouts.outputBuses.size(); ++b)    // Eurorack Out / Reverb Out: off, mono or stereo
+    {
+        const auto cs = layouts.getChannelSet (false, b);
+        outOk = outOk && (cs.isDisabled() || cs == juce::AudioChannelSet::mono() || cs == juce::AudioChannelSet::stereo());
+    }
     const bool inOk  = in.isDisabled() || in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::stereo();
     return outOk && inOk;
 }
@@ -163,7 +199,10 @@ void BabushkaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     currentOversampling = oversamplingFromChoice ((int) apvts.getRawParameterValue (ids::oversampling)->load());
     engine.prepare (sampleRate, currentOversampling);
     engine.setParams (readParams());
+    patchDirty.store (true);          // re-send the cables to the freshly prepared engine
     mono.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
+    euro.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
+    reverbOut.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     ext.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     {
         const juce::SpinLock::ScopedLockType lock (seqLock);
@@ -186,10 +225,13 @@ babushka::dsp::Params BabushkaProcessor::readParams() const
     p.cutoff = f (ids::cutoff); p.resonance = f (ids::resonance); p.kbdTrack = i (ids::kbdTrack); p.envAmt = f (ids::envAmt);
     p.attack = f (ids::attack); p.decay = f (ids::decay); p.sustain = f (ids::sustain); p.release = f (ids::release);
     p.vcaMode = i (ids::vcaMode); p.reverbMix = f (ids::reverbMix); p.volume = f (ids::volume);
+    p.reverbDecay = f (ids::reverbDecay);
     p.glide = f (ids::glide); p.glideType = i (ids::glideType); p.legatoGlide = f (ids::legatoGlide) > 0.5f;
     p.bendRange = i (ids::bendRange); p.notePriority = i (ids::notePriority);
     p.fineTune = f (ids::fineTune); p.drift = f (ids::drift);
     p.extLevel = f (ids::extLevel);
+    p.hpCutoff = f (ids::hpCutoff); p.attenuator = f (ids::attenuator);
+    p.localOn = f (ids::localOn) > 0.5f; p.kbOutRange = i (ids::kbOutRange);
     return p;
 }
 
@@ -201,7 +243,75 @@ babushka::dsp::ArpSeqParams BabushkaProcessor::readArpParams() const
     a.mode = (int) std::lround (f (ids::arpMode)); a.direction = (int) std::lround (f (ids::arpDir));
     a.octSeq = (int) std::lround (f (ids::arpOctSeq)); a.rate = f (ids::arpRate);
     a.freeStep = (int) std::lround (f (ids::arpFreeStep));
+    a.extStepAdvance = (int) std::lround (f (ids::extClockMode)) == 1;
+    a.extPpqn = (int) std::lround (f (ids::extClockPpqn)); a.clockOutPpqn = (int) std::lround (f (ids::clockOutPpqn));
     return a;
+}
+
+babushka::dsp::PatchState BabushkaProcessor::getPatchCopy() const
+{
+    const juce::SpinLock::ScopedLockType lock (patchLock);
+    return patchState;
+}
+
+bool BabushkaProcessor::addCable (babushka::dsp::Jack a, babushka::dsp::Jack b)
+{
+    bool ok;
+    { const juce::SpinLock::ScopedLockType lock (patchLock); ok = patchState.add (a, b); }
+    if (ok) { patchDirty.store (true); ++patchVersion; }
+    return ok;
+}
+
+void BabushkaProcessor::removeCable (int index)
+{
+    { const juce::SpinLock::ScopedLockType lock (patchLock); patchState.remove (index); }
+    patchDirty.store (true);
+    ++patchVersion;
+}
+
+void BabushkaProcessor::clearCables()
+{
+    { const juce::SpinLock::ScopedLockType lock (patchLock); patchState.clear(); }
+    patchDirty.store (true);
+    ++patchVersion;
+}
+
+void BabushkaProcessor::uiNoteOn (int note, int velocity)
+{
+    int s1, n1, s2, n2;
+    uiFifo.prepareToWrite (1, s1, n1, s2, n2);
+    if (n1 + n2 < 1) return;
+    uiNotes[(size_t) (n1 > 0 ? s1 : s2)] = { juce::jlimit (0, 127, note), juce::jlimit (1, 127, velocity) };
+    uiFifo.finishedWrite (1);
+}
+
+void BabushkaProcessor::uiNoteOff (int note)
+{
+    int s1, n1, s2, n2;
+    uiFifo.prepareToWrite (1, s1, n1, s2, n2);
+    if (n1 + n2 < 1) return;
+    uiNotes[(size_t) (n1 > 0 ? s1 : s2)] = { juce::jlimit (0, 127, note), 0 };
+    uiFifo.finishedWrite (1);
+}
+
+void BabushkaProcessor::setUiPitchBend (float normalised)
+{
+    uiBend.store (juce::jlimit (-1.0f, 1.0f, normalised));
+    uiBendDirty.store (true);
+}
+
+// TAP: at least three taps in a row set the free tempo (as on the hardware).
+void BabushkaProcessor::tapTempo()
+{
+    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    if (! tapTimes.isEmpty() && now - tapTimes.getLast() > 2.0) tapTimes.clear();
+    tapTimes.add (now);
+    if (tapTimes.size() > 4) tapTimes.remove (0);
+    if (tapTimes.size() >= 3)
+    {
+        const double avg = (tapTimes.getLast() - tapTimes.getFirst()) / (tapTimes.size() - 1);
+        if (avg > 0.0) setArpTempoFromTap (60.0 / avg);
+    }
 }
 
 juce::String BabushkaProcessor::getArpRateText() const
@@ -251,16 +361,17 @@ babushka::dsp::Sequence BabushkaProcessor::sequenceFromString (const juce::Strin
 
 void BabushkaProcessor::handleMidi (const juce::MidiMessage& m)
 {
-    if (m.isNoteOn()) engine.noteOn (m.getNoteNumber());
-    else if (m.isNoteOff()) engine.noteOff (m.getNoteNumber());
+    if (m.isNoteOn()) { engine.noteOn (m.getNoteNumber(), m.getVelocity()); setHeld (m.getNoteNumber(), true); }
+    else if (m.isNoteOff()) { engine.noteOff (m.getNoteNumber()); setHeld (m.getNoteNumber(), false); }
     else if (m.isPitchWheel()) engine.setPitchBend ((float) (m.getPitchWheelValue() - 8192) / 8192.0f);
+    // All Notes Off / All Sound Off are controllers (CC 123 / 120), so they must be tested before the generic CC branch.
+    else if (m.isAllNotesOff() || m.isAllSoundOff()) { engine.allNotesOff(); heldBits[0] = 0; heldBits[1] = 0; }
     else if (m.isController())
     {
         const int cc = m.getControllerNumber(), v = m.getControllerValue();
         if (cc == 1) engine.setModWheelCC ((float) v / 127.0f);
         else if (cc == 64) engine.setSustain (v >= 64);
     }
-    else if (m.isAllNotesOff() || m.isAllSoundOff()) engine.allNotesOff();
 }
 
 void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
@@ -274,8 +385,13 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         // Quality change: re-prepare (rare, user-initiated; allocates only the small oversampling buffer).
         currentOversampling = wantedOs;
         engine.prepare (currentSampleRate, currentOversampling);
+        patchDirty.store (true);
     }
     if ((int) mono.size() < numSamples) mono.resize ((size_t) numSamples);
+    if ((int) euro.size() < numSamples) euro.resize ((size_t) numSamples);
+    if ((int) reverbOut.size() < numSamples) reverbOut.resize ((size_t) numSamples);
+    auto busEnabled = [this] (int index) { auto* b = getBus (false, index); return b != nullptr && b->isEnabled(); };
+    const bool euroOn = busEnabled (1), reverbOn = busEnabled (2);
 
     if ((int) ext.size() < numSamples) ext.resize ((size_t) numSamples);
 
@@ -295,6 +411,13 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     engine.setParams (readParams());
 
+    // Cables edited in the UI: pick them up without ever blocking the audio thread.
+    if (patchDirty.exchange (false))
+    {
+        const juce::SpinLock::ScopedTryLockType tryLock (patchLock);
+        if (tryLock.isLocked()) engine.setPatch (patchState); else patchDirty.store (true);
+    }
+
     // Host transport for synced ARP/SEQ.
     bool playing = false; double ppq = 0.0, bpm = 120.0;
     if (auto* ph = getPlayHead())
@@ -313,26 +436,61 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     if (recTieRequests.exchange (0) > 0)    arp.recTie();
     if (recAccentRequests.exchange (0) > 0) arp.recAccent();
 
+    // Notes and pitch wheel from the on-screen controls.
+    {
+        int s1, n1, s2, n2;
+        uiFifo.prepareToRead (uiFifo.getNumReady(), s1, n1, s2, n2);
+        auto apply = [this] (int start, int count) {
+            for (int i = start; i < start + count; ++i)
+            {
+                const auto& n = uiNotes[(size_t) i];
+                if (n.velocity > 0) { engine.noteOn (n.note, n.velocity); setHeld (n.note, true); }
+                else                { engine.noteOff (n.note); setHeld (n.note, false); }
+            } };
+        apply (s1, n1); apply (s2, n2);
+        uiFifo.finishedRead (n1 + n2);
+        if (uiBendDirty.exchange (false)) engine.setPitchBend (uiBend.load());
+    }
+
     // Sample-accurate MIDI: render up to each event, then apply it.
     int pos = 0;
     for (const auto meta : midi)
     {
         const int at = juce::jlimit (0, numSamples, meta.samplePosition);
-        if (at > pos) { engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, at - pos); pos = at; }
+        if (at > pos)
+        {
+            engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, at - pos,
+                            euroOn ? euro.data() + pos : nullptr, reverbOn ? reverbOut.data() + pos : nullptr);
+            pos = at;
+        }
         handleMidi (meta.getMessage());
     }
-    if (pos < numSamples) engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, numSamples - pos);
+    if (pos < numSamples)
+        engine.process (mono.data() + pos, extPtr ? extPtr + pos : nullptr, numSamples - pos,
+                        euroOn ? euro.data() + pos : nullptr, reverbOn ? reverbOut.data() + pos : nullptr);
 
     currentSeqLength.store (arp.currentLength());
     pendingSequences = arp.sequences();
 
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        buffer.copyFrom (ch, 0, mono.data(), numSamples);
+    {   // main output (mono voice on every channel of bus 0) and the two optional mono outputs
+        auto mainOut = getBusBuffer (buffer, false, 0);
+        for (int ch = 0; ch < mainOut.getNumChannels(); ++ch) mainOut.copyFrom (ch, 0, mono.data(), numSamples);
+        if (euroOn)
+        {
+            auto b = getBusBuffer (buffer, false, 1);
+            for (int ch = 0; ch < b.getNumChannels(); ++ch) b.copyFrom (ch, 0, euro.data(), numSamples);
+        }
+        if (reverbOn)
+        {
+            auto b = getBusBuffer (buffer, false, 2);
+            for (int ch = 0; ch < b.getNumChannels(); ++ch) b.copyFrom (ch, 0, reverbOut.data(), numSamples);
+        }
+    }
 }
 
 juce::AudioProcessorEditor* BabushkaProcessor::createEditor() { return new BabushkaEditor (*this); }
 
-void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
+std::unique_ptr<juce::XmlElement> BabushkaProcessor::createStateXml()
 {
     auto state = apvts.copyState();
     std::array<babushka::dsp::Sequence, 3> copy;
@@ -342,25 +500,143 @@ void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
     }
     for (int i = 0; i < 3; ++i)
         state.setProperty ("seq" + juce::String (i + 1), sequenceToString (copy[(size_t) i]), nullptr);
-    if (auto xml = state.createXml()) copyXmlToBinary (*xml, destData);
+    state.setProperty ("patch", juce::String (getPatchCopy().toString()), nullptr);
+    state.setProperty ("presetName", currentPresetName, nullptr);
+    return state.createXml();
+}
+
+void BabushkaProcessor::restoreFromXml (const juce::XmlElement& xml)
+{
+    if (! xml.hasTagName (apvts.state.getType())) return;
+    auto tree = juce::ValueTree::fromXml (xml);
+    std::array<babushka::dsp::Sequence, 3> loaded;
+    for (int i = 0; i < 3; ++i)
+        loaded[(size_t) i] = sequenceFromString (tree.getProperty ("seq" + juce::String (i + 1)).toString());
+    setSequences (loaded);
+    {
+        const juce::SpinLock::ScopedLockType lock (patchLock);
+        patchState = babushka::dsp::PatchState::fromString (tree.getProperty ("patch").toString().toStdString());
+    }
+    patchDirty.store (true);
+    ++patchVersion;
+    currentPresetName = tree.hasProperty ("presetName") ? tree.getProperty ("presetName").toString() : juce::String ("Init");
+    apvts.replaceState (tree);
+}
+
+void BabushkaProcessor::setSequences (const std::array<babushka::dsp::Sequence, 3>& loaded)
+{
+    const juce::SpinLock::ScopedLockType lock (seqLock);
+    pendingSequences = loaded;
+    engine.arpSeq().sequences() = loaded;
+}
+
+void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    if (auto xml = createStateXml()) copyXmlToBinary (*xml, destData);
 }
 
 void BabushkaProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        if (xml->hasTagName (apvts.state.getType()))
-        {
-            auto tree = juce::ValueTree::fromXml (*xml);
-            std::array<babushka::dsp::Sequence, 3> loaded;
-            for (int i = 0; i < 3; ++i)
-                loaded[(size_t) i] = sequenceFromString (tree.getProperty ("seq" + juce::String (i + 1)).toString());
-            {
-                const juce::SpinLock::ScopedLockType lock (seqLock);
-                pendingSequences = loaded;
-                engine.arpSeq().sequences() = loaded;
-            }
-            apvts.replaceState (tree);
-        }
+    if (auto xml = getXmlFromBinary (data, sizeInBytes)) restoreFromXml (*xml);
 }
+
+// ---- presets ---------------------------------------------------------------------------------------------
+void BabushkaProcessor::applyFactoryPreset (int index)
+{
+    const auto& all = babushka::factoryPresets();
+    if (index < 0 || index >= (int) all.size()) return;
+    const auto& pr = all[(size_t) index];
+
+    // Back to defaults (except the global settings), then the preset's own values.
+    for (auto* prm : getParameters())
+        if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (prm))
+            if (! babushka::isGlobalParam (rp->paramID.toRawUTF8()))
+                rp->setValueNotifyingHost (rp->getDefaultValue());
+    for (auto& [id, value] : pr.values)
+        if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (id)))
+            rp->setValueNotifyingHost (rp->convertTo0to1 (value));
+        else jassertfalse;   // unknown parameter id in a factory preset
+
+    {
+        const juce::SpinLock::ScopedLockType lock (patchLock);
+        patchState = babushka::dsp::PatchState::fromString (pr.patch);
+    }
+    patchDirty.store (true);
+    ++patchVersion;
+
+    if (pr.seq1[0] != 0 || pr.seq2[0] != 0 || pr.seq3[0] != 0)
+    {
+        std::array<babushka::dsp::Sequence, 3> seqs;
+        { const juce::SpinLock::ScopedLockType lock (seqLock); seqs = pendingSequences; }
+        const char* texts[3] = { pr.seq1, pr.seq2, pr.seq3 };
+        for (int i = 0; i < 3; ++i) if (texts[i][0] != 0) seqs[(size_t) i] = sequenceFromString (texts[i]);
+        setSequences (seqs);
+    }
+    currentPresetName = pr.name;
+}
+
+juce::File BabushkaProcessor::getUserPresetDirectory() const
+{
+    if (userPresetDir != juce::File())
+        return userPresetDir;
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Babushka").getChildFile ("Presets");
+}
+
+juce::Array<juce::File> BabushkaProcessor::getUserPresetFiles() const
+{
+    auto files = getUserPresetDirectory().findChildFiles (juce::File::findFiles, false, "*.babushka");
+    files.sort();
+    return files;
+}
+
+bool BabushkaProcessor::saveUserPreset (const juce::String& rawName)
+{
+    const auto name = juce::File::createLegalFileName (rawName.trim());
+    if (name.isEmpty()) return false;
+    auto dir = getUserPresetDirectory();
+    if (! dir.createDirectory().wasOk()) return false;
+    currentPresetName = name;
+    auto xml = createStateXml();
+    return xml != nullptr && xml->writeTo (dir.getChildFile (name + ".babushka"));
+}
+
+bool BabushkaProcessor::loadUserPreset (const juce::File& file)
+{
+    if (auto xml = juce::parseXML (file))
+    {
+        if (! xml->hasTagName (apvts.state.getType())) return false;
+        restoreFromXml (*xml);
+        currentPresetName = file.getFileNameWithoutExtension();
+        return true;
+    }
+    return false;
+}
+
+std::vector<BabushkaProcessor::PresetRef> BabushkaProcessor::listPresets() const
+{
+    std::vector<PresetRef> list;
+    const auto& all = babushka::factoryPresets();
+    for (int i = 0; i < (int) all.size(); ++i) list.push_back ({ true, i, {}, all[(size_t) i].name, all[(size_t) i].category });
+    for (auto& f : getUserPresetFiles()) list.push_back ({ false, -1, f, f.getFileNameWithoutExtension(), "User" });
+    return list;
+}
+
+void BabushkaProcessor::loadPreset (const PresetRef& ref)
+{
+    if (ref.factory) applyFactoryPreset (ref.factoryIndex); else loadUserPreset (ref.file);
+}
+
+void BabushkaProcessor::stepPreset (int delta)
+{
+    const auto list = listPresets();
+    if (list.empty()) return;
+    int cur = -1;
+    for (int i = 0; i < (int) list.size(); ++i) if (list[(size_t) i].name == currentPresetName) { cur = i; break; }
+    const int n = (int) list.size();
+    const int next = cur < 0 ? (delta > 0 ? 0 : n - 1) : ((cur + delta) % n + n) % n;
+    loadPreset (list[(size_t) next]);
+}
+
+bool BabushkaProcessor::deleteUserPreset (const juce::File& file) { return file.getParentDirectory() == getUserPresetDirectory() && file.deleteFile(); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new BabushkaProcessor(); }
