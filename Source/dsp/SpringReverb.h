@@ -16,6 +16,15 @@
 // which stays long at ≈1.7 s): flat loss, a small step in loss around 335 Hz, two one-pole low-passes
 // at 7 and 8 kHz, and a very low loop high-pass. The `t60` argument of setupSpring() is a design value
 // for the flat loss; the effective low-frequency T60 is lower because of the shelf, filters and chain.
+//
+// Held notes. With a 9 s low-frequency T60 each loop is a comb with peaks ≈37 dB above its dips, so a steady tone
+// that lands on a peak rings 15–20 dB louder than one between peaks, and at MIX 50 % the coherent dry + wet sum
+// nearly cancels or doubles the fundamental. Two measures, neither of which touches a free decay:
+//  - Resonance limiter: while the input is a steady tone (level within ±6 dB for ≈0.3 s) and the loops ring
+//    louder than the drive, the loop gain is pulled down until they don't. Plucks, decaying notes and every
+//    tail after a release run with the calibrated loop gain.
+//  - The wet signal is frequency-shifted by 0.5 Hz, so it does not stay locked in phase with the dry signal; the
+//    dry/wet sum of a held note becomes a slow swirl instead of a fixed cancellation or doubling.
 #pragma once
 
 #include "Common.h"
@@ -73,6 +82,38 @@ struct LossShelf
     void reset() noexcept { x1 = y1 = 0.0f; }
 };
 
+// Analytic-signal pair: two allpass chains whose outputs differ by 90° (±0.5 % magnitude error from 20 Hz up to
+// fs/2 at 48 kHz). Polyphase IIR design after Olli Niemitalo.
+class HilbertPair
+{
+public:
+    HilbertPair()
+    {
+        static constexpr float ca[4] = { 0.6923878f, 0.9360654322959f, 0.9882295226860f, 0.9987488452737f };
+        static constexpr float cb[4] = { 0.4021921162426f, 0.8561710882420f, 0.9722909545651f, 0.9952884791278f };
+        for (int i = 0; i < 4; ++i) { a[i].a2 = ca[i] * ca[i]; b[i].a2 = cb[i] * cb[i]; }
+    }
+    void reset() noexcept { for (auto& s : a) s.reset(); for (auto& s : b) s.reset(); aDelayed = 0.0f; }
+    void process (float x, float& re, float& im) noexcept
+    {
+        float u = x, v = x;
+        for (auto& s : a) u = s.process (u);
+        for (auto& s : b) v = s.process (v);
+        re = aDelayed; im = v; aDelayed = u;
+    }
+
+private:
+    // y[n] = a²·(x[n] + y[n−2]) − x[n−2]
+    struct Section
+    {
+        float a2 = 0.0f, x1 = 0.0f, x2 = 0.0f, y1 = 0.0f, y2 = 0.0f;
+        float process (float x) noexcept { const float y = a2 * (x + y2) - x2; x2 = x1; x1 = x; y2 = y1; y1 = y; return y; }
+        void reset() noexcept { x1 = x2 = y1 = y2 = 0.0f; }
+    };
+    Section a[4], b[4];
+    float aDelayed = 0.0f;
+};
+
 class SpringReverb
 {
 public:
@@ -87,6 +128,12 @@ public:
 
         inHP.setCutoff (90.0f, fs);  inLP.setCutoff (5200.0f, fs);
         outHP.setCutoff (110.0f, fs); outLP.setCutoff (4200.0f, fs); outLP2.setCutoff (4200.0f, fs);
+
+        auto coeff = [this] (float seconds) { return 1.0f - std::exp (-1.0f / (seconds * fs)); };
+        envFastA = coeff (0.05f); envSlowA = coeff (0.5f); steadyUpA = coeff (0.3f); steadyDownA = coeff (0.02f);
+        limiterA = coeff (0.05f);
+        peakRelease = std::exp (-1.0f / (3.0f * fs));
+        shiftStep = { std::cos (kTwoPi * 0.5f / fs), std::sin (kTwoPi * 0.5f / fs) };
         reset();
     }
 
@@ -99,6 +146,8 @@ public:
             sp.fb = 0.0f; sp.write = 0;
         }
         inHP.reset(); inLP.reset(); outHP.reset(); outLP.reset(); outLP2.reset();
+        inFast = inSlow = inPeak = steady = loopEnv = 0.0f; limit = 1.0f;
+        shifter.reset(); shift = { 1.0f, 0.0f };
     }
 
     // Returns 100%-wet spring output.
@@ -108,10 +157,23 @@ public:
         float d = inLP.process (inHP.process (x));
         d = std::tanh (1.4f * d) * (1.0f / 1.4f);
 
+        // Resonance limiter (see the header). Steady tone: input level within ±6 dB of its 0.5 s average, not far below
+        // its recent peak (a fading release is not steady), held for ≈0.3 s. Loop level = the springs' summed output.
+        inFast += envFastA * (d * d - inFast);
+        inSlow += envSlowA * (d * d - inSlow);
+        inPeak = std::max (inSlow, inPeak * peakRelease);
+        const bool isSteady = inSlow > 0.03f * inPeak && inFast < 4.0f * inSlow && inSlow < 4.0f * inFast;
+        steady += (isSteady ? steadyUpA : steadyDownA) * ((isSteady ? 1.0f : 0.0f) - steady);
+        const float loopSum = springs[0].fb + springs[1].fb;
+        loopEnv += envFastA * (0.5f * loopSum * loopSum - loopEnv);
+        const float weight = std::clamp (2.0f * steady - 1.0f, 0.0f, 1.0f);
+        const float excess = std::min (1.0f, std::sqrt (inSlow / (loopEnv + 1.0e-12f)));
+        limit += limiterA * (1.0f - weight * (1.0f - excess) - limit);
+
         float wet = 0.0f;
         for (auto& sp : springs)
         {
-            const float v = d + sp.g * sp.fb;
+            const float v = d + limit * sp.g * sp.fb;
             sp.delay[(size_t) sp.write] = v;
 
             // Ripple: slowly wandering fractional read position.
@@ -132,7 +194,15 @@ public:
         }
 
         // Pickup + recovery amp: the tank band ends around 4–5 kHz (2-pole roll-off).
-        return outLP2.process (outLP.process (outHP.process (wet))) * wetGain;
+        const float out = outLP2.process (outLP.process (outHP.process (wet))) * wetGain;
+
+        // 0.5 Hz frequency shift: Re{analytic(out) · e^{jωt}}, the phasor advanced by complex multiplication.
+        float re, im;
+        shifter.process (out, re, im);
+        shift = { shift.re * shiftStep.re - shift.im * shiftStep.im, shift.re * shiftStep.im + shift.im * shiftStep.re };
+        const float norm = 1.5f - 0.5f * (shift.re * shift.re + shift.im * shift.im);   // keeps |phasor| = 1
+        shift.re *= norm; shift.im *= norm;
+        return re * shift.re - im * shift.im;
     }
 
 private:
@@ -175,7 +245,14 @@ private:
     Spring springs[2];
     OnePoleHP inHP, outHP;
     OnePoleLP inLP, outLP, outLP2;
-    float wetGain = 0.70f;   // 100 % wet ≈ dry level on a held note (engine level test, 48 kHz)
+    float wetGain = 0.84f;   // 100 % wet ≈ dry level on held notes (engine level test, 48 kHz; with the resonance limiter)
+
+    // Resonance limiter and frequency shifter state.
+    float envFastA = 0.0f, envSlowA = 0.0f, steadyUpA = 0.0f, steadyDownA = 0.0f, limiterA = 0.0f, peakRelease = 1.0f;
+    float inFast = 0.0f, inSlow = 0.0f, inPeak = 0.0f, steady = 0.0f, loopEnv = 0.0f, limit = 1.0f;
+    struct Phasor { float re, im; };
+    HilbertPair shifter;
+    Phasor shift { 1.0f, 0.0f }, shiftStep { 1.0f, 0.0f };
 
     void setupSpring (Spring& sp, float transitSeconds, int stages, int K, float a, float t60, uint32_t seed)
     {

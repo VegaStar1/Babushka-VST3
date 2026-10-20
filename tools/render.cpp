@@ -295,6 +295,22 @@ int main (int argc, char** argv)
         }
         const double meanDb = sumDb / nNotes;
         std::printf ("Spring level, 100%% wet vs dry on held notes: mean %+.1f dB over %d notes (%s)\n", meanDb, nNotes, std::abs (meanDb) < 3.0 ? "OK" : "FAIL");
+        {
+            // Held notes at MIX 50 %: the level must not jump from key to key (comb peaks / dry-wet cancellation of the tank).
+            Params h; h.osc1Octave = 2; h.osc1Wave = 2; h.osc2Octave = 1; h.osc2Wave = 3; h.osc2Freq = 0.12f; h.mixOsc1 = 0.55f;
+            h.mixOsc2 = 0.45f; h.cutoff = 0.742f; h.resonance = 0.25f; h.kbdTrack = 2; h.sustain = 0.85f; h.reverbMix = 0.5f; h.volume = 0.544f;
+            std::vector<double> db;
+            for (int note = 36; note <= 72; ++note)
+            {
+                const auto y = renderSeq (h, notes ({ { 0.0, 4.0, note } }), 4.0);
+                double a = 0; for (size_t i = y.size() / 2; i < y.size(); ++i) a += y[i] * y[i];
+                db.push_back (10.0 * std::log10 (a / (y.size() / 2)));
+            }
+            double mean = 0; for (double v : db) mean += v / db.size();
+            const double lo = *std::min_element (db.begin(), db.end()) - mean, hi = *std::max_element (db.begin(), db.end()) - mean;
+            std::printf ("Spring on held notes, MIX 50%%, notes 36-72: level %+.1f / %+.1f dB around the mean  %s\n", lo, hi,
+                         lo > -4.0 && hi < 4.0 ? "OK" : "FAIL");
+        }
         auto dry = renderSeq (p, notes ({ { 0.0, 3.0, 48 } }), 3.0);
         p.reverbMix = 1.0f;
         auto wet = renderSeq (p, notes ({ { 0.0, 3.0, 48 } }), 3.0);
