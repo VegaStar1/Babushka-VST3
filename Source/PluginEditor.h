@@ -15,12 +15,14 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    bool keyPressed (const juce::KeyPress&) override;                // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo
 
     void showPresets (bool show);
     void showSettings (bool show);
     void setSkin (int index);                                       // index into babushka::ui::skins(); remembered per user
     babushka::ui::CableLayer& cableLayer() { return *cables; }     // for tests
     babushka::ui::SynthPanel& synthPanel() { return *panel; }
+    babushka::ui::PresetOverlay* presetBrowser() { return presets.get(); }     // for tests
 
 private:
     void showHint (juce::Component& from, const juce::String& text) override;

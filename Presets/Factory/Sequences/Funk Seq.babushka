@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BABUSHKA seq1="36 R 36 48 R 46 R 43 R 41 43T 46 R 36 R R" seq2="36 R R 36 R R 43 R 36 R R 36 R 46 48 R"
+          seq3="36 36 R 48 R 36 R 46" patch="" presetName="Funk Seq" presetModified="0"
+          presetRandom="0" presetFile="" category="Sequences" tags="WARM PLUCKY"
+          description="Plays by itself: syncopated funk bass with glide on the tied notes, 104 BPM.">
+  <PARAM id="arpDirection" value="0.0"/>
+  <PARAM id="arpFreeStep" value="2.0"/>
+  <PARAM id="arpHold" value="0.0"/>
+  <PARAM id="arpMode" value="1.0"/>
+  <PARAM id="arpOctSeq" value="0.0"/>
+  <PARAM id="arpPlay" value="1.0"/>
+  <PARAM id="arpRate" value="0.625"/>
+  <PARAM id="arpSync" value="0.0"/>
+  <PARAM id="attack" value="0.0"/>
+  <PARAM id="attenuator" value="0.0"/>
+  <PARAM id="bendRange" value="2.0"/>
+  <PARAM id="clockOutPpqn" value="2.0"/>
+  <PARAM id="cutoff" value="0.4410000145435333"/>
+  <PARAM id="decay" value="0.5279999971389771"/>
+  <PARAM id="drift" value="0.25"/>
+  <PARAM id="envAmt" value="0.449999988079071"/>
+  <PARAM id="extClockMode" value="0.0"/>
+  <PARAM id="extClockPpqn" value="2.0"/>
+  <PARAM id="extLevel" value="0.5"/>
+  <PARAM id="fineTune" value="0.0"/>
+  <PARAM id="glide" value="0.4110000133514404"/>
+  <PARAM id="glideType" value="2.0"/>
+  <PARAM id="hpCutoff" value="0.0"/>
+  <PARAM id="kbOutRange" value="0.0"/>
+  <PARAM id="kbdTrack" value="1.0"/>
+  <PARAM id="legatoGlide" value="1.0"/>
+  <PARAM id="lfoCutoffAmt" value="0.0"/>
+  <PARAM id="lfoPitchAmt" value="0.0"/>
+  <PARAM id="lfoPwAmt" value="0.0"/>
+  <PARAM id="lfoRate" value="0.449999988079071"/>
+  <PARAM id="lfoWave" value="0.0"/>
+  <PARAM id="localOn" value="1.0"/>
+  <PARAM id="mixNoise" value="0.0"/>
+  <PARAM id="mixOsc1" value="0.6000000238418579"/>
+  <PARAM id="mixOsc2" value="0.5"/>
+  <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="notePriority" value="0.0"/>
+  <PARAM id="osc1Octave" value="1.0"/>
+  <PARAM id="osc1Wave" value="2.0"/>
+  <PARAM id="osc2Freq" value="0.05000000074505806"/>
+  <PARAM id="osc2Octave" value="0.0"/>
+  <PARAM id="osc2Sync" value="0.0"/>
+  <PARAM id="osc2Wave" value="1.0"/>
+  <PARAM id="oversampling" value="1.0"/>
+  <PARAM id="release" value="0.3989999890327454"/>
+  <PARAM id="resonance" value="0.449999988079071"/>
+  <PARAM id="reverbDecay" value="1.0"/>
+  <PARAM id="reverbMix" value="0.0"/>
+  <PARAM id="sustain" value="0.2000000029802322"/>
+  <PARAM id="vcaMode" value="0.0"/>
+  <PARAM id="volume" value="0.9190000295639038"/>
+</BABUSHKA>

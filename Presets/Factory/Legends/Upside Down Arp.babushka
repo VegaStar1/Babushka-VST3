@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BABUSHKA seq1="48 52 55 59 60 59 55 52" seq2="45 48 52 55 57 55 52 48"
+          seq3="41 45 48 52 53 52 48 45" patch="" presetName="Upside Down Arp"
+          presetModified="0" presetRandom="0" presetFile="" category="Legends"
+          tags="EVOLVING WARM" description="In the style of Kyle Dixon &amp; Michael Stein's 'Stranger Things' main title (2016; Prophet-5 and Roland SH-2 on the original): a C major 7 arpeggio at 84 BPM whose filter slowly opens, long spring. Plays by itself; a key transposes.">
+  <PARAM id="arpDirection" value="0.0"/>
+  <PARAM id="arpFreeStep" value="2.0"/>
+  <PARAM id="arpHold" value="0.0"/>
+  <PARAM id="arpMode" value="1.0"/>
+  <PARAM id="arpOctSeq" value="0.0"/>
+  <PARAM id="arpPlay" value="1.0"/>
+  <PARAM id="arpRate" value="0.5440000295639038"/>
+  <PARAM id="arpSync" value="0.0"/>
+  <PARAM id="attack" value="0.0"/>
+  <PARAM id="attenuator" value="0.0"/>
+  <PARAM id="bendRange" value="2.0"/>
+  <PARAM id="clockOutPpqn" value="2.0"/>
+  <PARAM id="cutoff" value="0.5590000152587891"/>
+  <PARAM id="decay" value="0.5279999971389771"/>
+  <PARAM id="drift" value="0.25"/>
+  <PARAM id="envAmt" value="0.300000011920929"/>
+  <PARAM id="extClockMode" value="0.0"/>
+  <PARAM id="extClockPpqn" value="2.0"/>
+  <PARAM id="extLevel" value="0.5"/>
+  <PARAM id="fineTune" value="0.0"/>
+  <PARAM id="glide" value="0.0"/>
+  <PARAM id="glideType" value="2.0"/>
+  <PARAM id="hpCutoff" value="0.0"/>
+  <PARAM id="kbOutRange" value="0.0"/>
+  <PARAM id="kbdTrack" value="1.0"/>
+  <PARAM id="legatoGlide" value="0.0"/>
+  <PARAM id="lfoCutoffAmt" value="0.2800000011920929"/>
+  <PARAM id="lfoPitchAmt" value="0.0"/>
+  <PARAM id="lfoPwAmt" value="0.0"/>
+  <PARAM id="lfoRate" value="0.0260000005364418"/>
+  <PARAM id="lfoWave" value="0.0"/>
+  <PARAM id="localOn" value="1.0"/>
+  <PARAM id="mixNoise" value="0.0"/>
+  <PARAM id="mixOsc1" value="0.550000011920929"/>
+  <PARAM id="mixOsc2" value="0.449999988079071"/>
+  <PARAM id="modWheel" value="1.0"/>
+  <PARAM id="notePriority" value="0.0"/>
+  <PARAM id="osc1Octave" value="2.0"/>
+  <PARAM id="osc1Wave" value="1.0"/>
+  <PARAM id="osc2Freq" value="0.07000000029802322"/>
+  <PARAM id="osc2Octave" value="1.0"/>
+  <PARAM id="osc2Sync" value="0.0"/>
+  <PARAM id="osc2Wave" value="3.0"/>
+  <PARAM id="oversampling" value="1.0"/>
+  <PARAM id="release" value="0.5410000085830688"/>
+  <PARAM id="resonance" value="0.3499999940395355"/>
+  <PARAM id="reverbDecay" value="1.0"/>
+  <PARAM id="reverbMix" value="0.449999988079071"/>
+  <PARAM id="sustain" value="0.25"/>
+  <PARAM id="vcaMode" value="0.0"/>
+  <PARAM id="volume" value="0.9279999732971191"/>
+</BABUSHKA>

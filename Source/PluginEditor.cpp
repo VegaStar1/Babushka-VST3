@@ -22,6 +22,7 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     content.addChildComponent (*backdrop);
     content.addChildComponent (*bubble);
 
+    setWantsKeyboardFocus (true);      // undo / redo shortcuts; unused keys go back to the host
     setResizable (true, true);
     setResizeLimits (kW * 3 / 5, kH * 3 / 5, kW * 5 / 4, kH * 5 / 4);
     getConstrainer()->setFixedAspectRatio ((double) kW / (double) kH);
@@ -69,7 +70,15 @@ void BabushkaEditor::setSkin (int index)
 
 void BabushkaEditor::paint (juce::Graphics& g) { g.fillAll (juce::Colour (0xff070707)); }
 
-
+bool BabushkaEditor::keyPressed (const juce::KeyPress& key)
+{
+    const auto mods = key.getModifiers();
+    if (! mods.isCommandDown()) return false;
+    const int code = key.getKeyCode();
+    if ((code == 'Z' || code == 'z') && ! mods.isShiftDown()) { processor.undo(); return true; }
+    if (((code == 'Z' || code == 'z') && mods.isShiftDown()) || code == 'Y' || code == 'y') { processor.redo(); return true; }
+    return false;
+}
 
 void BabushkaEditor::resized()
 {

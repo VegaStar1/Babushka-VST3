@@ -282,11 +282,11 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         // user presets: save, reload in a fresh processor, delete
         auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_preset_test");
         dir.deleteRecursively();
-        pr.setUserPresetDirectory (dir);
+        pr.setPresetRoot (dir);
         pr.applyFactoryPreset (6);      // Warm Pad (has a PWM LFO setup)
         pr.apvts.getParameter ("cutoff")->setValueNotifyingHost (0.77f);
         pr.addCable (babushka::dsp::Jack::KbOut, babushka::dsp::Jack::ModRateIn);
-        if (! pr.saveUserPreset ("Test Sound")) return fail ("save user preset");
+        if (! pr.saveUserPreset ("Test Sound").existsAsFile()) return fail ("save user preset");
         pr.applyFactoryPreset (1);
         const auto files = pr.getUserPresetFiles();
         std::printf ("User presets in folder: %d (%s)\n", files.size(), files.isEmpty() ? "-" : files[0].getFileName().toRawUTF8());
@@ -299,9 +299,111 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         dir.deleteRecursively();
     }
 
+    // Preset library, project recall, history and RANDOMIZE (in-process, temporary preset folder).
+    {
+        const auto root = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_library_test");
+        root.deleteRecursively();
+        auto stateOf = [] (BabushkaProcessor& p) { juce::MemoryBlock mb; p.getStateInformation (mb); return juce::AudioProcessor::getXmlFromBinary (mb.getData(), (int) mb.getSize()); };
+        auto indexOf = [] (const char* name) { const auto& all = babushka::factoryPresets(); for (int i = 0; i < (int) all.size(); ++i) if (juce::String (all[(size_t) i].name) == name) return i; return -1; };
+        auto gesture = [] (BabushkaProcessor& p, const char* id, float normalised) {
+            auto* prm = p.apvts.getParameter (id); prm->beginChangeGesture(); prm->setValueNotifyingHost (normalised); prm->endChangeGesture(); };
+
+        BabushkaProcessor pr;
+        pr.setPresetRoot (root);
+        pr.setPlayConfigDetails (0, 2, 48000.0, 256);
+        pr.prepareToPlay (48000.0, 256);
+        std::printf ("New instance: preset '%s', modified %d, history %d step(s)\n", pr.getCurrentPresetName().toRawUTF8(), (int) pr.isSoundModified(), pr.getHistoryLabels().size());
+        if (pr.getCurrentPresetName() != "Init" || pr.isSoundModified() || pr.canUndo()) return fail ("a new instance must start as Init");
+        {
+            std::unique_ptr<juce::AudioProcessorEditor> ed (pr.createEditor());
+            std::printf ("After opening the editor: modified %d, history %d step(s)\n", (int) pr.isSoundModified(), pr.getHistoryLabels().size());
+            if (pr.isSoundModified() || pr.canUndo()) return fail ("opening the editor must not change the sound");
+        }
+
+        // A project reopened in the DAW comes back exactly: every parameter (globals too), cables, sequences, name.
+        pr.applyFactoryPreset (indexOf ("Berlin School"));
+        int k = 0;
+        for (auto* prm : pr.getParameters()) prm->setValueNotifyingHost (std::fmod (0.137f * (float) ++k, 1.0f));
+        pr.addCable (babushka::dsp::Jack::ModWaveOut, babushka::dsp::Jack::Osc1PwmIn);
+        auto saved = stateOf (pr);
+        BabushkaProcessor reopened;
+        juce::MemoryBlock mb; pr.getStateInformation (mb);
+        reopened.setStateInformation (mb.getData(), (int) mb.getSize());
+        auto restored = stateOf (reopened);
+        int paramMismatch = 0;
+        for (int i = 0; i < pr.getParameters().size(); ++i)
+            if (pr.getParameters()[i]->getCurrentValueAsText() != reopened.getParameters()[i]->getCurrentValueAsText()) ++paramMismatch;   // switches snap
+        std::printf ("Project recall: %d parameters, %d differ; cables %d -> %d; name '%s'; state XML %s\n", pr.getParameters().size(), paramMismatch,
+                     pr.getPatchCopy().count, reopened.getPatchCopy().count, reopened.getCurrentPresetName().toRawUTF8(),
+                     saved->isEquivalentTo (restored.get(), false) ? "identical" : "DIFFERENT");
+        if (paramMismatch != 0 || ! saved->isEquivalentTo (restored.get(), false) || reopened.getCurrentPresetName() != "Berlin School"
+            || ! reopened.isSoundModified() || reopened.canUndo()) return fail ("project recall");
+
+        // History: knob gestures, cables and presets are steps; undo / redo restore the whole sound; at most 20 steps.
+        BabushkaProcessor h;
+        h.applyFactoryPreset (indexOf ("Classic Bass"));
+        const float cut0 = h.apvts.getParameter ("cutoff")->getValue();
+        gesture (h, "cutoff", 0.9f);
+        h.addCable (babushka::dsp::Jack::KbOut, babushka::dsp::Jack::ModRateIn);
+        h.undo();
+        const int cablesAfterUndo = h.getPatchCopy().count;
+        h.undo();
+        const float cutUndo = h.apvts.getParameter ("cutoff")->getValue();
+        h.redo();
+        const float cutRedo = h.apvts.getParameter ("cutoff")->getValue();
+        std::printf ("History: cable undone -> %d cables, cutoff %.2f -> undo %.2f -> redo %.2f, name '%s'\n", cablesAfterUndo, 0.9f, cutUndo, cutRedo, h.getCurrentPresetName().toRawUTF8());
+        if (cablesAfterUndo != 0 || std::abs (cutUndo - cut0) > 1e-4f || std::abs (cutRedo - 0.9f) > 1e-4f || ! h.canRedo()) return fail ("undo / redo");
+        for (int i = 0; i < 30; ++i) gesture (h, "resonance", 0.01f * (float) i);
+        std::printf ("History after 30 more steps: %d entries (max %d), redo %d\n", h.getHistoryLabels().size(), BabushkaProcessor::kMaxHistory, (int) h.canRedo());
+        if (h.getHistoryLabels().size() != BabushkaProcessor::kMaxHistory || h.canRedo()) return fail ("history length");
+
+        // User presets: sub-folders and tags; the user's global settings survive loading a preset.
+        pr.applyFactoryPreset (indexOf ("Reese"));
+        pr.apvts.getParameter ("fineTune")->setValueNotifyingHost (0.9f);
+        const auto file = pr.saveUserPreset ("Deep One", "Bass/Sub", { "DARK", "FAT" });
+        pr.apvts.getParameter ("fineTune")->setValueNotifyingHost (0.5f);
+        pr.applyFactoryPreset (0);
+        const bool loaded = pr.loadUserPreset (file);
+        const float tune = pr.apvts.getParameter ("fineTune")->getValue();
+        juce::String folder, tags;
+        for (auto& r : pr.listPresets()) if (! r.factory && r.name == "Deep One") { folder = r.folder; tags = r.tags.joinIntoString (" "); }
+        std::printf ("User preset in '%s', tags '%s', folders [%s], fine tune kept %.2f\n", folder.toRawUTF8(), tags.toRawUTF8(),
+                     pr.getUserFolders().joinIntoString (", ").toRawUTF8(), tune);
+        if (! loaded || folder != "Bass/Sub" || tags != "DARK FAT" || std::abs (tune - 0.5f) > 1e-4f || pr.getUserFolders() != juce::StringArray { "Bass", "Bass/Sub" })
+            return fail ("user preset folders / tags / globals");
+        const auto copy = pr.duplicateCurrentSound();
+        if (copy.getFileNameWithoutExtension() != "Deep One copy" || copy.getParentDirectory() != file.getParentDirectory()) return fail ("duplicate");
+
+        // Factory copies for the user and import back into User.
+        pr.ensurePresetLibrary();
+        const auto factoryFiles = pr.getFactoryPresetDirectory().findChildFiles (juce::File::findFiles, true, "*.babushka");
+        const int imported = pr.importPresets ({ factoryFiles[0], factoryFiles[1], factoryFiles[1] }, "Imported");
+        std::printf ("Library: %d factory files, %d of 3 imported\n", factoryFiles.size(), imported);
+        if (factoryFiles.size() != (int) babushka::factoryPresets().size() || imported != 3) return fail ("library / import");
+
+        // RANDOMIZE: every kind loads a sound that is audible, finite and not clipping (at its final volume), not saved.
+        int randomFail = 0;
+        for (int kind = 0; kind < BabushkaProcessor::randomKindNames().size(); ++kind)
+        {
+            pr.setRandomKind ((BabushkaProcessor::RandomKind) kind);
+            for (int i = 0; i < 12; ++i)
+            {
+                const bool ok = pr.randomize ((uint32_t) (7 + kind * 1000 + i));
+                auto st = stateOf (pr);
+                const auto au = BabushkaProcessor::auditionState (*st);
+                if (! ok || ! au.finite || au.peak > 0.97 || au.loud < 0.05 || au.loud > 0.5 || ! pr.isRandomSound()) ++randomFail;
+            }
+        }
+        std::printf ("Randomize: %d of %d rolls failed; last '%s'\n", randomFail, 12 * BabushkaProcessor::randomKindNames().size(), pr.getCurrentPresetName().toRawUTF8());
+        if (randomFail != 0) return fail ("randomize");
+        root.deleteRecursively();
+    }
+
     // In-process editor screenshot (a hosted VST3 view is a native child window and cannot be snapshotted).
     {
         BabushkaProcessor proc;
+        const auto shotRoot = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_hosttest_presets");
+        proc.setPresetRoot (shotRoot);     // the browser writes the factory copies; keep them out of the real folder
         std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
         auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
         juce::File out (shotPath); out.deleteFile();
@@ -320,6 +422,8 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
             be->showPresets (true);  shot ("_presets");  be->showPresets (false);
             be->showSettings (true); shot ("_settings"); be->showSettings (false);
         }
+        ed.reset();
+        shotRoot.deleteRecursively();
     }
     std::printf ("ALL HOST TESTS PASSED\n");
     return 0;

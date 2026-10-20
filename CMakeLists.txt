@@ -27,7 +27,7 @@ juce_add_plugin(Babushka
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Synth Mono
     ICON_BIG Source/ui/art/app_icon_big.png       # Standalone app icon: the NUWMUN logo
@@ -44,9 +44,14 @@ juce_add_binary_data(BabushkaAssets SOURCES
     Source/ui/fonts/BarlowSemiCondensed-Bold.ttf
     Source/ui/art/nuwmun_logo.svg)
 
-target_sources(Babushka PRIVATE
+# Plugin sources, shared with the JUCE-based test tools below.
+set(BABUSHKA_SOURCES
     Source/PluginProcessor.cpp
+    Source/PresetLibrary.cpp
+    Source/Randomizer.cpp
     Source/PluginEditor.cpp)
+
+target_sources(Babushka PRIVATE ${BABUSHKA_SOURCES})
 
 target_include_directories(Babushka PRIVATE Source)
 
@@ -67,7 +72,7 @@ add_executable(babushka_render tools/render.cpp)
 option(BABUSHKA_HOST_TEST "Build the VST3 host test" OFF)
 if(BABUSHKA_HOST_TEST)
     juce_add_console_app(babushka_hosttest PRODUCT_NAME "babushka_hosttest")
-    target_sources(babushka_hosttest PRIVATE tools/hosttest/Main.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+    target_sources(babushka_hosttest PRIVATE tools/hosttest/Main.cpp ${BABUSHKA_SOURCES})
     target_include_directories(babushka_hosttest PRIVATE Source)
     target_compile_definitions(babushka_hosttest PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(babushka_hosttest PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics
@@ -75,7 +80,7 @@ if(BABUSHKA_HOST_TEST)
 
     # Plays every factory preset and reports level / clipping / silence (optionally writes WAV files).
     juce_add_console_app(babushka_presetaudit PRODUCT_NAME "babushka_presetaudit")
-    target_sources(babushka_presetaudit PRIVATE tools/presetaudit/Main.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+    target_sources(babushka_presetaudit PRIVATE tools/presetaudit/Main.cpp ${BABUSHKA_SOURCES})
     target_include_directories(babushka_presetaudit PRIVATE Source)
     target_compile_definitions(babushka_presetaudit PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(babushka_presetaudit PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics juce::juce_dsp
@@ -83,7 +88,7 @@ if(BABUSHKA_HOST_TEST)
 
     # Renders the editor (several states) to PNG files; used while working on the look of the interface.
     juce_add_console_app(babushka_uishot PRODUCT_NAME "babushka_uishot")
-    target_sources(babushka_uishot PRIVATE tools/uishot/Main.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+    target_sources(babushka_uishot PRIVATE tools/uishot/Main.cpp ${BABUSHKA_SOURCES})
     target_include_directories(babushka_uishot PRIVATE Source)
     target_compile_definitions(babushka_uishot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
     target_link_libraries(babushka_uishot PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics

@@ -1,5 +1,8 @@
 // Plays every factory preset the way a person trying it would, and reports its level and character.
 //   babushka_presetaudit [--wav <dir>] [--tsv <file>]
+//   babushka_presetaudit --export <dir>        writes the factory presets as <dir>/<category>/<name>.babushka
+//   babushka_presetaudit --check-files <dir>   checks those files against Presets.h (and that every preset has tags)
+//   babushka_presetaudit --random <n>          n RANDOMIZE rolls per kind: each must load, be finite, not clip, be audible
 // Sustained presets: one held note (bass presets low, leads high), then the release tail. Arpeggiator presets: a held
 // minor chord. Sequencer presets: run on their own. A preset fails when it is silent, clips, produces NaN/Inf or is
 // far louder or quieter than the rest (loudness = the loudest 50 ms window). --wav writes every render as a WAV file,
@@ -30,12 +33,88 @@ float value (const babushka::FactoryPreset& p, const char* id, float def)
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI init;
-    juce::File wavDir, tsvFile;
+    juce::File wavDir, tsvFile, exportDir, checkDir;
+    int randomRolls = 0;
     for (int a = 1; a + 1 < argc; a += 2)
     {
         const auto f = juce::File::getCurrentWorkingDirectory().getChildFile (argv[a + 1]);
         if (juce::String (argv[a]) == "--wav") wavDir = f;
         if (juce::String (argv[a]) == "--tsv") tsvFile = f;
+        if (juce::String (argv[a]) == "--export") exportDir = f;
+        if (juce::String (argv[a]) == "--check-files") checkDir = f;
+        if (juce::String (argv[a]) == "--random") randomRolls = juce::String (argv[a + 1]).getIntValue();
+    }
+    if (exportDir != juce::File())
+    {
+        BabushkaProcessor proc;
+        exportDir.deleteRecursively();
+        const int n = proc.writeFactoryPresetFiles (exportDir, true);
+        std::printf ("wrote %d factory preset files to %s\n", n, exportDir.getFullPathName().toRawUTF8());
+        return n == (int) babushka::factoryPresets().size() ? 0 : 1;
+    }
+    if (checkDir != juce::File())
+    {
+        BabushkaProcessor proc;
+        const auto& all = babushka::factoryPresets();
+        int bad = 0;
+        for (int i = 0; i < (int) all.size(); ++i)
+        {
+            const auto& pr = all[(size_t) i];
+            if (juce::String (babushka::factoryPresetTags (pr.name)).isEmpty()) { std::printf ("no tags: %s\n", pr.name); ++bad; }
+            const auto file = checkDir.getChildFile (juce::File::createLegalFileName (pr.category)).getChildFile (juce::File::createLegalFileName (pr.name) + ".babushka");
+            auto onDisk = juce::parseXML (file);
+            auto expected = proc.factoryPresetXml (i);
+            if (onDisk == nullptr || ! onDisk->isEquivalentTo (expected.get(), false)) { std::printf ("out of date: %s\n", file.getFullPathName().toRawUTF8()); ++bad; }
+        }
+        const int files = checkDir.findChildFiles (juce::File::findFiles, true, "*.babushka").size();
+        if (files != (int) all.size()) { std::printf ("%d files in the folder, %d presets\n", files, (int) all.size()); ++bad; }
+        std::printf ("factory preset files: %s\n", bad == 0 ? "up to date" : "FAIL (run babushka_presetaudit --export Presets/Factory)");
+        return bad == 0 ? 0 : 1;
+    }
+    if (randomRolls > 0)
+    {
+        BabushkaProcessor proc;
+        proc.setPlayConfigDetails (0, 2, 48000.0, 256);
+        proc.prepareToPlay (48000.0, 256);
+        const auto kinds = BabushkaProcessor::randomKindNames();
+        int failures = 0;
+        const auto t0 = juce::Time::getMillisecondCounterHiRes();
+        for (int k = 0; k < kinds.size(); ++k)
+        {
+            proc.setRandomKind ((BabushkaProcessor::RandomKind) k);
+            double minLoud = 1e9, maxLoud = 0, maxPeak = 0; int notLoaded = 0, arps = 0, cabled = 0;
+            for (int i = 0; i < randomRolls; ++i)
+            {
+                if (! proc.randomize ((uint32_t) (1 + k * 100000 + i))) { ++notLoaded; continue; }
+                // Play the loaded sound through the real processor, the way the presets are audited.
+                const bool arp = proc.apvts.getRawParameterValue ("arpPlay")->load() > 0.5f;
+                const bool seq = arp && (int) proc.apvts.getRawParameterValue ("arpMode")->load() == 1;
+                arps += arp ? 1 : 0; cabled += proc.getPatchCopy().count > 0 ? 1 : 0;
+                proc.releaseResources(); proc.prepareToPlay (48000.0, 256);
+                juce::AudioBuffer<float> buf (2, 256);
+                double peak = 0, loud = 0; bool finite = true;
+                std::vector<float> y;
+                for (int b = 0; b < 300; ++b)
+                {
+                    juce::MidiBuffer midi;
+                    if (b == 2 && ! seq) { if (arp) for (int n : { 48, 51, 55 }) midi.addEvent (juce::MidiMessage::noteOn (1, n, (juce::uint8) 100), 0);
+                                           else midi.addEvent (juce::MidiMessage::noteOn (1, 53, (juce::uint8) 100), 0); }
+                    if (b == 230) midi.addEvent (juce::MidiMessage::allNotesOff (1), 0);
+                    buf.clear(); proc.processBlock (buf, midi);
+                    for (int s = 0; s < 256; ++s) { const float v = buf.getSample (0, s); finite = finite && std::isfinite (v); peak = std::max (peak, (double) std::abs (v)); y.push_back (v); }
+                }
+                for (size_t from = 0; from + 2400 <= y.size(); from += 1200)
+                { double t = 0; for (size_t s = from; s < from + 2400; ++s) t += y[s] * y[s]; loud = std::max (loud, std::sqrt (t / 2400.0)); }
+                minLoud = std::min (minLoud, loud); maxLoud = std::max (maxLoud, loud); maxPeak = std::max (maxPeak, peak);
+                if (! finite || peak > 0.97 || loud < 0.05 || loud > 0.5)
+                { ++failures; std::printf ("  FAIL %s roll %d: peak %.3f loud %.3f%s\n", kinds[k].toRawUTF8(), i, peak, loud, finite ? "" : " NaN"); }
+            }
+            std::printf ("%-8s %d rolls: loud %.3f..%.3f, peak max %.3f, arp/seq %d, with cables %d, not loaded %d\n",
+                         kinds[k].toRawUTF8(), randomRolls, minLoud, maxLoud, maxPeak, arps, cabled, notLoaded);
+            failures += notLoaded;
+        }
+        std::printf ("randomize: %.1f ms per roll, %d failing\n", (juce::Time::getMillisecondCounterHiRes() - t0) / (randomRolls * kinds.size()), failures);
+        return failures == 0 ? 0 : 1;
     }
     if (wavDir != juce::File()) wavDir.createDirectory();
     juce::String tsv;

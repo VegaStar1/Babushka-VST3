@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Warm Pad" presetModified="0"
+          presetRandom="0" presetFile="" category="Pads &amp; Drones" tags="WARM EVOLVING"
+          description="Two squares with slow pulse-width modulation, long envelope and spring.">
+  <PARAM id="arpDirection" value="0.0"/>
+  <PARAM id="arpFreeStep" value="1.0"/>
+  <PARAM id="arpHold" value="0.0"/>
+  <PARAM id="arpMode" value="0.0"/>
+  <PARAM id="arpOctSeq" value="0.0"/>
+  <PARAM id="arpPlay" value="0.0"/>
+  <PARAM id="arpRate" value="0.678939163684845"/>
+  <PARAM id="arpSync" value="0.0"/>
+  <PARAM id="attack" value="0.6949999928474426"/>
+  <PARAM id="attenuator" value="0.0"/>
+  <PARAM id="bendRange" value="2.0"/>
+  <PARAM id="clockOutPpqn" value="2.0"/>
+  <PARAM id="cutoff" value="0.5440000295639038"/>
+  <PARAM id="decay" value="0.7770000100135803"/>
+  <PARAM id="drift" value="0.25"/>
+  <PARAM id="envAmt" value="0.25"/>
+  <PARAM id="extClockMode" value="0.0"/>
+  <PARAM id="extClockPpqn" value="2.0"/>
+  <PARAM id="extLevel" value="0.5"/>
+  <PARAM id="fineTune" value="0.0"/>
+  <PARAM id="glide" value="0.0"/>
+  <PARAM id="glideType" value="2.0"/>
+  <PARAM id="hpCutoff" value="0.0"/>
+  <PARAM id="kbOutRange" value="0.0"/>
+  <PARAM id="kbdTrack" value="0.0"/>
+  <PARAM id="legatoGlide" value="0.0"/>
+  <PARAM id="lfoCutoffAmt" value="0.0"/>
+  <PARAM id="lfoPitchAmt" value="0.0"/>
+  <PARAM id="lfoPwAmt" value="0.4000000059604645"/>
+  <PARAM id="lfoRate" value="0.1770000010728836"/>
+  <PARAM id="lfoWave" value="0.0"/>
+  <PARAM id="localOn" value="1.0"/>
+  <PARAM id="mixNoise" value="0.0"/>
+  <PARAM id="mixOsc1" value="0.5"/>
+  <PARAM id="mixOsc2" value="0.5"/>
+  <PARAM id="modWheel" value="1.0"/>
+  <PARAM id="notePriority" value="0.0"/>
+  <PARAM id="osc1Octave" value="2.0"/>
+  <PARAM id="osc1Wave" value="2.0"/>
+  <PARAM id="osc2Freq" value="0.119999997317791"/>
+  <PARAM id="osc2Octave" value="1.0"/>
+  <PARAM id="osc2Sync" value="0.0"/>
+  <PARAM id="osc2Wave" value="2.0"/>
+  <PARAM id="oversampling" value="1.0"/>
+  <PARAM id="release" value="0.7770000100135803"/>
+  <PARAM id="resonance" value="0.1500000059604645"/>
+  <PARAM id="reverbDecay" value="1.0"/>
+  <PARAM id="reverbMix" value="0.3499999940395355"/>
+  <PARAM id="sustain" value="0.75"/>
+  <PARAM id="vcaMode" value="0.0"/>
+  <PARAM id="volume" value="0.4189999997615814"/>
+</BABUSHKA>

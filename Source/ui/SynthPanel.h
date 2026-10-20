@@ -14,14 +14,12 @@
 
 namespace babushka::ui
 {
-// ---- small plate button (SETTINGS, arrows) --------------------------------------------------------------------
+// ---- small plate button (SETTINGS, RANDOMIZE, UNDO / REDO, arrows) -------------------------------------------------
 class PlateButton : public juce::Component
 {
 public:
-    // gearIcon: no text, a gear drawn in the middle (SETTINGS)
-    PlateButton (const juce::String& t, float textHeight = 13.0f, bool gearIcon = false) : text (t), height (textHeight), gear (gearIcon)
-    { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
-    std::function<void()> onClick;
+    PlateButton (const juce::String& t, float textHeight = 13.0f) : text (t), height (textHeight) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+    std::function<void()> onClick, onRightClick;          // right click (or ctrl-click on a Mac) opens a menu where there is one
     void setText (const juce::String& t) { text = t; repaint(); }
     void paint (juce::Graphics& g) override
     {
@@ -33,36 +31,19 @@ public:
         g.fillRoundedRectangle (r, 4.0f);
         g.setColour (col::outline.withAlpha (0.45f));
         g.drawRoundedRectangle (r, 4.0f, 1.0f);
-        auto content = r.translated (0.0f, down ? 1.0f : 0.0f);
-        if (gear)
-            drawGear (g, content.getCentre(), 0.32f * juce::jmin (content.getWidth(), content.getHeight()));
-        else
-            label (g, text, content, col::ink, height, Weight::NarrowBold, juce::Justification::centred, 0.1f);
+        label (g, text, r.translated (0.0f, down ? 1.0f : 0.0f), col::ink.withAlpha (isEnabled() ? 1.0f : 0.35f), height, Weight::NarrowBold,
+               juce::Justification::centred, 0.1f);
     }
-    void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); }
-    void mouseUp (const juce::MouseEvent& e) override { down = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
-private:
-    juce::String text; float height; bool gear, down = false;
-
-    static void drawGear (juce::Graphics& g, juce::Point<float> c, float radius)
+    void enablementChanged() override { repaint(); }
+    void mouseDown (const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; down = true; repaint(); }
+    void mouseUp (const juce::MouseEvent& e) override
     {
-        constexpr int teeth = 8;
-        const float outer = radius, inner = radius * 0.74f, hole = radius * 0.34f;
-        juce::Path p;
-        for (int i = 0; i < teeth * 4; ++i)
-        {
-            // each tooth: rise, top, fall, root (quarter steps of the tooth pitch)
-            const float a = juce::MathConstants<float>::twoPi * ((float) i - 1.5f) / (float) (teeth * 4);
-            const float rr = (i % 4 == 0 || i % 4 == 1) ? outer : inner;
-            const juce::Point<float> q (c.x + rr * std::sin (a), c.y - rr * std::cos (a));
-            if (i == 0) p.startNewSubPath (q); else p.lineTo (q);
-        }
-        p.closeSubPath();
-        p.addEllipse (c.x - hole, c.y - hole, 2.0f * hole, 2.0f * hole);
-        p.setUsingNonZeroWinding (false);
-        g.setColour (col::ink);
-        g.fillPath (p);
+        if (e.mods.isPopupMenu()) { if (onRightClick) onRightClick(); return; }
+        down = false; repaint();
+        if (getLocalBounds().contains (e.getPosition()) && onClick) onClick();
     }
+private:
+    juce::String text; float height; bool down = false;
 };
 
 // ---- preset display: amber LCD with the preset name; a click opens the preset browser ------------------------------
@@ -72,6 +53,7 @@ public:
     PresetDisplay() { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
     std::function<void()> onClick;
     void setName (const juce::String& n) { if (n != name) { name = n; repaint(); } }
+    void setBadge (const juce::String& b) { if (b != badge) { badge = b; repaint(); } }      // "NOT SAVED", "EDITED" or empty
 
     void paint (juce::Graphics& g) override
     {
@@ -90,7 +72,19 @@ public:
         g.setGradientFill (backlight);
         g.fillRoundedRectangle (lcd.reduced (2.0f), 3.0f);
         auto text = lcd.withTrimmedLeft (34.0f).withTrimmedRight (34.0f);
-        g.setFont (font (Weight::Bold, 27.0f, 0.06f));
+        if (badge.isNotEmpty())
+        {
+            const auto bf = font (Weight::NarrowBold, 11.0f, 0.12f);
+            const float bw = juce::GlyphArrangement::getStringWidth (bf, badge) + 12.0f;
+            const juce::Rectangle<float> b (text.getCentreX() - bw * 0.5f, lcd.getY() + 4.0f, bw, 14.0f);
+            g.setColour (amber.withAlpha (0.85f));
+            g.fillRoundedRectangle (b, 3.0f);
+            label (g, badge, b, juce::Colour (0xff1a1306), 11.0f, Weight::NarrowBold, juce::Justification::centred, 0.12f);
+            text = text.withTrimmedTop (14.0f);
+        }
+        float size = 27.0f;                                                                               // long names shrink
+        while (size > 17.0f && juce::GlyphArrangement::getStringWidth (font (Weight::Bold, size, 0.06f), name.toUpperCase()) > text.getWidth()) size -= 1.0f;
+        g.setFont (font (Weight::Bold, size, 0.06f));
         for (int i = 3; i >= 1; --i)                                                                  // glow of the segments
         {
             g.setColour (amber.withAlpha (0.10f));
@@ -111,7 +105,7 @@ public:
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 
 private:
-    juce::String name;
+    juce::String name, badge;
     bool hover = false;
 };
 
@@ -170,12 +164,22 @@ public:
         presetNext.onClick = std::move (next);
         presetDisplay.onClick = std::move (openPresets);
         settingsButton.onClick = std::move (openSettings);
-        for (juce::Component* b : { (juce::Component*) &presetPrev, (juce::Component*) &presetNext,
-                                    (juce::Component*) &settingsButton, (juce::Component*) &presetDisplay }) addAndMakeVisible (*b);
-        // rear strip, right: [<] display [>]  [gear] = SETTINGS, the row centred in the plate (726 … 1418, 56 px each side)
-        // and on y = 1000. The preset browser opens from the display.
-        presetPrev.setBounds (782, 984, 36, 32);  presetDisplay.setBounds (828, 967, 432, 66);  presetNext.setBounds (1270, 984, 36, 32);
-        settingsButton.setBounds (1322, 980, 40, 40);
+        randomButton.onClick = [this] {
+            if (! processor.randomize()) hints.showHint (randomButton, "No sound passed the checks - try again");
+            else hints.showHint (randomButton, processor.getCurrentPresetName() + "  (not saved)"); };
+        randomButton.onRightClick = [this] { showRandomMenu(); };
+        undoButton.onClick = [this] { processor.undo(); };
+        undoButton.onRightClick = [this] { showHistoryMenu(); };
+        redoButton.onClick = [this] { processor.redo(); };
+        redoButton.onRightClick = [this] { showHistoryMenu(); };
+        for (juce::Component* b : { (juce::Component*) &presetPrev, (juce::Component*) &presetNext, (juce::Component*) &settingsButton,
+                                    (juce::Component*) &randomButton, (juce::Component*) &undoButton, (juce::Component*) &redoButton,
+                                    (juce::Component*) &presetDisplay }) addAndMakeVisible (*b);
+        // rear strip, right: [UNDO / REDO]  [<] display [>]  [SETTINGS / RANDOMIZE], 20 px margins inside the plate
+        // (726 … 1418), 16 px between the groups, everything centred on y = 1000. The preset browser opens from the display.
+        undoButton.setBounds (746, 963, 70, 32);   redoButton.setBounds (746, 1003, 70, 32);
+        presetPrev.setBounds (832, 984, 36, 32);  presetDisplay.setBounds (878, 967, 348, 66);  presetNext.setBounds (1236, 984, 36, 32);
+        settingsButton.setBounds (1288, 963, 110, 32);  randomButton.setBounds (1288, 1003, 110, 32);
         setSize (kW, kH);
         startTimerHz (30);
     }
@@ -202,7 +206,8 @@ private:
     std::unique_ptr<Wheel> pitchWheel, modWheel;
     std::unique_ptr<ParamLink> modLink;
     KeyboardWidget keyboard;
-    PlateButton presetPrev { "<", 17.0f }, presetNext { ">", 17.0f }, settingsButton { {}, 13.0f, true };
+    PlateButton presetPrev { "<", 17.0f }, presetNext { ">", 17.0f }, settingsButton { "SETTINGS" }, randomButton { "RANDOMIZE" },
+                undoButton { "UNDO" }, redoButton { "REDO" };
     PresetDisplay presetDisplay;
     Pad* syncPad = nullptr; Pad* playPad = nullptr; Pad* holdPad = nullptr; Pad* tapPad = nullptr;
     std::unique_ptr<ParamLink> syncLink;
@@ -543,7 +548,7 @@ private:
         jack (Jack::ClockIn, 462, 990, "CLOCK IN", cvInk); jack (Jack::OnOffIn, 531, 990, "ON / OFF IN", cvInk);
         jack (Jack::ResetIn, 600, 990, "RESET IN", cvInk); jack (Jack::ClockOut, 669, 990, "CLOCK OUT", cvInk);
         module ({ 726, 944, 692, 100 }, S.panel, "");
-        textAt ("PRESET", 1044, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
+        textAt ("PRESET", 1052, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
     }
 
     // Logotype in the manner of the hardware: the first half of the name solid, the second half in outline;
@@ -618,7 +623,12 @@ private:
     bool recordMode() const { return (int) std::lround (apvts.getRawParameterValue ("arpMode")->load()) == 2; }
     void toggleParam (const char* id)
     {
-        if (auto* prm = apvts.getParameter (id)) prm->setValueNotifyingHost (prm->getValue() > 0.5f ? 0.0f : 1.0f);
+        if (auto* prm = apvts.getParameter (id))
+        {   // a complete gesture, so the press is a step of the history
+            prm->beginChangeGesture();
+            prm->setValueNotifyingHost (prm->getValue() > 0.5f ? 0.0f : 1.0f);
+            prm->endChangeGesture();
+        }
     }
 
     // PLAY / HOLD / TAP double as [< KB] / [SHIFT] / [KB >]: hold HOLD and press PLAY or TAP to move the keyboard by an octave.
@@ -658,6 +668,34 @@ private:
         arpPhase += juce::jmin (bpm / 60.0f, 7.5f) / 30.0f; arpPhase -= std::floor (arpPhase);
         arpLamp->setLevel (arpPhase < 0.22f ? 1.0f : 0.12f);
         presetDisplay.setName (processor.getCurrentPresetName());
+        presetDisplay.setBadge (processor.isRandomSound() ? "NOT SAVED" : processor.isSoundModified() ? "EDITED" : "");
+        undoButton.setEnabled (processor.canUndo());
+        redoButton.setEnabled (processor.canRedo());
+    }
+
+    // Right click on RANDOMIZE: which kind of sound it makes (remembered while the plugin is open).
+    void showRandomMenu()
+    {
+        juce::PopupMenu m;
+        m.addSectionHeader ("RANDOMIZE TYPE");
+        const auto names = BabushkaProcessor::randomKindNames();
+        for (int i = 0; i < names.size(); ++i)
+            m.addItem (i + 1, i == 0 ? "ANY - any kind of sound" : names[i], true, (int) processor.getRandomKind() == i);
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&randomButton), [this] (int id) {
+            if (id <= 0) return;
+            processor.setRandomKind ((BabushkaProcessor::RandomKind) (id - 1));
+            hints.showHint (randomButton, "RANDOMIZE makes: " + BabushkaProcessor::randomKindNames()[id - 1]); });
+    }
+
+    // Right click on UNDO / REDO: the history, newest first; a click goes back (or forward) to that step.
+    void showHistoryMenu()
+    {
+        juce::PopupMenu m;
+        m.addSectionHeader ("HISTORY");
+        const auto labels = processor.getHistoryLabels();
+        for (int i = labels.size() - 1; i >= 0; --i) m.addItem (i + 1, labels[i], true, i == processor.getHistoryPosition());
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&undoButton), [this] (int id) {
+            if (id > 0) processor.jumpToHistory (id - 1); });
     }
 };
 } // namespace babushka::ui

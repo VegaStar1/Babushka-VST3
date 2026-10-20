@@ -3,6 +3,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../../Source/PluginProcessor.h"
 #include "../../Source/PluginEditor.h"
+#include "../../Source/ui/Overlays.h"
 
 namespace
 {
@@ -44,18 +45,33 @@ struct Runner : private juce::Timer
         if (tick == 120) { std::printf ("cables: %d (expect 2)\n", proc.getPatchCopy().count); cl.pressAt (cl.jackCentre (J::MixOsc1In), false); cl.dragTo ({ 400.0f, 800.0f }); }
         if (tick == 135) { cl.releaseAt ({ 400.0f, 800.0f }); std::printf ("cables after pulling one out: %d (expect 1)\n", proc.getPatchCopy().count); }
         if (tick == 136) { cl.pressAt (cl.jackCentre (J::FilterCutoffIn), true); std::printf ("cables after right-click removal: %d (expect 0)\n", proc.getPatchCopy().count); }
+        // preset browser: all presets, a user folder (two user presets with tags), the SAVE AS dialog
+        if (tick == 138)
+        {
+            load ("Classic Bass");
+            proc.saveUserPreset ("My Acid Bass", "My Basses", { "RESONANT", "AGGRESSIVE" });
+            load ("Warm Pad");
+            proc.saveUserPreset ("Night Pad", "Track X", { "DARK", "EVOLVING" });
+            proc.saveUserPreset ("Quick Sketch");
+            load ("Init");
+        }
         if (tick == 140) ed.showPresets (true);
-        if (tick == 144) { save (ed, out.getChildFile ("ui_presets.png")); ed.showPresets (false); ed.showSettings (true); }
-        if (tick == 148) { save (ed, out.getChildFile ("ui_settings.png")); ed.showSettings (false); }
+        if (tick == 144) { save (ed, out.getChildFile ("ui_presets.png")); ed.presetBrowser()->selectBranch ("User"); }
+        if (tick == 146) { save (ed, out.getChildFile ("ui_presets_user.png")); ed.presetBrowser()->openSaveDialog(); }
+        if (tick == 148) { save (ed, out.getChildFile ("ui_presets_save.png")); ed.showPresets (false); ed.showSettings (true); }
+        if (tick == 150) { save (ed, out.getChildFile ("ui_settings.png")); ed.showSettings (false); }
+        // RANDOMIZE: the display shows the new, unsaved sound
+        if (tick == 152) { const bool ok = proc.randomize (777); std::printf ("randomize: %s -> '%s'\n", ok ? "ok" : "FAILED", proc.getCurrentPresetName().toRawUTF8()); }
+        if (tick == 156) save (ed, out.getChildFile ("ui_random.png"));
         // the other skin, with a few cables, then a small window (legibility of the print)
-        if (tick == 150) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
+        if (tick == 160) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
                            for (auto* id : { "osc2Sync", "arpHold" }) proc.apvts.getParameter (id)->setValueNotifyingHost (1.0f); }
-        if (tick == 180) save (ed, out.getChildFile ("ui_black.png"));
-        if (tick == 181) ed.setSize (900, 651);
-        if (tick == 184) save (ed, out.getChildFile ("ui_small_black.png"));
-        if (tick == 185) { ed.setSkin (0); }
-        if (tick == 188) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1500, 1085); ed.setSkin (skinBefore); }
-        if (tick == 190) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        if (tick == 190) save (ed, out.getChildFile ("ui_black.png"));
+        if (tick == 191) ed.setSize (900, 651);
+        if (tick == 194) save (ed, out.getChildFile ("ui_small_black.png"));
+        if (tick == 195) { ed.setSkin (0); }
+        if (tick == 198) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1500, 1085); ed.setSkin (skinBefore); }
+        if (tick == 200) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };
@@ -67,6 +83,9 @@ int main (int argc, char** argv)
     const juce::File out (argc > 1 ? argv[1] : ".");
     out.createDirectory();
     BabushkaProcessor proc;
+    const auto presetRoot = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_uishot_presets");
+    presetRoot.deleteRecursively();
+    proc.setPresetRoot (presetRoot);      // never touch the real preset folder
     proc.setPlayConfigDetails (0, 2, 48000.0, 512);
     proc.prepareToPlay (48000.0, 512);
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
@@ -74,5 +93,7 @@ int main (int argc, char** argv)
     auto* be = dynamic_cast<BabushkaEditor*> (ed.get());
     Runner runner (proc, *be, out);
     juce::MessageManager::getInstance()->runDispatchLoop();
+    ed.reset();
+    presetRoot.deleteRecursively();
     return 0;
 }
