@@ -503,7 +503,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
 }
 
-juce::AudioProcessorEditor* BabushkaProcessor::createEditor() { return new BabushkaEditor (*this); }
+juce::AudioProcessorEditor* BabushkaProcessor::createEditor() { editorCreated = true; return new BabushkaEditor (*this); }
 
 std::unique_ptr<juce::XmlElement> BabushkaProcessor::createStateXml()
 {
@@ -561,8 +561,28 @@ void BabushkaProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void BabushkaProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    auto xml = getXmlFromBinary (data, sizeInBytes);
+    if (xml == nullptr || ! xml->hasTagName (apvts.state.getType())) return;
+
+    // The standalone app saves the state when it quits and loads it back at start, before its window (and our editor)
+    // exists. That is not a project: a new start of the app begins with Init, keeping only the global settings.
+    // "Load a saved state..." from the app's menu comes later, with the window open, and restores the sound.
+    if (wrapperType == wrapperType_Standalone && ! editorCreated)
+    {
+        for (auto* child : xml->getChildIterator())
+        {
+            const auto id = child->getStringAttribute ("id");
+            if (id.isNotEmpty() && babushka::isGlobalParam (id.toRawUTF8()))
+                if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (id)))
+                    rp->setValueNotifyingHost (rp->convertTo0to1 ((float) child->getDoubleAttribute ("value")));
+        }
+        resetHistory ("Init");
+        return;
+    }
+
     // A project reopened in the DAW: the sound exactly as it was saved (globals included), with a fresh history.
-    if (auto xml = getXmlFromBinary (data, sizeInBytes)) { restoreFromXml (*xml); resetHistory ("Project: " + currentPresetName); }
+    restoreFromXml (*xml);
+    resetHistory ("Project: " + currentPresetName);
 }
 
 // ---- history ------------------------------------------------------------------------------------------------------

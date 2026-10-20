@@ -156,6 +156,7 @@ private:
     std::vector<std::pair<juce::String, juce::String>> history;   // label, state XML
     int historyPos = -1;
     bool restoringHistory = false;
+    bool editorCreated = false;      // standalone: tells the app's start-up state reload from "Load a saved state..."
     juce::String gestureLabel;
     void audioProcessorParameterChanged (juce::AudioProcessor*, int, float) override {}
     void audioProcessorChanged (juce::AudioProcessor*, const juce::AudioProcessorListener::ChangeDetails&) override {}

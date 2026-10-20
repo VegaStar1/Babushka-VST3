@@ -339,6 +339,26 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         if (paramMismatch != 0 || ! saved->isEquivalentTo (restored.get(), false) || reopened.getCurrentPresetName() != "Berlin School"
             || ! reopened.isSoundModified() || reopened.canUndo()) return fail ("project recall");
 
+        // Standalone app: the state it saved at quit is loaded back at start, before the window opens. The app must start
+        // as Init (keeping the global settings); "Load a saved state..." (window open) restores the sound.
+        {
+            pr.apvts.getParameter ("fineTune")->setValueNotifyingHost (0.8f);   // a global setting the app should keep
+            juce::MemoryBlock appState; pr.getStateInformation (appState);
+            juce::AudioProcessor::setTypeOfNextNewPlugin (juce::AudioProcessor::wrapperType_Standalone);
+            BabushkaProcessor app;
+            juce::AudioProcessor::setTypeOfNextNewPlugin (juce::AudioProcessor::wrapperType_Undefined);
+            app.setStateInformation (appState.getData(), (int) appState.getSize());
+            const auto startName = app.getCurrentPresetName();
+            const float startCut = app.apvts.getParameter ("cutoff")->getValue(), startTune = app.apvts.getParameter ("fineTune")->getValue();
+            std::unique_ptr<juce::AudioProcessorEditor> appEd (app.createEditor());
+            app.setStateInformation (appState.getData(), (int) appState.getSize());      // File > Load a saved state...
+            std::printf ("Standalone start: '%s' (cutoff %.2f, default 0.60; fine tune kept %.2f), after Load state: '%s'\n", startName.toRawUTF8(),
+                         app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut), startTune, app.getCurrentPresetName().toRawUTF8());
+            if (startName != "Init" || std::abs (app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut) - 0.6f) > 1e-3f
+                || std::abs (startTune - 0.8f) > 1e-4f || app.isSoundModified() == false || app.getCurrentPresetName() != "Berlin School")
+                return fail ("standalone start must be Init");
+        }
+
         // History: knob gestures, cables and presets are steps; undo / redo restore the whole sound; at most 20 steps.
         BabushkaProcessor h;
         h.applyFactoryPreset (indexOf ("Classic Bass"));
