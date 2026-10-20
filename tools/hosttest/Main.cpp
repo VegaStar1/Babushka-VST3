@@ -213,6 +213,26 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         if (b5.getNumChannels() != 4 || euroPk < 1.5 * mainPk || revPk < 0.02) return fail ("extra output buses");
     }
 
+    // Notes and pitch wheel from the on-screen controls reach the voice; held keys are reported for the display.
+    {
+        BabushkaProcessor ui;
+        ui.setPlayConfigDetails (0, 2, 48000.0, 512);
+        ui.prepareToPlay (48000.0, 512);
+        juce::AudioBuffer<float> b6 (2, 512);
+        auto peak = [&] (int blocks) { double pk = 0; for (int i = 0; i < blocks; ++i) { juce::MidiBuffer m; b6.clear(); ui.processBlock (b6, m); pk = std::max (pk, (double) b6.getMagnitude (0, 0, 512)); } return pk; };
+        const double before = peak (10);
+        ui.uiNoteOn (60, 110);
+        const double during = peak (20);
+        const bool held = ui.isNoteHeld (60);
+        ui.uiNoteOff (60);
+        peak (2);
+        std::printf ("On-screen keyboard: silence %.4f, key down %.3f (held flag %d), after release held flag %d\n", before, during, (int) held, (int) ui.isNoteHeld (60));
+        if (before > 0.001 || during < 0.02 || ! held || ui.isNoteHeld (60)) return fail ("on-screen keyboard path");
+        ui.setUiPitchBend (1.0f);       // must not crash and must be picked up at the next block
+        peak (4);
+        ui.setUiPitchBend (0.0f);
+    }
+
     // Factory presets: every parameter id exists, cables parse, the sound is finite and audible.
     {
         BabushkaProcessor pr;
@@ -285,17 +305,15 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         std::printf ("Editor screenshot written (%dx%d)\n", ed->getWidth(), ed->getHeight());
         if (auto* be = dynamic_cast<BabushkaEditor*> (ed.get()))
         {
-            proc.applyFactoryPreset (13);   // a patched preset, so the cable list is not empty
-            be->showPresetsTab (true);
-            auto img2 = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
-            juce::File out2 (juce::File (shotPath).getSiblingFile (juce::File (shotPath).getFileNameWithoutExtension() + "_presets.png")); out2.deleteFile();
-            juce::FileOutputStream os2 (out2);
-            juce::PNGImageFormat().writeImageToStream (img2, os2);
-            be->showPresetsTab (false);
-            auto img3 = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
-            juce::File out3 (juce::File (shotPath).getSiblingFile (juce::File (shotPath).getFileNameWithoutExtension() + "_patched.png")); out3.deleteFile();
-            juce::FileOutputStream os3 (out3);
-            juce::PNGImageFormat().writeImageToStream (img3, os3);
+            auto shot = [&] (const char* suffix) {
+                auto img2 = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+                juce::File f (juce::File (shotPath).getSiblingFile (juce::File (shotPath).getFileNameWithoutExtension() + suffix + ".png")); f.deleteFile();
+                juce::FileOutputStream os2 (f);
+                juce::PNGImageFormat().writeImageToStream (img2, os2); };
+            proc.applyFactoryPreset (13);   // a patched preset, so there are cables on the panel
+            shot ("_patched");
+            be->showPresets (true);  shot ("_presets");  be->showPresets (false);
+            be->showSettings (true); shot ("_settings"); be->showSettings (false);
         }
     }
     std::printf ("ALL HOST TESTS PASSED\n");

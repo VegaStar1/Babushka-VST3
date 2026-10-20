@@ -48,6 +48,14 @@ public:
     void removeCable (int index);
     void clearCables();
 
+    // On-screen keyboard and wheels (message thread -> audio thread through a lock-free queue).
+    void uiNoteOn (int note, int velocity);
+    void uiNoteOff (int note);
+    void setUiPitchBend (float normalised);                 // −1 … +1
+    bool isNoteHeld (int note) const noexcept { return note >= 0 && note < 128 && ((heldBits[note >> 6].load() >> (note & 63)) & 1ull) != 0; }
+    int getPatchVersion() const noexcept { return patchVersion.load(); }   // changes whenever the cables change
+    void tapTempo();                                       // TAP button: three taps in a row set the free tempo
+
     // Presets (message thread). Factory presets are compiled in; user presets are XML files in a folder.
     void applyFactoryPreset (int index);
     bool saveUserPreset (const juce::String& name);
@@ -57,6 +65,11 @@ public:
     juce::File getUserPresetDirectory() const;
     void setUserPresetDirectory (const juce::File& dir) { userPresetDir = dir; }   // tests / custom location
     juce::String getCurrentPresetName() const { return currentPresetName; }
+
+    struct PresetRef { bool factory = true; int factoryIndex = -1; juce::File file; juce::String name; juce::String category; };
+    std::vector<PresetRef> listPresets() const;      // factory presets first, then the user presets found in the folder
+    void loadPreset (const PresetRef& ref);
+    void stepPreset (int delta);                     // previous / next in that list (wraps around)
     int getCurrentSequenceLength() const { return currentSeqLength.load(); }
     juce::String getArpRateText() const;
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -65,6 +78,19 @@ private:
     babushka::dsp::Engine engine;
     std::vector<float> mono, ext, euro, reverbOut;
     juce::SpinLock seqLock;
+    struct UiNote { int note = 0; int velocity = 0; };      // velocity 0 = note off
+    juce::AbstractFifo uiFifo { 256 };
+    std::array<UiNote, 256> uiNotes {};
+    std::atomic<float> uiBend { 0.0f };
+    std::atomic<bool> uiBendDirty { false };
+    std::atomic<uint64_t> heldBits[2] { 0, 0 };
+    std::atomic<int> patchVersion { 0 };
+    juce::Array<double> tapTimes;
+    void setHeld (int note, bool on) noexcept
+    {
+        if (note < 0 || note > 127) return;
+        if (on) heldBits[note >> 6].fetch_or (1ull << (note & 63)); else heldBits[note >> 6].fetch_and (~(1ull << (note & 63)));
+    }
     juce::File userPresetDir;
     juce::String currentPresetName { "Init" };
     mutable juce::SpinLock patchLock;

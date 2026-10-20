@@ -249,7 +249,7 @@ bool BabushkaProcessor::addCable (babushka::dsp::Jack a, babushka::dsp::Jack b)
 {
     bool ok;
     { const juce::SpinLock::ScopedLockType lock (patchLock); ok = patchState.add (a, b); }
-    if (ok) patchDirty.store (true);
+    if (ok) { patchDirty.store (true); ++patchVersion; }
     return ok;
 }
 
@@ -257,12 +257,52 @@ void BabushkaProcessor::removeCable (int index)
 {
     { const juce::SpinLock::ScopedLockType lock (patchLock); patchState.remove (index); }
     patchDirty.store (true);
+    ++patchVersion;
 }
 
 void BabushkaProcessor::clearCables()
 {
     { const juce::SpinLock::ScopedLockType lock (patchLock); patchState.clear(); }
     patchDirty.store (true);
+    ++patchVersion;
+}
+
+void BabushkaProcessor::uiNoteOn (int note, int velocity)
+{
+    int s1, n1, s2, n2;
+    uiFifo.prepareToWrite (1, s1, n1, s2, n2);
+    if (n1 + n2 < 1) return;
+    uiNotes[(size_t) (n1 > 0 ? s1 : s2)] = { juce::jlimit (0, 127, note), juce::jlimit (1, 127, velocity) };
+    uiFifo.finishedWrite (1);
+}
+
+void BabushkaProcessor::uiNoteOff (int note)
+{
+    int s1, n1, s2, n2;
+    uiFifo.prepareToWrite (1, s1, n1, s2, n2);
+    if (n1 + n2 < 1) return;
+    uiNotes[(size_t) (n1 > 0 ? s1 : s2)] = { juce::jlimit (0, 127, note), 0 };
+    uiFifo.finishedWrite (1);
+}
+
+void BabushkaProcessor::setUiPitchBend (float normalised)
+{
+    uiBend.store (juce::jlimit (-1.0f, 1.0f, normalised));
+    uiBendDirty.store (true);
+}
+
+// TAP: at least three taps in a row set the free tempo (as on the hardware).
+void BabushkaProcessor::tapTempo()
+{
+    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    if (! tapTimes.isEmpty() && now - tapTimes.getLast() > 2.0) tapTimes.clear();
+    tapTimes.add (now);
+    if (tapTimes.size() > 4) tapTimes.remove (0);
+    if (tapTimes.size() >= 3)
+    {
+        const double avg = (tapTimes.getLast() - tapTimes.getFirst()) / (tapTimes.size() - 1);
+        if (avg > 0.0) setArpTempoFromTap (60.0 / avg);
+    }
 }
 
 juce::String BabushkaProcessor::getArpRateText() const
@@ -312,8 +352,8 @@ babushka::dsp::Sequence BabushkaProcessor::sequenceFromString (const juce::Strin
 
 void BabushkaProcessor::handleMidi (const juce::MidiMessage& m)
 {
-    if (m.isNoteOn()) engine.noteOn (m.getNoteNumber(), m.getVelocity());
-    else if (m.isNoteOff()) engine.noteOff (m.getNoteNumber());
+    if (m.isNoteOn()) { engine.noteOn (m.getNoteNumber(), m.getVelocity()); setHeld (m.getNoteNumber(), true); }
+    else if (m.isNoteOff()) { engine.noteOff (m.getNoteNumber()); setHeld (m.getNoteNumber(), false); }
     else if (m.isPitchWheel()) engine.setPitchBend ((float) (m.getPitchWheelValue() - 8192) / 8192.0f);
     else if (m.isController())
     {
@@ -321,7 +361,7 @@ void BabushkaProcessor::handleMidi (const juce::MidiMessage& m)
         if (cc == 1) engine.setModWheelCC ((float) v / 127.0f);
         else if (cc == 64) engine.setSustain (v >= 64);
     }
-    else if (m.isAllNotesOff() || m.isAllSoundOff()) engine.allNotesOff();
+    else if (m.isAllNotesOff() || m.isAllSoundOff()) { engine.allNotesOff(); heldBits[0] = 0; heldBits[1] = 0; }
 }
 
 void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
@@ -385,6 +425,22 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     if (recRestRequests.exchange (0) > 0)   arp.recRest();
     if (recTieRequests.exchange (0) > 0)    arp.recTie();
     if (recAccentRequests.exchange (0) > 0) arp.recAccent();
+
+    // Notes and pitch wheel from the on-screen controls.
+    {
+        int s1, n1, s2, n2;
+        uiFifo.prepareToRead (uiFifo.getNumReady(), s1, n1, s2, n2);
+        auto apply = [this] (int start, int count) {
+            for (int i = start; i < start + count; ++i)
+            {
+                const auto& n = uiNotes[(size_t) i];
+                if (n.velocity > 0) { engine.noteOn (n.note, n.velocity); setHeld (n.note, true); }
+                else                { engine.noteOff (n.note); setHeld (n.note, false); }
+            } };
+        apply (s1, n1); apply (s2, n2);
+        uiFifo.finishedRead (n1 + n2);
+        if (uiBendDirty.exchange (false)) engine.setPitchBend (uiBend.load());
+    }
 
     // Sample-accurate MIDI: render up to each event, then apply it.
     int pos = 0;
@@ -452,6 +508,7 @@ void BabushkaProcessor::restoreFromXml (const juce::XmlElement& xml)
         patchState = babushka::dsp::PatchState::fromString (tree.getProperty ("patch").toString().toStdString());
     }
     patchDirty.store (true);
+    ++patchVersion;
     currentPresetName = tree.hasProperty ("presetName") ? tree.getProperty ("presetName").toString() : juce::String ("Init");
     apvts.replaceState (tree);
 }
@@ -495,6 +552,7 @@ void BabushkaProcessor::applyFactoryPreset (int index)
         patchState = babushka::dsp::PatchState::fromString (pr.patch);
     }
     patchDirty.store (true);
+    ++patchVersion;
 
     if (pr.seq1[0] != 0 || pr.seq2[0] != 0 || pr.seq3[0] != 0)
     {
@@ -542,6 +600,31 @@ bool BabushkaProcessor::loadUserPreset (const juce::File& file)
         return true;
     }
     return false;
+}
+
+std::vector<BabushkaProcessor::PresetRef> BabushkaProcessor::listPresets() const
+{
+    std::vector<PresetRef> list;
+    const auto& all = babushka::factoryPresets();
+    for (int i = 0; i < (int) all.size(); ++i) list.push_back ({ true, i, {}, all[(size_t) i].name, all[(size_t) i].category });
+    for (auto& f : getUserPresetFiles()) list.push_back ({ false, -1, f, f.getFileNameWithoutExtension(), "User" });
+    return list;
+}
+
+void BabushkaProcessor::loadPreset (const PresetRef& ref)
+{
+    if (ref.factory) applyFactoryPreset (ref.factoryIndex); else loadUserPreset (ref.file);
+}
+
+void BabushkaProcessor::stepPreset (int delta)
+{
+    const auto list = listPresets();
+    if (list.empty()) return;
+    int cur = -1;
+    for (int i = 0; i < (int) list.size(); ++i) if (list[(size_t) i].name == currentPresetName) { cur = i; break; }
+    const int n = (int) list.size();
+    const int next = cur < 0 ? (delta > 0 ? 0 : n - 1) : ((cur + delta) % n + n) % n;
+    loadPreset (list[(size_t) next]);
 }
 
 bool BabushkaProcessor::deleteUserPreset (const juce::File& file) { return file.getParentDirectory() == getUserPresetDirectory() && file.deleteFile(); }

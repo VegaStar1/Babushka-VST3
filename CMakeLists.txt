@@ -31,6 +31,12 @@ juce_add_plugin(Babushka
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Synth Mono)
 
+# Fonts embedded in the editor (Montserrat, SIL Open Font License 1.1 — see docs/licenses).
+juce_add_binary_data(BabushkaAssets SOURCES
+    Source/ui/fonts/Montserrat-Regular.ttf
+    Source/ui/fonts/Montserrat-SemiBold.ttf
+    Source/ui/fonts/Montserrat-Bold.ttf)
+
 target_sources(Babushka PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp)
@@ -44,7 +50,7 @@ target_compile_definitions(Babushka PUBLIC
     JUCE_DISPLAY_SPLASH_SCREEN=0)
 
 target_link_libraries(Babushka
-    PRIVATE juce::juce_audio_utils juce::juce_dsp
+    PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
 # Offline renderer / test harness for the DSP core (no JUCE).
@@ -57,6 +63,14 @@ if(BABUSHKA_HOST_TEST)
     target_sources(babushka_hosttest PRIVATE tools/hosttest/Main.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
     target_include_directories(babushka_hosttest PRIVATE Source)
     target_compile_definitions(babushka_hosttest PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
-    target_link_libraries(babushka_hosttest PRIVATE juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics
+    target_link_libraries(babushka_hosttest PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics
+                          PUBLIC juce::juce_recommended_config_flags)
+
+    # Renders the editor (several states) to PNG files; used while working on the look of the interface.
+    juce_add_console_app(babushka_uishot PRODUCT_NAME "babushka_uishot")
+    target_sources(babushka_uishot PRIVATE tools/uishot/Main.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+    target_include_directories(babushka_uishot PRIVATE Source)
+    target_compile_definitions(babushka_uishot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    target_link_libraries(babushka_uishot PRIVATE BabushkaAssets juce::juce_audio_utils juce::juce_audio_processors juce::juce_gui_basics
                           PUBLIC juce::juce_recommended_config_flags)
 endif()
