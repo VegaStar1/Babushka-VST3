@@ -267,12 +267,17 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
             if (bad || pk < 0.02) return fail (juce::String ("preset is silent or not finite: ") + fp.name);
         }
         // a preset resets the knobs it does not mention
-        pr.applyFactoryPreset (1);      // Classic Bass: cutoff .32
+        int bassIndex = -1; float bassCutoff = 0.0f;
+        for (int i = 0; i < (int) all.size(); ++i)
+            if (juce::String (all[(size_t) i].name) == "Classic Bass")
+                for (auto& [id, v] : all[(size_t) i].values) if (juce::String (id) == "cutoff") { bassIndex = i; bassCutoff = v; }
+        if (bassIndex < 0) return fail ("no Classic Bass preset with a cutoff value");
+        pr.applyFactoryPreset (bassIndex);
         const float cutBass = pr.apvts.getRawParameterValue ("cutoff")->load();
         pr.applyFactoryPreset (0);      // Init
         const float cutInit = pr.apvts.getRawParameterValue ("cutoff")->load();
-        std::printf ("Preset reset: cutoff %.2f after Classic Bass, %.2f after Init (default 0.60)\n", cutBass, cutInit);
-        if (std::abs (cutBass - 0.32f) > 1e-3f || std::abs (cutInit - 0.6f) > 1e-3f) return fail ("preset values / reset");
+        std::printf ("Preset reset: cutoff %.2f after Classic Bass (expect %.2f), %.2f after Init (default 0.60)\n", cutBass, bassCutoff, cutInit);
+        if (std::abs (cutBass - bassCutoff) > 1e-3f || std::abs (cutInit - 0.6f) > 1e-3f) return fail ("preset values / reset");
 
         // user presets: save, reload in a fresh processor, delete
         auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_preset_test");
