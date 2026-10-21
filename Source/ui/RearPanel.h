@@ -412,7 +412,7 @@ private:
                 *im = juce::Image (juce::Image::ARGB, w, h, true);
                 juce::Graphics ig (*im);
                 ig.addTransform (juce::AffineTransform::scale (scale));
-                drawFace (ig, face.withPosition (0.0f, 0.0f), im == &faceLit ? 1.0f : 0.42f);
+                drawFace (ig, face.withPosition (0.0f, 0.0f), im == &faceLit ? 1.0f : 0.72f);   // at rest: lit, just less
             }
             cachedScale = scale;
         }

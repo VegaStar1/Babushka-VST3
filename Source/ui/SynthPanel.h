@@ -295,7 +295,7 @@ private:
         const bool outlined = fill.getAlpha() == 0;
         if (outlined) { g.setColour (plateInk.withAlpha (0.9f)); g.drawRoundedRectangle (r, 2.5f, 1.1f); }
         else { g.setColour (fill); g.fillRoundedRectangle (r, 2.5f); }
-        label (g, t, r.reduced (3.0f, 0.0f), outlined ? plateInk : inkOn (fill), 10.5f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+        label (g, t, r.reduced (6.0f, 0.0f), outlined ? plateInk : inkOn (fill), 10.5f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
     }
     void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = 11.0f, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
     {
@@ -307,6 +307,7 @@ private:
     }
     void module (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title, bool outlined = true)
     {
+        currentPlate = r;
         op ([=] (juce::Graphics& g) { drawPlate (g, r, fill, outlined); });
         if (title.isNotEmpty()) textAt (title, r.getCentreX(), r.getY() + 15.0f, inkOn (fill), 13.0f, Weight::NarrowBold, r.getWidth() - 12.0f, 0.12f);
     }
@@ -314,7 +315,7 @@ private:
     {
         frontJacks.push_back ({ id, { x, y } });
         op ([=] (juce::Graphics& g) { drawJack (g, { x, y }); });
-        if (text.isNotEmpty()) textAt (text, x, y + 20.0f, textColour, 10.0f, Weight::NarrowBold, 58.0f, 0.03f);
+        if (text.isNotEmpty()) jackLabels.push_back ({ text, x, y + 20.0f, textColour, currentPlate });
     }
     Knob* knob (const char* id, float cx, float cy, float diameter, std::function<juce::String (double)> formatter = nullptr, bool selector = false)
     {
@@ -339,11 +340,40 @@ private:
         return levers.back().get();
     }
     // Names of the three lever positions, under the lever.
+    // (each name keeps a few pixels from its neighbours, so the words never run together)
     void leverLabels (float cx, float y, const juce::String& a, const juce::String& b, const juce::String& c, juce::Colour ink, float spread = 28.0f, float size = 9.5f)
     {
-        textAt (a, cx - spread, y, ink, size, Weight::NarrowBold, spread - 1.0f, 0.0f);
-        textAt (b, cx, y, ink, size, Weight::NarrowBold, spread - 1.0f, 0.0f);
-        textAt (c, cx + spread, y, ink, size, Weight::NarrowBold, spread - 1.0f, 0.0f);
+        textAt (a, cx - spread, y, ink, size, Weight::NarrowBold, spread - 5.0f, 0.0f);
+        textAt (b, cx, y, ink, size, Weight::NarrowBold, spread + 4.0f, 0.0f);     // the middle name may be the longest
+        textAt (c, cx + spread, y, ink, size, Weight::NarrowBold, spread - 5.0f, 0.0f);
+    }
+
+    // Jack names. Each gets the room between its plate's frame and halfway to the next jack of its row; a name near
+    // the frame moves a little inwards. The print stays the same size (it only grows in a small window as far as that
+    // room allows), so names never cross the frame or each other.
+    struct JackLabel { juce::String text; float x, y; juce::Colour colour; juce::Rectangle<float> plate; };
+    std::vector<JackLabel> jackLabels;
+    juce::Rectangle<float> currentPlate;
+
+    void placeJackLabels()
+    {
+        constexpr float natural = 58.0f, gap = 3.0f;
+        for (auto& l : jackLabels)
+        {
+            float lo = l.plate.getX() + 7.0f, hi = l.plate.getRight() - 7.0f;           // inside the printed frame
+            for (auto& o : jackLabels)
+                if (&o != &l && o.plate == l.plate && std::abs (o.y - l.y) < 12.0f)
+                {
+                    const float mid = 0.5f * (o.x + l.x);
+                    if (o.x < l.x) lo = juce::jmax (lo, mid + gap * 0.5f);
+                    else           hi = juce::jmin (hi, mid - gap * 0.5f);
+                }
+            const float left = juce::jmax (lo, l.x - natural * 0.5f), right = juce::jmin (hi, l.x + natural * 0.5f);
+            const float x = 0.5f * (left + right), w = right - left;
+            const auto t = l.text; const auto c = l.colour; const float y = l.y;
+            op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, 10.0f, Weight::NarrowBold, w, 0.03f); });
+        }
+        jackLabels.clear();
     }
     void ticks (float cx, float cy, float d, int count, juce::Colour c, float length = 0.1f, int majorEvery = 0)
     {
@@ -574,6 +604,7 @@ private:
         op ([strip = S.strip] (juce::Graphics& g) { drawTitleStrip (g, juce::Rectangle<float> (78.0f, 466.0f, 1340.0f, 62.0f), strip); });
 
         // ---------------- left-hand controller and keyboard (laid out by layoutKeys, drawn by paintKeysSection) ----------
+        placeJackLabels();                  // still in the front zone
         zone = Zone::Keys;
         glideKnob = knob ("glide", 101, 606, 40, [] (double v) { return fmt::glide (v); });
         playPad = addPad (S.play, 162, 610, 40);
