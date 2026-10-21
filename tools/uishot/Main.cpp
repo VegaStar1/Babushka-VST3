@@ -102,8 +102,19 @@ struct Runner : private juce::Timer
         if (tick == 170) load ("Two Saws");
         if (tick > 170 && tick <= 180) play (48);
         if (tick == 181) save (ed, out.getChildFile ("ui_rear_open.png"));
-        if (tick == 182) { proc.clearCables(); ed.synthPanel().setRearOpen (false, false); }
-        if (tick == 183) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
+        if (tick == 182)
+        {   // a loud sound: the CLIP lamp must see the output limiter at work
+            const auto before = proc.getClipCount();
+            proc.apvts.getParameter ("volume")->setValueNotifyingHost (1.0f);
+            proc.apvts.getParameter ("mixOsc2")->setValueNotifyingHost (1.0f);
+            proc.apvts.getParameter ("mixOsc1")->setValueNotifyingHost (1.0f);
+            proc.apvts.getParameter ("cutoff")->setValueNotifyingHost (1.0f);
+            proc.apvts.getParameter ("resonance")->setValueNotifyingHost (0.0f);
+            play (36);
+            std::printf ("clip: %u samples over full scale caught (expect > 0)\n", proc.getClipCount() - before);
+        }
+        if (tick == 183) { save (ed, out.getChildFile ("ui_clip.png")); proc.clearCables(); ed.synthPanel().setRearOpen (false, false); }
+        if (tick == 184) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
                            for (auto* id : { "osc2Sync", "arpHold" }) proc.apvts.getParameter (id)->setValueNotifyingHost (1.0f); }
         if (tick == 186) midiWheels (8191 + 6000, 100);      // a MIDI keyboard's wheels: the panel's wheels must follow
         if (tick == 192) { save (ed, out.getChildFile ("ui_black.png")); midiWheels (8192, 0); }

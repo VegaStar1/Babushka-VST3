@@ -140,6 +140,8 @@ public:
     // Compiled cables; cheap enough to call from the audio thread at the start of a block.
     void setPatch (const PatchState& p) noexcept { routing = Routing::compile (p); }
     const Routing& currentRouting() const noexcept { return routing; }
+    // Samples since the last call that went over full scale before the output limiter (the CLIP lamp).
+    int takeOvers() noexcept { const int o = overs; overs = 0; return o; }
     // Last voltage published on an output jack (for meters / tests).
     float outputVolts (Jack j) const noexcept { const int i = (int) j - kFirstOutput; return i >= 0 && i < kNumOutputs ? outV[i] : 0.0f; }
 
@@ -257,6 +259,7 @@ public:
             if (euroOut != nullptr) euroOut[n] = y;                                                    // after MIX, before VOLUME
             if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, y * 5.0f);
             y = y * volumeGain (sVolume.v) * 1.6f;
+            if (std::abs (y) > 1.0f) ++overs;                     // the output limiter is catching it: CLIP
             out[n] = safetyLimit (y);
         }
     }
@@ -277,6 +280,7 @@ private:
     ArpSeq arp;
     Decimator decimator;
     float extPrev = 0.0f;
+    int overs = 0;
     DcBlocker filterDc, outDc, revOutDc;
     DcBlocker acOut[3];                 // AC-coupled patch outputs: Osc 1, Osc 2, Filter
     OnePoleHP hpf;                      // Utilities: static 6 dB/oct high-pass

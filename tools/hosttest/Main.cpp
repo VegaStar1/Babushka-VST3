@@ -340,22 +340,27 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
             || ! reopened.isSoundModified() || reopened.canUndo()) return fail ("project recall");
 
         // Standalone app: the state it saved at quit is loaded back at start, before the window opens. The app must start
-        // as Init (keeping the global settings); "Load a saved state..." (window open) restores the sound.
+        // as Init (keeping the global settings except Fine Tune, which starts at 0); "Load a saved state..." (window open)
+        // restores the sound.
         {
-            pr.apvts.getParameter ("fineTune")->setValueNotifyingHost (0.8f);   // a global setting the app should keep
+            pr.apvts.getParameter ("drift")->setValueNotifyingHost (0.8f);      // a global setting the app should keep
+            pr.apvts.getParameter ("fineTune")->setValueNotifyingHost (0.18f);  // -64 ct: the app must start in tune
             juce::MemoryBlock appState; pr.getStateInformation (appState);
             juce::AudioProcessor::setTypeOfNextNewPlugin (juce::AudioProcessor::wrapperType_Standalone);
             BabushkaProcessor app;
             juce::AudioProcessor::setTypeOfNextNewPlugin (juce::AudioProcessor::wrapperType_Undefined);
             app.setStateInformation (appState.getData(), (int) appState.getSize());
             const auto startName = app.getCurrentPresetName();
-            const float startCut = app.apvts.getParameter ("cutoff")->getValue(), startTune = app.apvts.getParameter ("fineTune")->getValue();
+            const float startCut = app.apvts.getParameter ("cutoff")->getValue(), startDrift = app.apvts.getParameter ("drift")->getValue();
+            const float startTune = app.apvts.getParameter ("fineTune")->convertFrom0to1 (app.apvts.getParameter ("fineTune")->getValue());
             std::unique_ptr<juce::AudioProcessorEditor> appEd (app.createEditor());
             app.setStateInformation (appState.getData(), (int) appState.getSize());      // File > Load a saved state...
-            std::printf ("Standalone start: '%s' (cutoff %.2f, default 0.60; fine tune kept %.2f), after Load state: '%s'\n", startName.toRawUTF8(),
-                         app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut), startTune, app.getCurrentPresetName().toRawUTF8());
+            std::printf ("Standalone start: '%s' (cutoff %.2f, default 0.60; drift kept %.2f; fine tune %.0f ct, expect 0), after Load state: '%s'\n",
+                         startName.toRawUTF8(), app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut), startDrift, startTune * 100.0f,
+                         app.getCurrentPresetName().toRawUTF8());
             if (startName != "Init" || std::abs (app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut) - 0.6f) > 1e-3f
-                || std::abs (startTune - 0.8f) > 1e-4f || app.isSoundModified() == false || app.getCurrentPresetName() != "Berlin School")
+                || std::abs (startDrift - 0.8f) > 1e-4f || std::abs (startTune) > 1e-4f || app.isSoundModified() == false
+                || app.getCurrentPresetName() != "Berlin School")
                 return fail ("standalone start must be Init");
         }
 

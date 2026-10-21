@@ -21,26 +21,31 @@ public:
     std::function<void()> onDragEnd;
     void setOpen (bool o) { if (o != open) { open = o; repaint(); } }
 
+    // A finger notch pressed into the chassis lip: the chassis' own finish, darker inside, with three ribs engraved
+    // across it. It only warms up a little under the pointer, so it does not stand out from the case.
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (1.0f, 0.0f);
-        juce::Path tab;
-        tab.addRoundedRectangle (r.getX(), r.getY() - 8.0f, r.getWidth(), r.getHeight() + 8.0f, 9.0f);
-        g.setColour (juce::Colours::black.withAlpha (0.6f));
-        g.fillPath (tab, juce::AffineTransform::translation (0.0f, 1.5f));
-        juce::ColourGradient grad (juce::Colour (hover ? 0xff464442 : 0xff3a3938), r.getX(), r.getY(), juce::Colour (0xff161514), r.getX(), r.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillPath (tab);
-        g.setColour (juce::Colours::white.withAlpha (0.10f));
-        g.strokePath (tab, juce::PathStrokeType (1.0f));
-        const auto ribColour = hover || dragging ? col::ledAmber : juce::Colour (0xff98948d);
-        for (int i = 0; i < 3; ++i)                                    // ribs, moulded: dark groove, light edge
+        const auto r = getLocalBounds().toFloat().reduced (2.0f, 2.0f);
+        const auto c = skin().chassis;
+        juce::ColourGradient body (c.darker (0.45f), r.getX(), r.getY(), c.brighter (0.35f), r.getX(), r.getBottom(), false);
+        g.setGradientFill (body);
+        g.fillRoundedRectangle (r, 6.0f);
+        grain (g, r, 1.0f);
+        juce::ColourGradient inner (juce::Colours::black.withAlpha (0.55f), 0.0f, r.getY(), juce::Colours::transparentBlack, 0.0f, r.getY() + 7.0f, false);
+        g.setGradientFill (inner);                                       // shadow of the upper edge of the notch
+        g.fillRoundedRectangle (r, 6.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.5f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.09f));                // light catching the lower lip
+        g.drawLine (r.getX() + 6.0f, r.getBottom() + 0.5f, r.getRight() - 6.0f, r.getBottom() + 0.5f, 1.0f);
+        const bool lit = hover || dragging;
+        for (int i = 0; i < 3; ++i)                                      // engraved ribs: a groove and its lit lower edge
         {
-            const float y = r.getY() + 6.0f + 4.5f * (float) i;
-            g.setColour (juce::Colours::black.withAlpha (0.8f));
-            g.fillRoundedRectangle (r.getCentreX() - 23.0f, y + 1.0f, 46.0f, 2.0f, 1.0f);
-            g.setColour (ribColour);
-            g.fillRoundedRectangle (r.getCentreX() - 23.0f, y, 46.0f, 2.0f, 1.0f);
+            const float y = r.getY() + 5.5f + 4.0f * (float) i;
+            g.setColour (juce::Colours::black.withAlpha (0.75f));
+            g.fillRoundedRectangle (r.getCentreX() - 22.0f, y, 44.0f, 1.6f, 0.8f);
+            g.setColour (lit ? col::ledAmber.withAlpha (0.45f) : juce::Colours::white.withAlpha (0.13f));
+            g.fillRoundedRectangle (r.getCentreX() - 22.0f, y + 1.6f, 44.0f, 1.0f, 0.5f);
         }
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
@@ -127,7 +132,7 @@ private:
 class RearPanel : public juce::Component, private juce::Timer
 {
 public:
-    static constexpr int kX = 66, kY = 56, kWidth = 1364, kHeight = 150;
+    static constexpr int kX = 78, kY = 56, kWidth = 1340, kHeight = 150, kGap = 10;     // kGap: to the front panel when open
     using Jack = babushka::dsp::Jack;
 
     explicit RearPanel (BabushkaProcessor& p) : processor (p)
@@ -148,10 +153,10 @@ public:
     static std::vector<std::pair<Jack, juce::Point<float>>> jackPositions()
     {
         std::vector<std::pair<Jack, juce::Point<float>>> j;
-        j.push_back ({ Jack::EuroOut, { 928.0f, 72.0f } });
-        j.push_back ({ Jack::ReverbOut, { 1002.0f, 72.0f } });
+        j.push_back ({ Jack::EuroOut, { 902.0f, 70.0f } });
+        j.push_back ({ Jack::ReverbOut, { 976.0f, 70.0f } });
         const Jack cv[] = { Jack::ClockIn, Jack::OnOffIn, Jack::ResetIn, Jack::ClockOut };
-        for (int i = 0; i < 4; ++i) j.push_back ({ cv[i], { 1048.0f + 306.0f * ((float) i + 0.5f) / 4.0f, 72.0f } });
+        for (int i = 0; i < 4; ++i) j.push_back ({ cv[i], { 1024.0f + 308.0f * ((float) i + 0.5f) / 4.0f, 70.0f } });
         return j;
     }
 
@@ -159,9 +164,9 @@ public:
     {
         const int y = getHeight() - kHeight;    // the artwork slides: controls sit at their place on it
         content.setTopLeftPosition (0, y);
-        midiSocket.setCentrePosition (73, y + 58);
-        midiLamp.setCentrePosition (26, y + 104);
-        midiLcd.setBounds (36, y + 95, 90, 18);
+        midiSocket.setCentrePosition (71, y + 58);
+        midiLamp.setCentrePosition (24, y + 104);
+        midiLcd.setBounds (34, y + 95, 90, 18);
     }
 
     void paint (juce::Graphics& g) override
@@ -209,8 +214,8 @@ private:
             g.setGradientFill (metal);
             g.fillRoundedRectangle (back, 4.0f);
             grain (g, back, 0.7f);
-            for (auto p : { juce::Point<float> (16.0f, 16.0f), juce::Point<float> ((float) kWidth - 16.0f, 16.0f),
-                            juce::Point<float> (16.0f, (float) kHeight - 16.0f), juce::Point<float> ((float) kWidth - 16.0f, (float) kHeight - 16.0f) })
+            for (auto p : { juce::Point<float> (148.0f, 18.0f), juce::Point<float> (852.0f, 18.0f),           // between the plates
+                            juce::Point<float> (148.0f, (float) kHeight - 18.0f), juce::Point<float> (852.0f, (float) kHeight - 18.0f) })
                 drawScrew (g, p, 4.5f, 0.6f);
 
             auto plate = [&g] (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title) {
@@ -218,19 +223,23 @@ private:
                 label (g, title, juce::Rectangle<float> (r.getWidth() - 12.0f, 19.5f).withCentre ({ r.getCentreX(), r.getY() + 15.0f }), inkOn (fill), 13.0f,
                        Weight::NarrowBold, juce::Justification::centred, 0.12f);
             };
-            auto jack = [&g] (juce::Point<float> c, const juce::String& text, juce::Colour textColour) {
+            // the name under the jack, on two lines when it is long (EURORACK / OUT)
+            auto jack = [&g] (juce::Point<float> c, const juce::String& line1, const juce::String& line2, juce::Colour textColour) {
                 drawJack (g, c);
-                label (g, text, juce::Rectangle<float> (64.0f, 15.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, 10.0f, Weight::NarrowBold,
+                label (g, line1, juce::Rectangle<float> (70.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, 10.0f, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
+                if (line2.isNotEmpty())
+                    label (g, line2, juce::Rectangle<float> (70.0f, 14.0f).withCentre ({ c.x, c.y + 32.0f }), textColour, 10.0f, Weight::NarrowBold,
+                           juce::Justification::centred, 0.03f);
             };
-            plate ({ 10.0f, 8.0f, 126.0f, 134.0f }, S.panel, "MIDI");
-            label (g, juce::String::fromUTF8 ("MIDI IN · MAP"), juce::Rectangle<float> (110.0f, 14.0f).withCentre ({ 73.0f, 128.0f }), ink, 10.0f, Weight::NarrowBold,
+            plate ({ 8.0f, 8.0f, 126.0f, 134.0f }, S.panel, "MIDI");
+            label (g, juce::String::fromUTF8 ("MIDI IN · MAP"), juce::Rectangle<float> (110.0f, 14.0f).withCentre ({ 71.0f, 128.0f }), ink, 10.0f, Weight::NarrowBold,
                    juce::Justification::centred, 0.05f);
-            plate ({ 890.0f, 8.0f, 150.0f, 134.0f }, S.panel, "AUDIO");
-            plate ({ 1048.0f, 8.0f, 306.0f, 134.0f }, S.rearCv, "ARP/SEQ CV");
-            static const char* names[] = { "EURORACK OUT", "REVERB OUT", "CLOCK IN", "ON / OFF IN", "RESET IN", "CLOCK OUT" };
+            plate ({ 864.0f, 8.0f, 150.0f, 134.0f }, S.panel, "AUDIO");
+            plate ({ 1024.0f, 8.0f, 308.0f, 134.0f }, S.rearCv, "ARP/SEQ CV");
+            static const char* names[][2] = { { "EURORACK", "OUT" }, { "REVERB", "OUT" }, { "CLOCK", "IN" }, { "ON / OFF", "IN" }, { "RESET", "IN" }, { "CLOCK", "OUT" } };
             int i = 0;
-            for (auto& [id, pos] : jackPositions()) { jack (pos, names[i], i < 2 ? ink : cvInk); ++i; }
+            for (auto& [id, pos] : jackPositions()) { jack (pos, names[i][0], names[i][1], i < 2 ? ink : cvInk); ++i; }
         }
     } content;
 };
@@ -246,6 +255,7 @@ public:
     {
         setInterceptsMouseClicks (false, false);
         lastPos = processor.scopeWritePosition();
+        lastClips = processor.getClipCount();
         startTimerHz (60);
     }
 
@@ -267,6 +277,7 @@ public:
 private:
     BabushkaProcessor& processor;
     int lastPos = 0;
+    uint32_t lastClips = 0;
     float needle = 0.0f, needleVel = 0.0f, clipHold = 0.0f, scopeGain = 1.0f, lastRms = 0.0f, sinceAudio = 1.0f;
     float lampGlow = 1.0f, lampPhase = 0.0f;          // the lamps' brightness; it breathes a little, as old bulbs on a mains supply do
     std::vector<float> trace;          // the scope's current sweep
@@ -292,7 +303,10 @@ private:
         const float target = needleFor (vu);
         needleVel += (w * w * (target - needle) - 2.0f * zeta * w * needleVel) * dt;
         needle = juce::jlimit (-0.03f, 1.08f, needle + needleVel * dt);
-        if (peak >= 0.98f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
+        // CLIP: the output limiter caught samples over full scale (or the output itself reached it)
+        const uint32_t clips = processor.getClipCount();
+        if (clips != lastClips || peak >= 0.99f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
+        lastClips = clips;
         lampPhase += dt;
         lampGlow = 0.96f + 0.04f * std::sin (lampPhase * 1.3f) * std::sin (lampPhase * 0.37f);
         if (fresh > 0) updateTrace (pos);

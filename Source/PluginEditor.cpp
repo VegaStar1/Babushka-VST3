@@ -166,8 +166,9 @@ void BabushkaEditor::startMidiLearn()
 {
     showMidi (false);
     learn = std::make_unique<LearnOverlay> (processor, panel->learnSites());
-    learn->onDone = [this] {
-        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<BabushkaEditor> (this)] {
+    juce::Component::SafePointer<BabushkaEditor> safe (this);
+    learn->onDone = [safe] {
+        juce::MessageManager::callAsync ([safe] {               // the overlay is deleted after its button's click returns
             if (safe == nullptr) return;
             safe->learn.reset();
             safe->showMidi (true); }); };

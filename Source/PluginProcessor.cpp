@@ -508,6 +508,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         auto mainOut = getBusBuffer (buffer, false, 0);
         for (int ch = 0; ch < mainOut.getNumChannels(); ++ch) mainOut.copyFrom (ch, 0, mono.data(), numSamples);
         meterBlock (mono.data(), numSamples);
+        if (const int overs = engine.takeOvers(); overs > 0) clipCount.fetch_add ((uint32_t) overs);
         if (euroOn)
         {
             auto b = getBusBuffer (buffer, false, 1);
@@ -590,7 +591,7 @@ void BabushkaProcessor::setStateInformation (const void* data, int sizeInBytes)
         for (auto* child : xml->getChildIterator())
         {
             const auto id = child->getStringAttribute ("id");
-            if (id.isNotEmpty() && babushka::isGlobalParam (id.toRawUTF8()))
+            if (id.isNotEmpty() && id != "fineTune" && babushka::isGlobalParam (id.toRawUTF8()))   // the app always starts in tune
                 if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (id)))
                     rp->setValueNotifyingHost (rp->convertTo0to1 ((float) child->getDoubleAttribute ("value")));
         }

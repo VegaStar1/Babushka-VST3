@@ -193,8 +193,8 @@ public:
     std::vector<JackSite> jackSites() const
     {
         std::vector<JackSite> all;
-        const float r = std::round (rearPx);
-        for (auto j : frontJacks) { j.pos.y += r; all.push_back (j); }
+        const float r = std::round (rearPx), shift = (float) frontShift();
+        for (auto j : frontJacks) { j.pos.y += shift; all.push_back (j); }
         const bool reachable = rearPx >= (float) RearPanel::kHeight - 0.5f;
         for (auto& [id, pos] : RearPanel::jackPositions())
             all.push_back ({ id, { (float) RearPanel::kX + pos.x, (float) RearPanel::kY + r - (float) RearPanel::kHeight + pos.y }, reachable });
@@ -256,6 +256,8 @@ private:
     int knownPatchVersion = -1;
     struct AnimTimer : public juce::Timer { std::function<void()> tick; void timerCallback() override { tick(); } } anim;
     // Left-hand controller and keyboard: positions for the current opening of the rear panel.
+    // Left-hand controller on the same edges as the module rows (78 … 294), the keyboard bed 298 … 1418.
+    static constexpr float kGlideX = 108.0f, kPadX[3] = { 166.0f, 210.0f, 254.0f }, kWheelX[2] = { 140.0f, 232.0f };
     struct KeysLayout { float top = 552, height = 376, labelsY = 573, padY = 610, glideY = 606, glideLabelY = 640, pillY = 645, subY = 663,
                         wheelTop = 680, wheelBottom = 876, wheelPillY = 901; } kl;
     std::vector<std::unique_ptr<Knob>> knobs;
@@ -611,56 +613,62 @@ private:
         const auto& S = skin();
         const auto lhInk = col::ink;
         {
-            const juce::Rectangle<float> r (66.0f, kl.top + 4.0f, 232.0f, kl.height - 4.0f);
+            const juce::Rectangle<float> r (78.0f, kl.top + 4.0f, 216.0f, kl.height - 4.0f);
             g.setColour (juce::Colour (0xff0c0c0c));
             g.fillRoundedRectangle (r, 6.0f);
             grain (g, r, 0.8f);
             g.setColour (juce::Colours::white.withAlpha (0.10f));
             g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
         }
-        drawKnobTicks (g, { 101.0f, kl.glideY }, 40.0f, 11, lhInk, 0.1f);
-        drawText (g, "GLIDE", 101, kl.glideLabelY, lhInk, 11.0f, Weight::NarrowBold, 60.0f);
-        drawText (g, "[< KB]", 162, kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        drawText (g, "[SHIFT]", 207, kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        drawText (g, "[KB >]", 252, kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        drawPill (g, "PLAY", 162, kl.pillY, 42, S.pillArp, lhInk); drawPill (g, "HOLD", 207, kl.pillY, 42, S.pillArp, lhInk);
-        drawPill (g, "TAP", 252, kl.pillY, 42, S.pillArp, lhInk);
-        drawText (g, "(TIE)", 162, kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
-        drawText (g, "(REST)", 207, kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
-        drawText (g, "(ACCENT)", 252, kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 46.0f, 0.02f);
-        drawPill (g, "PITCH", 134, kl.wheelPillY, 52, S.pillWheel, lhInk); drawPill (g, "MOD", 226, kl.wheelPillY, 52, S.pillWheel, lhInk);
+        drawKnobTicks (g, { kGlideX, kl.glideY }, 40.0f, 11, lhInk, 0.1f);
+        drawText (g, "GLIDE", kGlideX, kl.glideLabelY, lhInk, 11.0f, Weight::NarrowBold, 60.0f);
+        drawText (g, "[< KB]", kPadX[0], kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "[SHIFT]", kPadX[1], kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "[KB >]", kPadX[2], kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawPill (g, "PLAY", kPadX[0], kl.pillY, 42, S.pillArp, lhInk); drawPill (g, "HOLD", kPadX[1], kl.pillY, 42, S.pillArp, lhInk);
+        drawPill (g, "TAP", kPadX[2], kl.pillY, 42, S.pillArp, lhInk);
+        drawText (g, "(TIE)", kPadX[0], kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
+        drawText (g, "(REST)", kPadX[1], kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
+        drawText (g, "(ACCENT)", kPadX[2], kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 46.0f, 0.02f);
+        drawPill (g, "PITCH", kWheelX[0], kl.wheelPillY, 52, S.pillWheel, lhInk); drawPill (g, "MOD", kWheelX[1], kl.wheelPillY, 52, S.pillWheel, lhInk);
         g.setColour (juce::Colours::black);
-        g.fillRoundedRectangle (juce::Rectangle<float> (298.0f, kl.top, 1124.0f, kl.height), 3.0f);
+        g.fillRoundedRectangle (juce::Rectangle<float> (298.0f, kl.top, 1120.0f, kl.height), 3.0f);
     }
 
     // ---- rear panel: positions of everything for the current opening ---------------------------------------------------
     // rearPx = 0 (closed) … RearPanel::kHeight (open). The front panel moves down by rearPx; the keyboard section keeps
     // its bottom edge and gets shorter, its left-hand controller packs tighter (closed and open layouts, blended).
+    // How far the front panel is pushed down: the rear panel's opening plus a gap that opens with it.
+    int frontShift() const
+    {
+        return (int) std::lround (rearPx * (float) (RearPanel::kHeight + RearPanel::kGap) / (float) RearPanel::kHeight);
+    }
+
     void layoutForRear()
     {
-        const int r = (int) std::lround (rearPx);
+        const int r = (int) std::lround (rearPx), shift = frontShift();
         const float t = juce::jlimit (0.0f, 1.0f, (float) r / (float) RearPanel::kHeight);
         rear.setBounds (RearPanel::kX, RearPanel::kY, RearPanel::kWidth, r);
         rear.setVisible (r > 0);
-        frontArt.setBounds (0, kFrontTop + r, kW, kFrontBottom - kFrontTop);
-        for (auto& [c, b] : frontComps) c->setBounds (b.translated (0, r));
+        frontArt.setBounds (0, kFrontTop + shift, kW, kFrontBottom - kFrontTop);
+        for (auto& [c, b] : frontComps) c->setBounds (b.translated (0, shift));
 
         auto mix = [t] (float closed, float open) { return closed + (open - closed) * t; };
-        kl.top = 552.0f + (float) r;
-        kl.height = 376.0f - (float) r;
+        kl.top = 552.0f + (float) shift;
+        kl.height = 376.0f - (float) shift;
         kl.labelsY = kl.top + mix (21, 14);    kl.padY = kl.top + mix (58, 44);
         kl.glideY = kl.top + mix (54, 42);     kl.glideLabelY = kl.top + mix (88, 74);
         kl.pillY = kl.top + mix (93, 76);      kl.subY = kl.top + mix (111, 91);
         kl.wheelTop = kl.top + mix (128, 104); kl.wheelBottom = kl.top + kl.height - mix (52, 30);
         kl.wheelPillY = kl.top + kl.height - mix (27, 14);
-        glideKnob->setCentrePosition (101, (int) std::lround (kl.glideY));
-        playPad->setCentrePosition (162, (int) std::lround (kl.padY));
-        holdPad->setCentrePosition (207, (int) std::lround (kl.padY));
-        tapPad->setCentrePosition (252, (int) std::lround (kl.padY));
+        glideKnob->setCentrePosition ((int) kGlideX, (int) std::lround (kl.glideY));
+        playPad->setCentrePosition ((int) kPadX[0], (int) std::lround (kl.padY));
+        holdPad->setCentrePosition ((int) kPadX[1], (int) std::lround (kl.padY));
+        tapPad->setCentrePosition ((int) kPadX[2], (int) std::lround (kl.padY));
         const int wheelH = (int) std::lround (kl.wheelBottom - kl.wheelTop);
-        pitchWheel->setBounds (134 - 31, (int) std::lround (kl.wheelTop), 62, wheelH);
-        modWheel->setBounds (226 - 31, (int) std::lround (kl.wheelTop), 62, wheelH);
-        keyboard.setBounds (302, (int) std::lround (kl.top) + 4, 1116, (int) std::lround (kl.height) - 10);
+        pitchWheel->setBounds ((int) kWheelX[0] - 31, (int) std::lround (kl.wheelTop), 62, wheelH);
+        modWheel->setBounds ((int) kWheelX[1] - 31, (int) std::lround (kl.wheelTop), 62, wheelH);
+        keyboard.setBounds (302, (int) std::lround (kl.top) + 4, 1112, (int) std::lround (kl.height) - 10);
         repaint();
         if (onJacksMoved) onJacksMoved (jackSites());
     }
