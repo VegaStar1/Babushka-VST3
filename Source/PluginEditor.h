@@ -4,7 +4,7 @@
 #include "PluginProcessor.h"
 #include "ui/SynthPanel.h"
 
-namespace babushka::ui { class SettingsOverlay; class PresetOverlay; class HintBubble; class Backdrop; }
+namespace babushka::ui { class SettingsOverlay; class PresetOverlay; class HintBubble; class Backdrop; class MidiOverlay; class LearnOverlay; class PedalOverlay; }
 
 // The instrument: a skeuomorphic front panel drawn in a fixed logical size and scaled to the window.
 class BabushkaEditor : public juce::AudioProcessorEditor, private babushka::ui::HintSink
@@ -15,12 +15,19 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    bool keyPressed (const juce::KeyPress&) override;                // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo
 
     void showPresets (bool show);
     void showSettings (bool show);
+    void showMidi (bool show);
+    void showPedal (int pedal);                                     // a pedal's menu; -1 closes it
+    babushka::ui::PedalOverlay* pedalMenu() { return pedalOverlay.get(); }  // for tests
+    void startMidiLearn();                                          // MIDI learn on the panel (from the MIDI menu)
+    babushka::ui::LearnOverlay* midiLearn() { return learn.get(); }      // for tests
     void setSkin (int index);                                       // index into babushka::ui::skins(); remembered per user
     babushka::ui::CableLayer& cableLayer() { return *cables; }     // for tests
     babushka::ui::SynthPanel& synthPanel() { return *panel; }
+    babushka::ui::PresetOverlay* presetBrowser() { return presets.get(); }     // for tests
 
 private:
     void showHint (juce::Component& from, const juce::String& text) override;
@@ -37,6 +44,9 @@ private:
     std::unique_ptr<babushka::ui::Backdrop> backdrop;
     std::unique_ptr<babushka::ui::PresetOverlay> presets;
     std::unique_ptr<babushka::ui::SettingsOverlay> settings;
+    std::unique_ptr<babushka::ui::MidiOverlay> midi;
+    std::unique_ptr<babushka::ui::LearnOverlay> learn;
+    std::unique_ptr<babushka::ui::PedalOverlay> pedalOverlay;
     juce::PropertiesFile uiSettings { uiSettingsOptions() };      // per-user look of the editor (skin)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BabushkaEditor)

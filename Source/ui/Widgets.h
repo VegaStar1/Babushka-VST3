@@ -132,9 +132,9 @@ class Knob : public juce::Slider
 {
 public:
     // diameter: size of the knob body in logical pixels. selector: discrete positions drawn with a wedge pointer.
-    Knob (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, float diameter, std::function<juce::String (double)> formatter = nullptr,
+    Knob (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId_, float diameter, std::function<juce::String (double)> formatter = nullptr,
           bool selector = false)
-        : diameterPx (diameter), isSelector (selector), format (std::move (formatter))
+        : paramId (paramId_), diameterPx (diameter), isSelector (selector), format (std::move (formatter))
     {
         setSliderStyle (juce::Slider::RotaryVerticalDrag);
         setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
@@ -142,16 +142,17 @@ public:
         setVelocityModeParameters (0.2, 1, 0.0, true, juce::ModifierKeys::shiftModifier);   // Shift + drag: fine adjustment
         setScrollWheelEnabled (true);
         setRotaryParameters (juce::degreesToRadians (225.0f), juce::degreesToRadians (495.0f), true);
-        attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramId, *this);
-        if (auto* p = apvts.getParameter (paramId))
+        attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramId_, *this);
+        if (auto* p = apvts.getParameter (paramId_))
             setDoubleClickReturnValue (true, dynamic_cast<juce::RangedAudioParameter*> (p)->convertFrom0to1 (p->getDefaultValue()));
-        name = apvts.getParameter (paramId)->getName (32);
+        name = apvts.getParameter (paramId_)->getName (32);
         setSize ((int) std::ceil (diameter * 1.3f), (int) std::ceil (diameter * 1.3f));
         setWantsKeyboardFocus (false);
         setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
     }
 
     HintSink* hints = nullptr;
+    const juce::String paramId;
 
     void paint (juce::Graphics& g) override
     {
@@ -206,9 +207,9 @@ class LeverSwitch : public juce::Component
 {
 public:
     // positions: panel order left→right; map[i] is the parameter's choice index for panel position i.
-    LeverSwitch (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, std::vector<int> map, std::function<juce::String (int)> positionName = nullptr)
-        : mapping (std::move (map)), nameOf (std::move (positionName)),
-          link (apvts, paramId, [this] (float v) { const int choice = (int) std::lround (v);
+    LeverSwitch (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId_, std::vector<int> map, std::function<juce::String (int)> positionName = nullptr)
+        : paramId (paramId_), mapping (std::move (map)), nameOf (std::move (positionName)),
+          link (apvts, paramId_, [this] (float v) { const int choice = (int) std::lround (v);
                                                      for (size_t i = 0; i < mapping.size(); ++i) if (mapping[i] == choice) position = (int) i;
                                                      repaint(); })
     {
@@ -218,6 +219,7 @@ public:
     }
 
     HintSink* hints = nullptr;
+    const juce::String paramId;
 
     void paint (juce::Graphics& g) override
     {
@@ -302,7 +304,7 @@ public:
         setMouseCursor (juce::MouseCursor::PointingHandCursor);
     }
     std::function<void()> onPress, onRelease;
-    std::function<void()> onHover;
+    std::function<void()> onHover, onLeave;          // onLeave: the pointer has gone (hides the hint)
     void setLit (bool on) { if (lit != on) { lit = on; repaint(); } }
     bool isLit() const { return lit; }
 
@@ -346,6 +348,7 @@ public:
     void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); if (onPress) onPress(); }
     void mouseUp (const juce::MouseEvent&) override { down = false; repaint(); if (onRelease) onRelease(); }
     void mouseEnter (const juce::MouseEvent&) override { if (onHover) onHover(); }
+    void mouseExit (const juce::MouseEvent&) override { if (onLeave) onLeave(); }
 
 private:
     juce::Colour lampColour;
@@ -360,13 +363,14 @@ class Fader : public juce::Component
 {
 public:
     Fader (juce::AudioProcessorValueTreeState& apvts, const juce::String& id, float height)
-        : link (apvts, id, [this] (float v) { value = link.range().convertTo0to1 (v); repaint(); })
+        : paramId (id), link (apvts, id, [this] (float v) { value = link.range().convertTo0to1 (v); repaint(); })
     {
         setSize (70, (int) height);
         setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
         title = link.name();
     }
     HintSink* hints = nullptr;
+    const juce::String paramId;
 
     juce::Rectangle<float> travel() const { return { 0.0f, 16.0f, (float) getWidth(), (float) getHeight() - 32.0f }; }
 
@@ -451,8 +455,9 @@ public:
     HintSink* hints = nullptr;
     juce::String title;
 
-    void setValueFromParameter (float v01) { if (! dragging) { value = v01; repaint(); } }
+    void setValueFromParameter (float v01) { if (! dragging && std::abs (v01 - value) > 1.0e-4f) { value = v01; repaint(); } }
     float getValue() const { return value; }
+    bool isBusy() const { return dragging || isTimerRunning(); }      // in the hand, or springing back
 
     void paint (juce::Graphics& g) override
     {
@@ -475,7 +480,8 @@ public:
         g.reduceClipRegion (clip);
 
         const float R = w.getHeight() * 0.5f / std::sin (kVisible), cy = w.getCentreY();
-        const float turn = (value - (spring ? 0.5f : 0.0f)) * kTravel;
+        // turning the wheel up (a larger value) rolls the tread upwards: angles grow downwards on screen, so negative
+        const float turn = -(value - (spring ? 0.5f : 0.0f)) * kTravel;
         auto yAt = [&] (float theta) { return cy + R * std::sin (theta); };
         // tread: lit from the top, falling off as the surface turns away
         const int bands = 48;
@@ -503,7 +509,7 @@ public:
         }
         // centre mark of the pitch wheel, or the end stop of the mod wheel, moulded as a broad flat rib
         {
-            const float th = spring ? turn : turn - kTravel * 0.5f;
+            const float th = spring ? turn : turn + kTravel * 0.5f;      // mod wheel at 0: the stop low in the slot
             if (std::abs (th) < kVisible)
             {
                 const float c = std::cos (th);

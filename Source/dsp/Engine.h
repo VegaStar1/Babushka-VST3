@@ -2,6 +2,7 @@
 //
 // Signal path (hard-wired "normalled" path of the hardware):
 //   VCO1 + VCO2 (+sync) + Noise -> Mixer (overdrives) -> Ladder LPF -> VCA -> Spring reverb mix -> Volume
+// Plugin-only: the rear panel's pedal board (Pedals.h) sits between the VCA and the reverb, as a stereo pair.
 // Modulation: Mod Osc (LFO) -> pitch / cutoff / pulse width, depths scaled by the MOD wheel.
 // The voice runs oversampled (2x/4x); reverb and output run at the host rate.
 //
@@ -23,6 +24,7 @@
 #include "Lfo.h"
 #include "Oscillator.h"
 #include "Patch.h"
+#include "Pedals.h"
 #include "SpringReverb.h"
 
 #include <array>
@@ -82,6 +84,8 @@ struct Params
     // Global settings of the hardware (manual p. 38)
     bool  localOn = true;            // off: keyboard, pitch wheel and ARP/SEQ only drive KB OUT / GATE OUT / KB VEL OUT
     int   kbOutRange = 0;            // KB OUT voltage range: 0 = −5…+5 V, 1 = 0…+10 V
+    // Plugin-only: the pedals on the rear panel
+    PedalParams pedals;
 };
 
 class Engine
@@ -99,11 +103,12 @@ public:
         kbRls.prepare (fsOs);
         lfo.prepare (fsOs);
         reverb.prepare (fsBase);
+        board.prepare (fsBase);
         arp.prepare (fsBase);
         // AC coupling: measured on a recorded square wave (flat tops sag ≈17 % over a half-period at 66 Hz)
         // the whole hardware chain behaves like one high-pass at ≈5.5 Hz; the two blockers add up to that.
         filterDc.setCutoff (1.5f, fsOs);
-        outDc.setCutoff (4.0f, fsBase);
+        outDc.setCutoff (4.0f, fsBase); outDcR.setCutoff (4.0f, fsBase);
         // Patch outputs marked "AC coupled" in the manual (oscillator, filter, high-pass and reverb outputs).
         for (auto& b : acOut) b.setCutoff (2.0f, fsOs);
         revOutDc.setCutoff (2.0f, fsBase);
@@ -125,7 +130,7 @@ public:
     void reset()
     {
         filter.reset(); env.reset(); kbRls.reset(); lfo.reset(); reverb.reset(); decimator.reset();
-        filterDc.reset(); outDc.reset(); revOutDc.reset();
+        filterDc.reset(); outDc.reset(); outDcR.reset(); revOutDc.reset(); board.reset();
         for (auto& b : acOut) b.reset();
         hpf.reset();
         heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f;
@@ -140,6 +145,8 @@ public:
     // Compiled cables; cheap enough to call from the audio thread at the start of a block.
     void setPatch (const PatchState& p) noexcept { routing = Routing::compile (p); }
     const Routing& currentRouting() const noexcept { return routing; }
+    // Samples since the last call at or over full scale, 0 dBFS (the CLIP lamp).
+    int takeOvers() noexcept { const int o = overs; overs = 0; return o; }
     // Last voltage published on an output jack (for meters / tests).
     float outputVolts (Jack j) const noexcept { const int i = (int) j - kFirstOutput; return i >= 0 && i < kNumOutputs ? outV[i] : 0.0f; }
 
@@ -149,7 +156,7 @@ public:
         arp.setParams (p);
         if (! wasCapturing && arp.capturesKeys()) releaseVoiceKeys();   // ARP/SEQ takes over the keyboard
     }
-    void setTransport (bool playing, double ppq, double bpm) noexcept { arp.setTransport (playing, ppq, bpm); }
+    void setTransport (bool playing, double ppq, double bpm) noexcept { arp.setTransport (playing, ppq, bpm); hostBpm = bpm; }
     ArpSeq& arpSeq() noexcept { return arp; }
 
     // ---- MIDI / keyboard --------------------------------------------------------------------
@@ -204,6 +211,7 @@ public:
     void setModWheelCC (float v) noexcept { ccWheel = clampf (v, 0.0f, 1.0f); }
     void allNotesOff() { heldCount = 0; sustainPedal = false; updateKey (false); arp.stopAll(); }
     void releaseVoiceKeys() { heldCount = 0; updateKey (false); }
+    void clearEcho() noexcept { board.clearEcho(); }        // the tape echo's CLEAR
 
     // ---- Audio ------------------------------------------------------------------------------
     void process (float* out, int numSamples) noexcept { process (out, nullptr, numSamples); }
@@ -211,7 +219,9 @@ public:
     // ext: optional INSTRUMENT IN signal (host rate), may be nullptr.
     // euroOut / reverbOut: optional extra outputs (host rate): EURORACK OUT (after the reverb MIX, before
     // VOLUME; ±1 ≈ ±5 V) and REVERB OUT (spring tank, always 100 % wet).
-    void process (float* out, const float* ext, int numSamples, float* euroOut = nullptr, float* reverbOut = nullptr) noexcept
+    // outR: the right channel; without it `out` gets the mono sum (the same as before the pedals with them all off).
+    void process (float* out, const float* ext, int numSamples, float* euroOut = nullptr, float* reverbOut = nullptr,
+                  float* outR = nullptr) noexcept
     {
         updateBlockConstants();
         ArpSeq::Event ev[4];
@@ -241,23 +251,40 @@ public:
             extPrev = extNow;
             const float voice = decimator.process (osBuf.data());
 
-            // Output section: VCA out -> reverb (normalled REVERB IN) -> dry/wet MIX -> VOLUME.
+            // Output section: VCA out -> pedals -> reverb (normalled REVERB IN) -> dry/wet MIX -> VOLUME.
             // A cable in REVERB IN replaces the VCA output as the reverb source (averaged down to the host rate).
+            float l = voice, r = voice;
+            if (board.anyActive() || anyPedalJack())
+            {
+                const Jack inJacks[] = { Jack::SatIn, Jack::PhaIn, Jack::ChoIn, Jack::TapIn };
+                for (int i = 0; i < kNumPedals; ++i)
+                {
+                    pedalJacks.inPatched[(size_t) i] = routing.inputPatched[(int) inJacks[i]];
+                    if (pedalJacks.inPatched[(size_t) i]) pedalJacks.in[(size_t) i] = readIn (inJacks[i]) * 0.2f;
+                }
+                board.process (l, r, pedalJacks);
+                const Jack outJacks[] = { Jack::SatOut, Jack::PhaOut, Jack::ChoOut, Jack::TapOut };
+                for (int i = 0; i < kNumPedals; ++i) if (isUsed (outJacks[i])) setOut (outJacks[i], pedalJacks.out[(size_t) i] * 5.0f);
+            }
             revIn = revAcc * (1.0f / (float) os);
-            const float wet = reverb.process (routing.inputPatched[(int) Jack::ReverbIn] ? revIn : voice);
+            const float wet = reverb.process (routing.inputPatched[(int) Jack::ReverbIn] ? revIn : 0.5f * (l + r));
             const float mix = sRevMix.v;
-            float y = voice * (1.0f - mix) + wet * mix;
-            y = outDc.process (y);
+            float y = outDc.process (l * (1.0f - mix) + wet * mix);
+            float yR = outDcR.process (r * (1.0f - mix) + wet * mix);
             if (reverbOut != nullptr || isUsed (Jack::ReverbOut))
             {
-                const float r = revOutDc.process (wet);                                                // always 100 % wet, AC coupled
-                if (reverbOut != nullptr) reverbOut[n] = r;
-                if (isUsed (Jack::ReverbOut)) setOut (Jack::ReverbOut, r * 5.0f);
+                const float rv = revOutDc.process (wet);                                               // always 100 % wet, AC coupled
+                if (reverbOut != nullptr) reverbOut[n] = rv;
+                if (isUsed (Jack::ReverbOut)) setOut (Jack::ReverbOut, rv * 5.0f);
             }
-            if (euroOut != nullptr) euroOut[n] = y;                                                    // after MIX, before VOLUME
-            if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, y * 5.0f);
-            y = y * volumeGain (sVolume.v) * 1.6f;
-            out[n] = safetyLimit (y);
+            const float mono = 0.5f * (y + yR);
+            if (euroOut != nullptr) euroOut[n] = mono;                                                 // after MIX, before VOLUME
+            if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, mono * 5.0f);
+            const float gain = volumeGain (sVolume.v) * 1.6f;
+            y *= gain; yR *= gain;
+            if (std::abs (y) >= 1.0f || std::abs (yR) >= 1.0f) ++overs;     // 0 dBFS reached: CLIP
+            if (outR != nullptr) { out[n] = outputGuard (y); outR[n] = outputGuard (yR); }
+            else out[n] = outputGuard (0.5f * (y + yR));
         }
     }
 
@@ -277,7 +304,11 @@ private:
     ArpSeq arp;
     Decimator decimator;
     float extPrev = 0.0f;
-    DcBlocker filterDc, outDc, revOutDc;
+    int overs = 0;
+    DcBlocker filterDc, outDc, outDcR, revOutDc;
+    PedalBoard board;
+    PedalBoard::Jacks pedalJacks;
+    double hostBpm = 120.0;
     DcBlocker acOut[3];                 // AC-coupled patch outputs: Osc 1, Osc 2, Filter
     OnePoleHP hpf;                      // Utilities: static 6 dB/oct high-pass
     Drift drift1, drift2;
@@ -374,18 +405,23 @@ private:
     // 1.0 drives the mixer into overdrive (the hardware preamp brings guitars to 10 Vpp).
     static float extGain (float knob) noexcept { return 2.0f * knob * knob * 2.0f; }
 
-    // Plugin-only protection (not part of the hardware model): transparent below 0.8 (−2 dBFS),
-    // soft knee above, never exceeds 1.2.
-    static float safetyLimit (float x) noexcept
+    // The output is not limited: like any instrument plugin it may go over 0 dBFS (the host's float mix does not clip;
+    // the channel fader takes it down). Only a fault is caught: NaN / Inf become silence, and a runaway (a patch
+    // feeding back on itself) is held at +12 dBFS so it cannot blast the speakers.
+    static float outputGuard (float x) noexcept
     {
-        const float a = std::abs (x);
-        if (a <= 0.8f) return x;
-        const float y = 0.8f + 0.4f * std::tanh ((a - 0.8f) * 2.5f);
-        return x < 0.0f ? -y : y;
+        if (! std::isfinite (x)) return 0.0f;
+        return clampf (x, -4.0f, 4.0f);
     }
 
     // ---- patch helpers -----------------------------------------------------------------------
     bool isUsed (Jack out) const noexcept { return routing.outputUsed[(int) out - kFirstOutput]; }
+    bool anyPedalJack() const noexcept
+    {
+        for (Jack j : { Jack::SatIn, Jack::PhaIn, Jack::ChoIn, Jack::TapIn }) if (routing.inputPatched[(int) j]) return true;
+        for (Jack j : { Jack::SatOut, Jack::PhaOut, Jack::ChoOut, Jack::TapOut }) if (isUsed (j)) return true;
+        return false;
+    }
     void setOut (Jack out, float volts) noexcept { outV[(int) out - kFirstOutput] = std::isfinite (volts) ? clampf (volts, -16.0f, 16.0f) : 0.0f; }
     // Sum of everything cabled to an input (0 when nothing drives it).
     float readIn (Jack in) const noexcept
@@ -421,6 +457,13 @@ private:
         osc1.setWave ((Oscillator::Wave) p.osc1Wave);
         osc2.setWave ((Oscillator::Wave) p.osc2Wave);
         reverb.setDecayScale (p.reverbDecay);
+        {   // pedals: CV jacks move each pedal's main knob (±5 V = the whole knob), read once per block
+            std::array<float, kNumPedals> cv {};
+            const Jack cvJacks[] = { Jack::SatCv, Jack::PhaCv, Jack::ChoCv, Jack::TapCv };
+            for (int i = 0; i < kNumPedals; ++i)
+                if (routing.inputPatched[(int) cvJacks[i]]) cv[(size_t) i] = clampf (readIn (cvJacks[i]) * 0.2f, -1.0f, 1.0f);
+            board.set (p.pedals, hostBpm, cv);
+        }
         glideSeconds = glideTime (p.glide);
         glideCoeff = glideSeconds > 0.0f ? 1.0f - std::exp (-1.0f / (glideSeconds * 0.35f * fsOs)) : 1.0f;
 

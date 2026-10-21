@@ -18,7 +18,8 @@
 
 namespace babushka::ui
 {
-struct JackSite { babushka::dsp::Jack id; juce::Point<float> pos; };
+// enabled = false: the jack is out of reach (the rear panel is pushed in); cables stay, new ones can't be plugged.
+struct JackSite { babushka::dsp::Jack id; juce::Point<float> pos; bool enabled = true; };
 
 class CableLayer : public juce::Component, private juce::Timer
 {
@@ -32,7 +33,7 @@ public:
 
     HintSink* hints = nullptr;
 
-    void setJacks (std::vector<JackSite> sites) { jacks = std::move (sites); }
+    void setJacks (std::vector<JackSite> sites) { jacks = std::move (sites); repaint(); }
 
     // Mouse only reaches this layer near a jack (or while a plug is in hand).
     bool hitTest (int x, int y) override
@@ -176,13 +177,14 @@ private:
     static juce::String jackName (babushka::dsp::Jack id)
     {
         const auto& i = babushka::dsp::jackInfo (id);
-        return juce::String (i.section) + " · " + i.label;
+        return juce::String (i.section) + juce::String::fromUTF8 (" · ") + i.label;
     }
     int jackAt (juce::Point<float> p, float radius) const
     {
         int best = -1; float bestD = radius;
         for (size_t i = 0; i < jacks.size(); ++i)
         {
+            if (! jacks[i].enabled) continue;
             const float d = jacks[i].pos.getDistanceFrom (p);
             if (d <= bestD) { bestD = d; best = (int) i; }
         }
@@ -241,12 +243,14 @@ private:
         return r;
     }
 
-    // Keeps the rope list in step with the patch stored in the processor.
+    // Keeps the rope list in step with the patch stored in the processor (preset loads, undo, other editors).
+    // Repaints whenever the list changed: a removed rope must disappear even when nothing else moves.
     void syncWithModel()
     {
         const int v = processor.getPatchVersion();
         if (v == knownVersion) return;
         knownVersion = v;
+        repaint();
         const auto cab = processor.getPatchCopy();
         // drop ropes that are no longer in the patch
         for (int i = (int) ropes.size() - 1; i >= 0; --i)

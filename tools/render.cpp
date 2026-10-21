@@ -356,8 +356,8 @@ int main (int argc, char** argv)
             double m = 0; for (size_t i = 0; i < a.size(); ++i) m = std::max (m, (double) std::abs (a[i] - b[i])); return m; };
         char buf[160];
 
-        std::printf ("Patch panel (41 points: %d inputs, %d outputs, 4 mult):\n", kNumInputs, kNumOutputs);
-        check ("jack counts", kNumJacks == 41 && kNumInputs == 21 && kNumOutputs == 16, "21 + 16 + 4 mult");
+        std::printf ("Patch panel (53 points: %d inputs, %d outputs, 4 mult; 12 of them on the pedals):\n", kNumInputs, kNumOutputs);
+        check ("jack counts", kNumJacks == 53 && kNumInputs == 29 && kNumOutputs == 20, "29 + 20 + 4 mult");
         {   // serialisation
             PatchState a = cables ({ { Jack::Osc2WaveOut, Jack::HpfIn }, { Jack::HpfOut, Jack::MixOsc2In }, { Jack::KbOut, Jack::Mult1 }, { Jack::Mult2, Jack::ModRateIn } });
             const auto b = PatchState::fromString (a.toString());
@@ -563,7 +563,9 @@ int main (int argc, char** argv)
                 for (float v : o) { if (! std::isfinite (v)) bad = true; maxAbs = std::max (maxAbs, (double) std::abs (v)); }
             }
             std::snprintf (buf, sizeof buf, "max |out| %.3f", maxAbs);
-            check ("fuzz: 60 s of random cables and parameters", ! bad && maxAbs <= 1.21, buf);
+            // The output is not limited (like other instrument plugins); a wild patch may go far over 0 dBFS, but it stays
+            // finite and is held by the guard at +12 dBFS.
+            check ("fuzz: 60 s of random cables and parameters", ! bad && maxAbs <= 4.0001, buf);
         }
         std::printf ("  patch panel tests: %s\n", failures == 0 ? "ALL PASSED" : "FAILURES");
     }
