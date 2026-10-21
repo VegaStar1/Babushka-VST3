@@ -62,23 +62,87 @@ private:
     bool hover = false, dragging = false, open = false;
 };
 
+// ---- MIDI socket: a 5-pin DIN socket that opens the MIDI menu --------------------------------------------------------
+class MidiSocket : public juce::Component
+{
+public:
+    MidiSocket() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setSize (58, 58); }
+    std::function<void()> onClick, onHover;
+    void paint (juce::Graphics& g) override
+    {
+        const auto c = getLocalBounds().toFloat().getCentre();
+        const float r = 26.0f;
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.fillEllipse (c.x - r, c.y - r + 1.5f, 2 * r, 2 * r);
+        juce::ColourGradient ring (juce::Colour (0xfff0f1f2), c.x - r * 0.7f, c.y - r * 0.8f, juce::Colour (0xff55585d), c.x + r, c.y + r, false);
+        ring.addColour (0.5, juce::Colour (0xffb9bcc0));
+        g.setGradientFill (ring);
+        g.fillEllipse (c.x - r, c.y - r, 2 * r, 2 * r);
+        const float h = r * 0.72f;
+        juce::ColourGradient hole (juce::Colour (0xff1c1c1e), c.x - h * 0.3f, c.y - h * 0.4f, juce::Colour (0xff030303), c.x + h, c.y + h, true);
+        g.setGradientFill (hole);
+        g.fillEllipse (c.x - h, c.y - h, 2 * h, 2 * h);
+        g.setColour (hover ? col::ledAmber.withAlpha (0.9f) : juce::Colours::white.withAlpha (0.15f));
+        g.drawEllipse (c.x - h, c.y - h, 2 * h, 2 * h, hover ? 1.6f : 0.8f);
+        // five pins on a half circle and the key notch
+        for (int i = 0; i < 5; ++i)                                            // 180° … 360°: the upper half
+        {
+            const float a = juce::degreesToRadians (180.0f + 45.0f * (float) i);
+            const juce::Point<float> p (c.x + std::cos (a) * h * 0.58f, c.y + std::sin (a) * h * 0.58f + 2.0f);
+            g.setColour (juce::Colour (0xffa7a9ac));
+            g.fillEllipse (p.x - 2.4f, p.y - 2.4f, 4.8f, 4.8f);
+        }
+        g.setColour (juce::Colour (0xff6d6f73));
+        g.fillRoundedRectangle (c.x - 4.0f, c.y + h * 0.62f, 8.0f, 4.0f, 1.5f);
+    }
+    void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
+private:
+    bool hover = false;
+};
+
+// ---- a small amber read-out (the MIDI controller's name) --------------------------------------------------------------
+class SmallLcd : public juce::Component
+{
+public:
+    SmallLcd() { setInterceptsMouseClicks (false, false); }
+    void setText (const juce::String& t) { if (t != text) { text = t; repaint(); } }
+    void paint (juce::Graphics& g) override
+    {
+        const auto r = getLocalBounds().toFloat();
+        g.setColour (juce::Colour (0xff0b0704));
+        g.fillRoundedRectangle (r, 3.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.10f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 0.8f);
+        label (g, text, r.reduced (3.0f, 0.0f), col::ledAmber, 10.5f, Weight::NarrowBold, juce::Justification::centred, 0.05f);
+    }
+private:
+    juce::String text;
+};
+
 // ---- rear panel ---------------------------------------------------------------------------------------------------
 // The panel's artwork is a fixed-size image (kHeight tall) that slides with the opening: the visible strip is its
 // bottom part, as if it came out from under the chassis lip.
-class RearPanel : public juce::Component
+class RearPanel : public juce::Component, private juce::Timer
 {
 public:
     static constexpr int kX = 66, kY = 56, kWidth = 1364, kHeight = 150;
     using Jack = babushka::dsp::Jack;
 
-    RearPanel()
+    explicit RearPanel (BabushkaProcessor& p) : processor (p)
     {
         setInterceptsMouseClicks (false, true);
         content.setInterceptsMouseClicks (false, false);
         content.setBufferedToImage (true);
         content.setSize (kWidth, kHeight);
         addAndMakeVisible (content);
+        addAndMakeVisible (midiSocket);
+        addAndMakeVisible (midiLamp);
+        addAndMakeVisible (midiLcd);
+        startTimerHz (30);
     }
+    MidiSocket midiSocket;                       // onClick: the MIDI menu
 
     // Jack centres in the panel's own coordinates (the full-height artwork).
     static std::vector<std::pair<Jack, juce::Point<float>>> jackPositions()
@@ -91,7 +155,14 @@ public:
         return j;
     }
 
-    void resized() override { content.setTopLeftPosition (0, getHeight() - kHeight); }
+    void resized() override
+    {
+        const int y = getHeight() - kHeight;    // the artwork slides: controls sit at their place on it
+        content.setTopLeftPosition (0, y);
+        midiSocket.setCentrePosition (73, y + 58);
+        midiLamp.setCentrePosition (26, y + 104);
+        midiLcd.setBounds (36, y + 95, 90, 18);
+    }
 
     void paint (juce::Graphics& g) override
     {
@@ -111,6 +182,21 @@ public:
     }
 
 private:
+    BabushkaProcessor& processor;
+    Lamp midiLamp { col::ledGreen, 7.0f };
+    SmallLcd midiLcd;
+    uint32_t lastActivity = 0;
+    float lampLevel = 0.0f;
+
+    void timerCallback() override
+    {
+        const auto a = processor.midiMap.lastActivity();
+        if (a.counter != lastActivity) { lastActivity = a.counter; lampLevel = 1.0f; }
+        else lampLevel = juce::jmax (0.0f, lampLevel - 0.12f);
+        midiLamp.setLevel (lampLevel);
+        midiLcd.setText (processor.midiMap.getShortName());
+    }
+
     struct Content : public juce::Component
     {
         void paint (juce::Graphics& g) override
@@ -137,6 +223,9 @@ private:
                 label (g, text, juce::Rectangle<float> (64.0f, 15.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, 10.0f, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
             };
+            plate ({ 10.0f, 8.0f, 126.0f, 134.0f }, S.panel, "MIDI");
+            label (g, juce::String::fromUTF8 ("MIDI IN · MAP"), juce::Rectangle<float> (110.0f, 14.0f).withCentre ({ 73.0f, 128.0f }), ink, 10.0f, Weight::NarrowBold,
+                   juce::Justification::centred, 0.05f);
             plate ({ 890.0f, 8.0f, 150.0f, 134.0f }, S.panel, "AUDIO");
             plate ({ 1048.0f, 8.0f, 306.0f, 134.0f }, S.rearCv, "ARP/SEQ CV");
             static const char* names[] = { "EURORACK OUT", "REVERB OUT", "CLOCK IN", "ON / OFF IN", "RESET IN", "CLOCK OUT" };
@@ -179,6 +268,7 @@ private:
     BabushkaProcessor& processor;
     int lastPos = 0;
     float needle = 0.0f, needleVel = 0.0f, clipHold = 0.0f, scopeGain = 1.0f, lastRms = 0.0f, sinceAudio = 1.0f;
+    float lampGlow = 1.0f, lampPhase = 0.0f;          // the lamps' brightness; it breathes a little, as old bulbs on a mains supply do
     std::vector<float> trace;          // the scope's current sweep
 
     // VU scale: the needle moves in proportion to the signal voltage, from −20 VU to +3 VU.
@@ -203,6 +293,8 @@ private:
         needleVel += (w * w * (target - needle) - 2.0f * zeta * w * needleVel) * dt;
         needle = juce::jlimit (-0.03f, 1.08f, needle + needleVel * dt);
         if (peak >= 0.98f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
+        lampPhase += dt;
+        lampGlow = 0.96f + 0.04f * std::sin (lampPhase * 1.3f) * std::sin (lampPhase * 0.37f);
         if (fresh > 0) updateTrace (pos);
         else if (sinceAudio > 0.15f) for (auto& v : trace) v *= 0.85f;          // the host stopped: the trace fades
         repaint();
@@ -235,16 +327,36 @@ private:
 
     void drawVu (juce::Graphics& g, juce::Rectangle<float> r) const
     {
+        // Backlit like the meters of old consoles: a warm incandescent lamp behind the scale. Its light spills out
+        // round the bezel onto the panel, and the face is brightest low in the middle, where the lamps sit.
+        const juce::Colour lampLight (0xffffb347);
+        for (int i = 7; i >= 1; --i)
+        {
+            g.setColour (lampLight.withAlpha (0.07f * lampGlow));
+            g.fillRoundedRectangle (r.expanded ((float) i * 1.15f), 6.0f + (float) i);
+        }
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillRoundedRectangle (r.translated (0.0f, 1.5f), 5.0f);
-        g.setColour (juce::Colour (0xff2a2724));
+        juce::ColourGradient bezel (juce::Colour (0xff3a3632), r.getX(), r.getY(), juce::Colour (0xff141210), r.getX(), r.getBottom(), false);
+        g.setGradientFill (bezel);
         g.fillRoundedRectangle (r, 5.0f);
         const auto face = r.reduced (3.0f);
-        juce::ColourGradient lamp (juce::Colour (0xfff7e7b8), face.getCentreX(), face.getBottom(), juce::Colour (0xffd8c088), face.getX(), face.getY(), true);
+        juce::ColourGradient lamp (juce::Colour (0xffffefc0).withMultipliedBrightness (0.9f + 0.1f * lampGlow), face.getCentreX(), face.getBottom() + 6.0f,
+                                   juce::Colour (0xffb0702a), face.getX() - 10.0f, face.getY() - 4.0f, true);
+        lamp.addColour (0.42, juce::Colour (0xfff9cf78));
+        lamp.addColour (0.78, juce::Colour (0xffe3a548));
         g.setGradientFill (lamp);
         g.fillRoundedRectangle (face, 3.0f);
         juce::Graphics::ScopedSaveState s (g);
         g.reduceClipRegion (face.toNearestInt());
+        // the two lamps under the scale, seen as hot spots through the paper
+        for (float x : { face.getX() + face.getWidth() * 0.28f, face.getRight() - face.getWidth() * 0.28f })
+        {
+            juce::ColourGradient spot (juce::Colour (0xfffff6dc).withAlpha (0.5f * lampGlow), x, face.getBottom() + 2.0f,
+                                       juce::Colour (0x00ffffff), x + face.getHeight() * 0.9f, face.getBottom() + 2.0f, true);
+            g.setGradientFill (spot);
+            g.fillEllipse (x - face.getHeight() * 0.9f, face.getBottom() - face.getHeight() * 0.9f + 2.0f, face.getHeight() * 1.8f, face.getHeight() * 1.8f);
+        }
         // a long needle on a pivot below the window, so the scale spans most of its width
         const juce::Point<float> pivot (face.getCentreX(), face.getBottom() + 88.0f);
         const float radius = face.getHeight() + 70.0f, sweep = juce::degreesToRadians (36.0f);
@@ -281,9 +393,12 @@ private:
         g.drawLine (juce::Line<float> (base.translated (2.0f, 2.0f), tip.translated (2.0f, 2.0f)), 1.6f);
         g.setColour (juce::Colour (0xff141414));
         g.drawLine (juce::Line<float> (base, tip), 1.4f);
-        // glass
-        g.setColour (juce::Colours::white.withAlpha (0.12f));
-        g.fillRoundedRectangle (face.withHeight (face.getHeight() * 0.38f).reduced (2.0f, 1.5f), 2.5f);
+        // shadow of the bezel on the face, then the glass
+        juce::ColourGradient inner (juce::Colours::black.withAlpha (0.45f), 0.0f, face.getY(), juce::Colours::transparentBlack, 0.0f, face.getY() + 9.0f, false);
+        g.setGradientFill (inner);
+        g.fillRect (face.withHeight (9.0f));
+        g.setColour (juce::Colours::white.withAlpha (0.13f));
+        g.fillRoundedRectangle (face.withHeight (face.getHeight() * 0.36f).reduced (2.0f, 1.5f), 2.5f);
     }
 
     void drawScope (juce::Graphics& g, juce::Rectangle<float> r) const

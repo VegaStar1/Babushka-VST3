@@ -158,7 +158,7 @@ public:
 
     SynthPanel (BabushkaProcessor& p, HintSink& hintSink, std::function<void()> prev, std::function<void()> next,
                 std::function<void()> openPresets, std::function<void()> openSettings)
-        : processor (p), apvts (p.apvts), hints (hintSink), keyboard (p)
+        : processor (p), apvts (p.apvts), hints (hintSink), rear (p), keyboard (p)
     {
         addAndMakeVisible (frontArt);          // behind every control
         addChildComponent (rear);
@@ -202,6 +202,11 @@ public:
     }
     std::function<void (std::vector<JackSite>)> onJacksMoved;
     std::function<void (bool)> onRearToggled;         // the user opened or closed the rear panel
+    std::function<void()> onOpenMidi;                 // the MIDI socket on the rear panel was clicked
+
+    // Controls that can be bound to a MIDI knob (MIDI learn on the panel): the control and its parameter.
+    struct LearnSite { juce::Component* control; juce::String paramId; };
+    const std::vector<LearnSite>& learnSites() const { return learnables; }
 
     bool isRearOpen() const { return rearTarget > 0.5f; }
     // Opens or closes the rear panel, with the slide animation or at once.
@@ -241,6 +246,7 @@ private:
     std::vector<JackSite> frontJacks;
     std::vector<std::pair<juce::Component*, juce::Rectangle<int>>> frontComps;   // controls of the front panel, closed position
     RearPanel rear;
+    std::vector<LearnSite> learnables;
     GripHandle grip;
     std::unique_ptr<OutputMeters> meters;
     Knob* glideKnob = nullptr;
@@ -315,6 +321,7 @@ private:
         k->setCentrePosition ((int) std::lround (cx), (int) std::lround (cy));
         addAndMakeVisible (*k);
         placed (*k);
+        learnables.push_back ({ k.get(), id });
         knobs.push_back (std::move (k));
         return knobs.back().get();
     }
@@ -325,6 +332,7 @@ private:
         l->setCentrePosition ((int) std::lround (cx), (int) std::lround (cy));
         addAndMakeVisible (*l);
         placed (*l);
+        learnables.push_back ({ l.get(), id });
         levers.push_back (std::move (l));
         return levers.back().get();
     }
@@ -471,6 +479,7 @@ private:
         op ([=] (juce::Graphics& g) { g.setColour (oscInk.withAlpha (0.85f)); g.drawLine (494.0f, 306.0f, 546.0f, 306.0f, 1.2f); });
         syncLink = std::make_unique<ParamLink> (apvts, "osc2Sync", [this] (float v) { if (syncPad) syncPad->setLit (v > 0.5f); });
         syncPad = addPad (S.sync, 469, 306, 44);
+        learnables.push_back ({ syncPad, "osc2Sync" });
         syncPad->onPress = [this] { syncLink->setComplete (syncLink->get() > 0.5f ? 0.0f : 1.0f); };
         syncPad->onHover = [this] { hints.showHint (*syncPad, "Osc 2 Sync   " + juce::String (syncLink->get() > 0.5f ? "on" : "off")); };
         syncLink->setComplete (syncLink->get());
@@ -544,6 +553,7 @@ private:
         sustain->setCentrePosition (1246, 318);
         addAndMakeVisible (*sustain);
         placed (*sustain);
+        learnables.push_back ({ sustain.get(), "sustain" });
         textAt ("SUSTAIN", 1246, 441, ink, 11.5f, Weight::NarrowBold, 70.0f);
 
         // ---------------- OUTPUT + SPRING REVERB ----------------
@@ -579,6 +589,7 @@ private:
         modLink = std::make_unique<ParamLink> (apvts, "modWheel", [this] (float v) { if (modWheel) modWheel->setValueFromParameter (v); });
         modWheel->onChange = [this] (float v) { modLink->setComplete (v); };
         addAndMakeVisible (*modWheel);
+        learnables.push_back ({ modWheel.get(), "modWheel" });
         addAndMakeVisible (keyboard);
 
         // ---------------- bottom strip: fine tune, output meters, presets ----------------
@@ -672,6 +683,8 @@ private:
 
     void setupGrip()
     {
+        rear.midiSocket.onClick = [this] { if (onOpenMidi) onOpenMidi(); };
+        rear.midiSocket.onHover = [this] { hints.showHint (rear.midiSocket, "MIDI controller: knob mapping"); };
         grip.setTopLeftPosition (kW / 2 - grip.getWidth() / 2, 30);
         addAndMakeVisible (grip);
         grip.onClick = [this] { toggleRear(); };

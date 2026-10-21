@@ -177,7 +177,7 @@ private:
     static juce::String jackName (babushka::dsp::Jack id)
     {
         const auto& i = babushka::dsp::jackInfo (id);
-        return juce::String (i.section) + " · " + i.label;
+        return juce::String (i.section) + juce::String::fromUTF8 (" · ") + i.label;
     }
     int jackAt (juce::Point<float> p, float radius) const
     {

@@ -4,6 +4,7 @@
 #include "dsp/Engine.h"
 #include "Presets.h"
 #include "PresetTags.h"
+#include "MidiMap.h"
 
 class BabushkaProcessor : public juce::AudioProcessor, private juce::AudioProcessorListener
 {
@@ -36,6 +37,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState apvts;
+    babushka::MidiMapper midiMap { *this };               // hardware knobs → parameters (shared by all instances, see MidiMap.h)
 
     // Called from the editor (message thread).
     void requestRecRest()   { ++recRestRequests; }

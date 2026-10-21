@@ -1,5 +1,5 @@
 #include "PluginEditor.h"
-#include "ui/Overlays.h"
+#include "ui/MidiUi.h"
 
 using namespace babushka::ui;
 
@@ -17,7 +17,7 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     buildPanel();
     content.addAndMakeVisible (*cables);
     backdrop = std::make_unique<Backdrop>();
-    backdrop->onClick = [this] { showPresets (false); showSettings (false); };
+    backdrop->onClick = [this] { showPresets (false); showSettings (false); showMidi (false); };
     backdrop->setBounds (0, 0, kW, kH);
     content.addChildComponent (*backdrop);
     content.addChildComponent (*bubble);
@@ -57,6 +57,7 @@ void BabushkaEditor::buildPanel()
     panel->setRearOpen (uiSettings.getBoolValue ("rearOpen", false), false);
     panel->onRearToggled = [this] (bool open) { uiSettings.setValue ("rearOpen", open); uiSettings.saveIfNeeded(); };
     panel->onJacksMoved = [this] (std::vector<JackSite> sites) { cables->setJacks (std::move (sites)); };
+    panel->onOpenMidi = [this] { showMidi (true); };
     cables->setJacks (panel->jackSites());
 }
 
@@ -112,11 +113,13 @@ void BabushkaEditor::showPresets (bool show)
 
 void BabushkaEditor::updateBackdrop()
 {
-    const bool on = (presets != nullptr && presets->isVisible()) || (settings != nullptr && settings->isVisible());
+    const bool on = (presets != nullptr && presets->isVisible()) || (settings != nullptr && settings->isVisible())
+                    || (midi != nullptr && midi->isVisible());
     backdrop->setVisible (on);
     if (on) backdrop->toFront (false);
     if (presets != nullptr && presets->isVisible()) presets->toFront (false);
     if (settings != nullptr && settings->isVisible()) settings->toFront (false);
+    if (midi != nullptr && midi->isVisible()) midi->toFront (false);
     bubble->toFront (false);
 }
 
@@ -137,6 +140,40 @@ void BabushkaEditor::showSettings (bool show)
         if (show) settings->toFront (true);
     }
     updateBackdrop();
+}
+
+void BabushkaEditor::showMidi (bool show)
+{
+    if (show && midi == nullptr)
+    {
+        midi = std::make_unique<MidiOverlay> (processor);
+        midi->onClose = [this] { showMidi (false); };
+        midi->onLearnOnPanel = [this] { startMidiLearn(); };
+        content.addChildComponent (*midi);
+    }
+    if (show) { showPresets (false); showSettings (false); }
+    if (midi != nullptr)
+    {
+        midi->setCentrePosition (kW / 2, kH / 2);
+        midi->setVisible (show);
+        if (show) midi->toFront (true);
+    }
+    updateBackdrop();
+}
+
+// The MIDI menu steps aside; the panel gets a ring round every control that can take a knob.
+void BabushkaEditor::startMidiLearn()
+{
+    showMidi (false);
+    learn = std::make_unique<LearnOverlay> (processor, panel->learnSites());
+    learn->onDone = [this] {
+        juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<BabushkaEditor> (this)] {
+            if (safe == nullptr) return;
+            safe->learn.reset();
+            safe->showMidi (true); }); };
+    content.addAndMakeVisible (*learn);
+    learn->toFront (false);
+    bubble->toFront (false);
 }
 
 void BabushkaEditor::showHint (juce::Component&, const juce::String& text)

@@ -132,9 +132,9 @@ class Knob : public juce::Slider
 {
 public:
     // diameter: size of the knob body in logical pixels. selector: discrete positions drawn with a wedge pointer.
-    Knob (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, float diameter, std::function<juce::String (double)> formatter = nullptr,
+    Knob (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId_, float diameter, std::function<juce::String (double)> formatter = nullptr,
           bool selector = false)
-        : diameterPx (diameter), isSelector (selector), format (std::move (formatter))
+        : paramId (paramId_), diameterPx (diameter), isSelector (selector), format (std::move (formatter))
     {
         setSliderStyle (juce::Slider::RotaryVerticalDrag);
         setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
@@ -142,16 +142,17 @@ public:
         setVelocityModeParameters (0.2, 1, 0.0, true, juce::ModifierKeys::shiftModifier);   // Shift + drag: fine adjustment
         setScrollWheelEnabled (true);
         setRotaryParameters (juce::degreesToRadians (225.0f), juce::degreesToRadians (495.0f), true);
-        attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramId, *this);
-        if (auto* p = apvts.getParameter (paramId))
+        attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramId_, *this);
+        if (auto* p = apvts.getParameter (paramId_))
             setDoubleClickReturnValue (true, dynamic_cast<juce::RangedAudioParameter*> (p)->convertFrom0to1 (p->getDefaultValue()));
-        name = apvts.getParameter (paramId)->getName (32);
+        name = apvts.getParameter (paramId_)->getName (32);
         setSize ((int) std::ceil (diameter * 1.3f), (int) std::ceil (diameter * 1.3f));
         setWantsKeyboardFocus (false);
         setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
     }
 
     HintSink* hints = nullptr;
+    const juce::String paramId;
 
     void paint (juce::Graphics& g) override
     {
@@ -206,9 +207,9 @@ class LeverSwitch : public juce::Component
 {
 public:
     // positions: panel order left→right; map[i] is the parameter's choice index for panel position i.
-    LeverSwitch (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, std::vector<int> map, std::function<juce::String (int)> positionName = nullptr)
-        : mapping (std::move (map)), nameOf (std::move (positionName)),
-          link (apvts, paramId, [this] (float v) { const int choice = (int) std::lround (v);
+    LeverSwitch (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId_, std::vector<int> map, std::function<juce::String (int)> positionName = nullptr)
+        : paramId (paramId_), mapping (std::move (map)), nameOf (std::move (positionName)),
+          link (apvts, paramId_, [this] (float v) { const int choice = (int) std::lround (v);
                                                      for (size_t i = 0; i < mapping.size(); ++i) if (mapping[i] == choice) position = (int) i;
                                                      repaint(); })
     {
@@ -218,6 +219,7 @@ public:
     }
 
     HintSink* hints = nullptr;
+    const juce::String paramId;
 
     void paint (juce::Graphics& g) override
     {
@@ -360,13 +362,14 @@ class Fader : public juce::Component
 {
 public:
     Fader (juce::AudioProcessorValueTreeState& apvts, const juce::String& id, float height)
-        : link (apvts, id, [this] (float v) { value = link.range().convertTo0to1 (v); repaint(); })
+        : paramId (id), link (apvts, id, [this] (float v) { value = link.range().convertTo0to1 (v); repaint(); })
     {
         setSize (70, (int) height);
         setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
         title = link.name();
     }
     HintSink* hints = nullptr;
+    const juce::String paramId;
 
     juce::Rectangle<float> travel() const { return { 0.0f, 16.0f, (float) getWidth(), (float) getHeight() - 32.0f }; }
 

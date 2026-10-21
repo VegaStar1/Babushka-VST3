@@ -177,6 +177,7 @@ BabushkaProcessor::BabushkaProcessor()
 {
     addListener (this);
     resetHistory ("Init");
+    midiMap.initialise();
 }
 
 BabushkaProcessor::~BabushkaProcessor() { removeListener (this); }
@@ -399,6 +400,7 @@ void BabushkaProcessor::handleMidi (const juce::MidiMessage& m)
     else if (m.isController())
     {
         const int cc = m.getControllerNumber(), v = m.getControllerValue();
+        if (midiMap.handleController (m.getChannel(), cc, v)) return;     // the user's knob mapping comes first
         if (cc == 1) { engine.setModWheelCC ((float) v / 127.0f); modWheelCC.store ((float) v / 127.0f); }
         else if (cc == 64) engine.setSustain (v >= 64);
     }

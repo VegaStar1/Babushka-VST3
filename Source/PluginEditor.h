@@ -4,7 +4,7 @@
 #include "PluginProcessor.h"
 #include "ui/SynthPanel.h"
 
-namespace babushka::ui { class SettingsOverlay; class PresetOverlay; class HintBubble; class Backdrop; }
+namespace babushka::ui { class SettingsOverlay; class PresetOverlay; class HintBubble; class Backdrop; class MidiOverlay; class LearnOverlay; }
 
 // The instrument: a skeuomorphic front panel drawn in a fixed logical size and scaled to the window.
 class BabushkaEditor : public juce::AudioProcessorEditor, private babushka::ui::HintSink
@@ -19,6 +19,9 @@ public:
 
     void showPresets (bool show);
     void showSettings (bool show);
+    void showMidi (bool show);
+    void startMidiLearn();                                          // MIDI learn on the panel (from the MIDI menu)
+    babushka::ui::LearnOverlay* midiLearn() { return learn.get(); }      // for tests
     void setSkin (int index);                                       // index into babushka::ui::skins(); remembered per user
     babushka::ui::CableLayer& cableLayer() { return *cables; }     // for tests
     babushka::ui::SynthPanel& synthPanel() { return *panel; }
@@ -39,6 +42,8 @@ private:
     std::unique_ptr<babushka::ui::Backdrop> backdrop;
     std::unique_ptr<babushka::ui::PresetOverlay> presets;
     std::unique_ptr<babushka::ui::SettingsOverlay> settings;
+    std::unique_ptr<babushka::ui::MidiOverlay> midi;
+    std::unique_ptr<babushka::ui::LearnOverlay> learn;
     juce::PropertiesFile uiSettings { uiSettingsOptions() };      // per-user look of the editor (skin)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BabushkaEditor)

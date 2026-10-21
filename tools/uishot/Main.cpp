@@ -5,7 +5,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../../Source/PluginProcessor.h"
 #include "../../Source/PluginEditor.h"
-#include "../../Source/ui/Overlays.h"
+#include "../../Source/ui/MidiUi.h"
 
 namespace
 {
@@ -23,6 +23,13 @@ struct Runner : private juce::Timer
     Runner (BabushkaProcessor& p, BabushkaEditor& e, juce::File o) : proc (p), ed (e), out (o) { startTimer (100); }
     BabushkaProcessor& proc; BabushkaEditor& ed; juce::File out; int tick = 0;
 
+    void cc (int channel, int number, int value)
+    {
+        juce::AudioBuffer<float> buf (2, 64);
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::controllerEvent (channel, number, value), 0);
+        proc.processBlock (buf, midi);
+    }
     void midiWheels (int bend, int mod)
     {
         juce::AudioBuffer<float> buf (2, 256);
@@ -104,7 +111,26 @@ struct Runner : private juce::Timer
         if (tick == 195) save (ed, out.getChildFile ("ui_small_black.png"));
         if (tick == 196) { ed.setSkin (0); }
         if (tick == 198) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1500, 1085); ed.setSkin (skinBefore); }
-        if (tick == 200) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        // MIDI: the menu with the Oxygen MK V profile, MIDI learn on the panel, soft takeover
+        if (tick == 199) { proc.midiMap.applyProfile (1); ed.synthPanel().setRearOpen (true, false); ed.showMidi (true); }
+        if (tick == 202) { save (ed, out.getChildFile ("ui_midi.png")); ed.startMidiLearn(); }
+        if (tick == 203) { proc.midiMap.startLearn ("hpCutoff"); cc (1, 22, 64); }
+        if (tick == 204) proc.midiMap.startLearn ("lfoPitchAmt");
+        if (tick == 206) { save (ed, out.getChildFile ("ui_midi_learn.png"));
+                           std::printf ("learn: High Pass on CC %d (expect 22)\n", proc.midiMap.ccFor ("hpCutoff")); }
+        if (tick == 207)
+        {
+            proc.midiMap.stopLearn();
+            proc.midiMap.applyProfile (1);                            // Oxygen MK V: CC 44 = Cutoff
+            auto* cut = proc.apvts.getParameter ("cutoff");
+            cut->setValueNotifyingHost (0.6f);
+            cc (1, 44, 10);  const float a = cut->getValue();       // far from 0.6: soft takeover ignores it
+            cc (1, 44, 77);  const float b = cut->getValue();       // reaches the value: picked up
+            cc (1, 44, 20);  const float c = cut->getValue();       // now it follows
+            std::printf ("soft takeover: %.3f (expect 0.600), %.3f (expect 0.606), %.3f (expect 0.157)\n", a, b, c);
+        }
+        if (tick == 208) { proc.midiMap.stopLearn(); ed.synthPanel().setRearOpen (false, false); }
+        if (tick == 210) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };
@@ -165,6 +191,8 @@ int main (int argc, char** argv)
     const auto presetRoot = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_uishot_presets");
     presetRoot.deleteRecursively();
     proc.setPresetRoot (presetRoot);      // never touch the real preset folder
+    const auto midiMapFile = presetRoot.getSiblingFile ("babushka_uishot_midimap.xml");
+    proc.midiMap.setFile (midiMapFile);   // nor the user's MIDI map
     proc.setPlayConfigDetails (0, 2, 48000.0, 512);
     proc.prepareToPlay (48000.0, 512);
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
