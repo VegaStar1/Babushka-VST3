@@ -480,7 +480,8 @@ public:
         g.reduceClipRegion (clip);
 
         const float R = w.getHeight() * 0.5f / std::sin (kVisible), cy = w.getCentreY();
-        const float turn = (value - (spring ? 0.5f : 0.0f)) * kTravel;
+        // turning the wheel up (a larger value) rolls the tread upwards: angles grow downwards on screen, so negative
+        const float turn = -(value - (spring ? 0.5f : 0.0f)) * kTravel;
         auto yAt = [&] (float theta) { return cy + R * std::sin (theta); };
         // tread: lit from the top, falling off as the surface turns away
         const int bands = 48;
@@ -508,7 +509,7 @@ public:
         }
         // centre mark of the pitch wheel, or the end stop of the mod wheel, moulded as a broad flat rib
         {
-            const float th = spring ? turn : turn - kTravel * 0.5f;
+            const float th = spring ? turn : turn + kTravel * 0.5f;      // mod wheel at 0: the stop low in the slot
             if (std::abs (th) < kVisible)
             {
                 const float c = std::cos (th);
