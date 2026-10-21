@@ -145,7 +145,7 @@ public:
     // Compiled cables; cheap enough to call from the audio thread at the start of a block.
     void setPatch (const PatchState& p) noexcept { routing = Routing::compile (p); }
     const Routing& currentRouting() const noexcept { return routing; }
-    // Samples since the last call within 1 dB of full scale before the output limiter (the CLIP lamp).
+    // Samples since the last call at or over full scale (0 dBFS) before the output limiter (the CLIP lamp).
     int takeOvers() noexcept { const int o = overs; overs = 0; return o; }
     // Last voltage published on an output jack (for meters / tests).
     float outputVolts (Jack j) const noexcept { const int i = (int) j - kFirstOutput; return i >= 0 && i < kNumOutputs ? outV[i] : 0.0f; }
@@ -282,7 +282,7 @@ public:
             if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, mono * 5.0f);
             const float gain = volumeGain (sVolume.v) * 1.6f;
             y *= gain; yR *= gain;
-            if (std::abs (y) > 0.89f || std::abs (yR) > 0.89f) ++overs;     // within 1 dB of full scale, the limiter at work: CLIP
+            if (std::abs (y) >= 1.0f || std::abs (yR) >= 1.0f) ++overs;     // 0 dBFS reached: it would clip without the limiter
             if (outR != nullptr) { out[n] = safetyLimit (y); outR[n] = safetyLimit (yR); }
             else out[n] = safetyLimit (0.5f * (y + yR));
         }

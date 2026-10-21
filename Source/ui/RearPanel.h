@@ -399,7 +399,7 @@ public:
         const int zone = p.getDistanceFrom (lampCentre()) < 22.0f ? 1 : vuArea().contains (p) ? 2 : 0;
         if (zone == hintZone) return;
         hintZone = zone;
-        if (zone == 1) hints->showHint (*this, "CLIP: a sample peak reached -1 dBFS (the output limiter is at work)");
+        if (zone == 1) hints->showHint (*this, "CLIP: a sample peak reached 0 dBFS (it would clip; the output limiter catches it)");
         else if (zone == 2) hints->showHint (*this, "VU: the average level (0 VU = -12 dBFS); the peaks light CLIP");
         else hints->hideHint();
     }
@@ -466,9 +466,9 @@ private:
         constexpr float w = juce::MathConstants<float>::twoPi * 2.1f, zeta = 0.8f;
         needleVel += (w * w * (needleFor (vu) - needle) - 2.0f * zeta * w * needleVel) * dt;
         needle = juce::jlimit (-0.03f, 1.08f, needle + needleVel * dt);
-        // CLIP: samples near full scale before the output limiter (or at the output itself)
+        // CLIP: samples at 0 dBFS before the output limiter (or at the output itself)
         const uint32_t clips = processor.getClipCount();
-        if (clips != lastClips || peak >= 0.89f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
+        if (clips != lastClips || peak >= 0.999f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
         lastClips = clips;
         // backlight: follows the needle, warming up quicker than it cools down, like a filament
         const float wantedLight = juce::jlimit (0.0f, 1.0f, 0.3f + needle * 1.1f);
