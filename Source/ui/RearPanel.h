@@ -15,37 +15,53 @@ namespace babushka::ui
 class GripHandle : public juce::Component
 {
 public:
-    GripHandle() { setMouseCursor (juce::MouseCursor::UpDownResizeCursor); setSize (96, 22); }
+    GripHandle() { setMouseCursor (juce::MouseCursor::UpDownResizeCursor); setSize (164, 24); }
     std::function<void()> onClick, onHover;
     std::function<void (float)> onDrag;               // vertical distance from where the drag started (logical px)
     std::function<void()> onDragEnd;
     void setOpen (bool o) { if (o != open) { open = o; repaint(); } }
 
-    // A finger notch pressed into the chassis lip: the chassis' own finish, darker inside, with three ribs engraved
-    // across it. It only warms up a little under the pointer, so it does not stand out from the case.
+    // A finger notch pressed into the chassis lip, with three engraved ribs, and an engraved chevron on each side that
+    // shows which way it goes (down: pull the rear panel out, up: push it back). The chassis' own finish; the ribs and
+    // chevrons warm to amber under the pointer.
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (2.0f, 2.0f);
+        const auto all = getLocalBounds().toFloat();
+        const auto r = juce::Rectangle<float> (104.0f, 22.0f).withCentre (all.getCentre());
         const auto c = skin().chassis;
-        juce::ColourGradient body (c.darker (0.45f), r.getX(), r.getY(), c.brighter (0.35f), r.getX(), r.getBottom(), false);
-        g.setGradientFill (body);
-        g.fillRoundedRectangle (r, 6.0f);
-        grain (g, r, 1.0f);
-        juce::ColourGradient inner (juce::Colours::black.withAlpha (0.55f), 0.0f, r.getY(), juce::Colours::transparentBlack, 0.0f, r.getY() + 7.0f, false);
-        g.setGradientFill (inner);                                       // shadow of the upper edge of the notch
-        g.fillRoundedRectangle (r, 6.0f);
-        g.setColour (juce::Colours::black.withAlpha (0.5f));
-        g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.09f));                // light catching the lower lip
-        g.drawLine (r.getX() + 6.0f, r.getBottom() + 0.5f, r.getRight() - 6.0f, r.getBottom() + 0.5f, 1.0f);
         const bool lit = hover || dragging;
+        juce::ColourGradient body (c.darker (0.6f), r.getX(), r.getY(), c.brighter (0.45f), r.getX(), r.getBottom(), false);
+        g.setGradientFill (body);
+        g.fillRoundedRectangle (r, 7.0f);
+        grain (g, r, 1.0f);
+        juce::ColourGradient inner (juce::Colours::black.withAlpha (0.6f), 0.0f, r.getY(), juce::Colours::transparentBlack, 0.0f, r.getY() + 8.0f, false);
+        g.setGradientFill (inner);                                       // shadow of the upper edge of the notch
+        g.fillRoundedRectangle (r, 7.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.6f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 7.0f, 1.0f);
+        g.setColour (juce::Colours::white.withAlpha (lit ? 0.22f : 0.14f));   // light catching the lower lip
+        g.drawLine (r.getX() + 7.0f, r.getBottom() + 0.5f, r.getRight() - 7.0f, r.getBottom() + 0.5f, 1.0f);
+        const auto edge = lit ? col::ledAmber.withAlpha (0.8f) : juce::Colours::white.withAlpha (0.30f);
         for (int i = 0; i < 3; ++i)                                      // engraved ribs: a groove and its lit lower edge
         {
             const float y = r.getY() + 5.5f + 4.0f * (float) i;
-            g.setColour (juce::Colours::black.withAlpha (0.75f));
-            g.fillRoundedRectangle (r.getCentreX() - 22.0f, y, 44.0f, 1.6f, 0.8f);
-            g.setColour (lit ? col::ledAmber.withAlpha (0.45f) : juce::Colours::white.withAlpha (0.13f));
-            g.fillRoundedRectangle (r.getCentreX() - 22.0f, y + 1.6f, 44.0f, 1.0f, 0.5f);
+            g.setColour (juce::Colours::black.withAlpha (0.8f));
+            g.fillRoundedRectangle (r.getCentreX() - 26.0f, y, 52.0f, 1.7f, 0.8f);
+            g.setColour (edge);
+            g.fillRoundedRectangle (r.getCentreX() - 26.0f, y + 1.7f, 52.0f, 1.0f, 0.5f);
+        }
+        for (float x : { all.getX() + 14.0f, all.getRight() - 14.0f })   // chevrons
+        {
+            const float cy = all.getCentreY(), d = open ? -1.0f : 1.0f;
+            juce::Path v;
+            v.startNewSubPath (x - 6.0f, cy - 3.0f * d);
+            v.lineTo (x, cy + 3.0f * d);
+            v.lineTo (x + 6.0f, cy - 3.0f * d);
+            g.setColour (juce::Colours::black.withAlpha (0.8f));
+            g.strokePath (v, juce::PathStrokeType (2.2f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
+            g.setColour (lit ? col::ledAmber : col::ink.withAlpha (0.55f));
+            g.strokePath (v, juce::PathStrokeType (1.3f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded),
+                          juce::AffineTransform::translation (0.0f, 0.8f));
         }
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
@@ -248,6 +264,11 @@ private:
 // Both read the ring of recent output samples the processor keeps. The VU meter follows the classic standard
 // (0 VU = −12 dBFS RMS here, ≈300 ms to reach the reading, a slight overshoot); the scope triggers on rising zero
 // crossings and shows about two and a half periods of the note.
+//
+// The backlight follows the needle: dim at rest, glowing up as the level rises (with a bulb's lag).
+// Cheap to run: the face (lamps, scale, print) is drawn only when the window is scaled, as two images — lamps low and
+// lamps full — and each frame blends them; only the needle area, the scope and the lamp are repainted, and only when
+// they change.
 class OutputMeters : public juce::Component, private juce::Timer
 {
 public:
@@ -261,12 +282,10 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat();
-        drawVu (g, { 6.0f, 4.0f, 206.0f, r.getHeight() - 8.0f });
-        drawScope (g, { 222.0f, 4.0f, 206.0f, r.getHeight() - 8.0f });
-        // clip lamp
-        const juce::Point<float> c (r.getRight() - 24.0f, r.getCentreY() - 10.0f);
-        if (clipHold > 0.0f) drawGlow (g, c, 18.0f, col::ledRed, juce::jmin (1.0f, clipHold * 2.0f));
+        drawVu (g, vuArea());
+        drawScope (g, scopeArea());
+        const auto c = lampCentre();
+        if (clipHold > 0.0f) drawGlow (g, c, 14.0f, col::ledRed, juce::jmin (1.0f, clipHold * 2.0f));
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillEllipse (c.x - 5.5f, c.y - 5.0f, 11.0f, 11.0f);
         g.setColour (clipHold > 0.0f ? col::ledRed.brighter (0.3f) : col::ledRed.withMultipliedBrightness (0.25f));
@@ -278,12 +297,32 @@ private:
     BabushkaProcessor& processor;
     int lastPos = 0;
     uint32_t lastClips = 0;
-    float needle = 0.0f, needleVel = 0.0f, clipHold = 0.0f, scopeGain = 1.0f, lastRms = 0.0f, sinceAudio = 1.0f;
-    float lampGlow = 1.0f, lampPhase = 0.0f;          // the lamps' brightness; it breathes a little, as old bulbs on a mains supply do
+    float needle = 0.0f, needleVel = 0.0f, drawnNeedle = -1.0f, clipHold = 0.0f, scopeGain = 1.0f, lastRms = 0.0f, sinceAudio = 1.0f;
+    float backlight = 0.0f;             // 0 … 1, follows the needle
+    bool traceDirty = true, lampWasOn = false;
     std::vector<float> trace;          // the scope's current sweep
+    juce::Image faceDim, faceLit;      // the face with the lamps low and at full
+    float cachedScale = 0.0f;
+
+    juce::Rectangle<float> vuArea() const { return { 6.0f, 4.0f, 206.0f, (float) getHeight() - 8.0f }; }
+    juce::Rectangle<float> scopeArea() const { return { 222.0f, 4.0f, 206.0f, (float) getHeight() - 8.0f }; }
+    juce::Point<float> lampCentre() const { return { (float) getWidth() - 24.0f, (float) getHeight() * 0.5f - 10.0f }; }
 
     // VU scale: the needle moves in proportion to the signal voltage, from −20 VU to +3 VU.
     static float needleFor (float vu) { const float v = std::pow (10.0f, vu / 20.0f); return juce::jlimit (-0.02f, 1.06f, (v - 0.1f) / (std::pow (10.0f, 0.15f) - 0.1f)); }
+
+    // Needle geometry, shared by the face (scale) and the needle.
+    struct Dial
+    {
+        juce::Point<float> pivot; float radius, sweep;
+        explicit Dial (juce::Rectangle<float> face)
+            : pivot (face.getCentreX(), face.getBottom() + 88.0f), radius (face.getHeight() + 70.0f), sweep (juce::degreesToRadians (36.0f)) {}
+        juce::Point<float> at (float pos, float rad) const
+        {
+            const float a = -sweep + 2.0f * sweep * pos;
+            return { pivot.x + rad * std::sin (a), pivot.y - rad * std::cos (a) };
+        }
+    };
 
     void timerCallback() override
     {
@@ -296,22 +335,33 @@ private:
         constexpr float dt = 1.0f / 60.0f;
         if (fresh > 0) { lastRms = std::sqrt (sum / (float) fresh); sinceAudio = 0.0f; }
         else if ((sinceAudio += dt) > 0.15f) lastRms = 0.0f;
-        const float rms = lastRms;
-        const float vu = 20.0f * std::log10 (juce::jmax (rms, 1.0e-6f)) + 12.0f;
+        const float vu = 20.0f * std::log10 (juce::jmax (lastRms, 1.0e-6f)) + 12.0f;
         // needle: a damped spring (ζ ≈ 0.8, ≈300 ms to the reading)
         constexpr float w = juce::MathConstants<float>::twoPi * 2.1f, zeta = 0.8f;
-        const float target = needleFor (vu);
-        needleVel += (w * w * (target - needle) - 2.0f * zeta * w * needleVel) * dt;
+        needleVel += (w * w * (needleFor (vu) - needle) - 2.0f * zeta * w * needleVel) * dt;
         needle = juce::jlimit (-0.03f, 1.08f, needle + needleVel * dt);
-        // CLIP: the output limiter caught samples over full scale (or the output itself reached it)
+        // CLIP: samples near full scale before the output limiter (or at the output itself)
         const uint32_t clips = processor.getClipCount();
-        if (clips != lastClips || peak >= 0.99f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
+        if (clips != lastClips || peak >= 0.89f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
         lastClips = clips;
-        lampPhase += dt;
-        lampGlow = 0.96f + 0.04f * std::sin (lampPhase * 1.3f) * std::sin (lampPhase * 0.37f);
-        if (fresh > 0) updateTrace (pos);
-        else if (sinceAudio > 0.15f) for (auto& v : trace) v *= 0.85f;          // the host stopped: the trace fades
-        repaint();
+        // backlight: follows the needle, warming up quicker than it cools down, like a filament
+        const float wantedLight = juce::jlimit (0.0f, 1.0f, 0.15f + needle * 1.25f);
+        const float newLight = backlight + (wantedLight - backlight) * (wantedLight > backlight ? 0.25f : 0.07f);
+        const bool lightChanged = std::abs (newLight - backlight) > 0.002f;
+        backlight = newLight;
+        if (fresh > 0) { updateTrace (pos); traceDirty = true; }
+        else if (sinceAudio > 0.15f && ! trace.empty())
+        {
+            float m = 0.0f;
+            for (auto& v : trace) { v *= 0.85f; m = juce::jmax (m, std::abs (v)); }   // the host stopped: the trace fades
+            if (m < 0.002f) trace.clear();
+            traceDirty = true;
+        }
+        // repaint only what changed
+        if (lightChanged) repaint (vuArea().toNearestInt().expanded (2));
+        else if (std::abs (needle - drawnNeedle) > 0.0008f) repaint (vuArea().toNearestInt());       // the needle and its shadow
+        if (traceDirty) { repaint (scopeArea().toNearestInt()); traceDirty = false; }
+        if ((clipHold > 0.0f) != lampWasOn || clipHold > 0.0f) { repaint (juce::Rectangle<float> (40.0f, 46.0f).withCentre (lampCentre()).toNearestInt()); lampWasOn = clipHold > 0.0f; }
     }
 
     void updateTrace (int pos)
@@ -339,54 +389,100 @@ private:
         scopeGain += (wanted - scopeGain) * 0.15f;
     }
 
-    void drawVu (juce::Graphics& g, juce::Rectangle<float> r) const
+    // The face as an image, redrawn only when the light or the scale has changed.
+    void drawVu (juce::Graphics& g, juce::Rectangle<float> r)
     {
-        // Backlit like the meters of old consoles: a warm incandescent lamp behind the scale. Its light spills out
-        // round the bezel onto the panel, and the face is brightest low in the middle, where the lamps sit.
-        const juce::Colour lampLight (0xffffb347);
-        for (int i = 7; i >= 1; --i)
-        {
-            g.setColour (lampLight.withAlpha (0.07f * lampGlow));
-            g.fillRoundedRectangle (r.expanded ((float) i * 1.15f), 6.0f + (float) i);
-        }
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillRoundedRectangle (r.translated (0.0f, 1.5f), 5.0f);
         juce::ColourGradient bezel (juce::Colour (0xff3a3632), r.getX(), r.getY(), juce::Colour (0xff141210), r.getX(), r.getBottom(), false);
         g.setGradientFill (bezel);
         g.fillRoundedRectangle (r, 5.0f);
+        const float light = juce::jmax (0.0f, backlight);
+        // lamp light catching the inner edge of the bezel, round the window
+        g.setColour (juce::Colour (0xffffb347).withAlpha (0.10f + 0.35f * light));
+        g.drawRoundedRectangle (r.reduced (2.0f), 4.0f, 1.2f);
+
         const auto face = r.reduced (3.0f);
-        juce::ColourGradient lamp (juce::Colour (0xffffefc0).withMultipliedBrightness (0.9f + 0.1f * lampGlow), face.getCentreX(), face.getBottom() + 6.0f,
-                                   juce::Colour (0xffb0702a), face.getX() - 10.0f, face.getY() - 4.0f, true);
-        lamp.addColour (0.42, juce::Colour (0xfff9cf78));
-        lamp.addColour (0.78, juce::Colour (0xffe3a548));
-        g.setGradientFill (lamp);
-        g.fillRoundedRectangle (face, 3.0f);
+        const float scale = juce::jmax (1.0f, (float) g.getInternalContext().getPhysicalPixelScaleFactor());
+        if (! faceDim.isValid() || std::abs (cachedScale - scale) > 0.01f)
+        {
+            const int w = (int) std::ceil (face.getWidth() * scale), h = (int) std::ceil (face.getHeight() * scale);
+            for (auto* im : { &faceDim, &faceLit })
+            {
+                *im = juce::Image (juce::Image::ARGB, w, h, true);
+                juce::Graphics ig (*im);
+                ig.addTransform (juce::AffineTransform::scale (scale));
+                drawFace (ig, face.withPosition (0.0f, 0.0f), im == &faceLit ? 1.0f : 0.42f);
+            }
+            cachedScale = scale;
+        }
+        g.drawImage (faceDim, face);
+        {
+            juce::Graphics::ScopedSaveState fade (g);
+            g.setOpacity (light);
+            g.drawImage (faceLit, face);
+        }
+
         juce::Graphics::ScopedSaveState s (g);
         g.reduceClipRegion (face.toNearestInt());
-        // the two lamps under the scale, seen as hot spots through the paper
-        for (float x : { face.getX() + face.getWidth() * 0.28f, face.getRight() - face.getWidth() * 0.28f })
+        const Dial dial (face);
+        // the needle: a thin blade, wider at the pivot and tapering to the tip, standing a little off the scale, so it
+        // throws a soft shadow onto the paper (offset down-right, from the lamps' light)
+        const auto tip = dial.at (needle, dial.radius + 3.0f), base = dial.at (needle, 52.0f);
+        const auto dir = (tip - base) / juce::jmax (1.0f, tip.getDistanceFrom (base));
+        const juce::Point<float> n (-dir.y, dir.x);
+        juce::Path blade;
+        blade.startNewSubPath (base + n * 1.8f);
+        blade.lineTo (tip + n * 0.55f);
+        blade.lineTo (tip - n * 0.55f);
+        blade.lineTo (base - n * 1.8f);
+        blade.closeSubPath();
+        g.setColour (juce::Colours::black.withAlpha (0.10f));
+        g.fillPath (blade, juce::AffineTransform::translation (4.0f, 5.0f));
+        g.setColour (juce::Colours::black.withAlpha (0.20f));
+        g.fillPath (blade, juce::AffineTransform::translation (2.4f, 3.0f));
+        g.setColour (juce::Colour (0xff111111));
+        g.fillPath (blade);
+        g.setColour (juce::Colours::white.withAlpha (0.18f));                           // a glint along one edge
+        g.drawLine (juce::Line<float> (base + n * 1.2f, tip + n * 0.35f), 0.5f);
+        drawnNeedle = needle;
+        // shadow of the bezel on the face, then the glass
+        juce::ColourGradient inner (juce::Colours::black.withAlpha (0.45f), 0.0f, face.getY(), juce::Colours::transparentBlack, 0.0f, face.getY() + 9.0f, false);
+        g.setGradientFill (inner);
+        g.fillRect (face.withHeight (9.0f));
+        g.setColour (juce::Colours::white.withAlpha (0.13f));
+        g.fillRoundedRectangle (face.withHeight (face.getHeight() * 0.36f).reduced (2.0f, 1.5f), 2.5f);
+    }
+
+    // Backlit like the meters of old consoles: warm incandescent lamps behind the scale paper. light = 0 … 1: with the
+    // lamps low the paper is a dim brown-amber, at full the middle glows almost white.
+    static void drawFace (juce::Graphics& g, juce::Rectangle<float> face, float light)
+    {
+        const float k = 0.35f + 0.65f * light;
+        juce::ColourGradient lamp (juce::Colour (0xffffefc0).withMultipliedBrightness (k), face.getCentreX(), face.getBottom() + 6.0f,
+                                   juce::Colour (0xffb0702a).withMultipliedBrightness (0.45f + 0.55f * light), face.getX() - 10.0f, face.getY() - 4.0f, true);
+        lamp.addColour (0.42, juce::Colour (0xfff9cf78).withMultipliedBrightness (k));
+        lamp.addColour (0.78, juce::Colour (0xffe3a548).withMultipliedBrightness (0.4f + 0.6f * light));
+        g.setGradientFill (lamp);
+        g.fillRoundedRectangle (face, 3.0f);
+        for (float x : { face.getX() + face.getWidth() * 0.28f, face.getRight() - face.getWidth() * 0.28f })   // the lamps' hot spots
         {
-            juce::ColourGradient spot (juce::Colour (0xfffff6dc).withAlpha (0.5f * lampGlow), x, face.getBottom() + 2.0f,
+            juce::ColourGradient spot (juce::Colour (0xfffff6dc).withAlpha (0.55f * light), x, face.getBottom() + 2.0f,
                                        juce::Colour (0x00ffffff), x + face.getHeight() * 0.9f, face.getBottom() + 2.0f, true);
             g.setGradientFill (spot);
             g.fillEllipse (x - face.getHeight() * 0.9f, face.getBottom() - face.getHeight() * 0.9f + 2.0f, face.getHeight() * 1.8f, face.getHeight() * 1.8f);
         }
-        // a long needle on a pivot below the window, so the scale spans most of its width
-        const juce::Point<float> pivot (face.getCentreX(), face.getBottom() + 88.0f);
-        const float radius = face.getHeight() + 70.0f, sweep = juce::degreesToRadians (36.0f);
-        auto pointAt = [&] (float pos, float rad) { const float a = -sweep + 2.0f * sweep * pos; return juce::Point<float> (pivot.x + rad * std::sin (a), pivot.y - rad * std::cos (a)); };
+        const Dial dial (face);
         const juce::Colour ink (0xff2b241a), red (0xffc0392b);
         juce::Path arc, redArc;
         for (int i = 0; i <= 40; ++i)
         {
-            const float p = (float) i / 40.0f;
-            const auto q = pointAt (p, radius);
+            const auto q = dial.at ((float) i / 40.0f, dial.radius);
             if (i == 0) arc.startNewSubPath (q); else arc.lineTo (q);
         }
         for (int i = 0; i <= 20; ++i)
         {
-            const float p = needleFor (0.0f) + (needleFor (3.0f) - needleFor (0.0f)) * (float) i / 20.0f;
-            const auto q = pointAt (p, radius + 2.5f);
+            const auto q = dial.at (needleFor (0.0f) + (needleFor (3.0f) - needleFor (0.0f)) * (float) i / 20.0f, dial.radius + 2.5f);
             if (i == 0) redArc.startNewSubPath (q); else redArc.lineTo (q);
         }
         g.setColour (ink); g.strokePath (arc, juce::PathStrokeType (1.0f));
@@ -395,24 +491,12 @@ private:
         {
             const float p = needleFor ((float) db);
             g.setColour (db >= 0 ? red : ink);
-            g.drawLine (juce::Line<float> (pointAt (p, radius), pointAt (p, radius - 5.0f)), 1.0f);
+            g.drawLine (juce::Line<float> (dial.at (p, dial.radius), dial.at (p, dial.radius - 5.0f)), 1.0f);
             if (db != -2 && db != 2)                                                     // every mark numbered but ±2
-                label (g, db > 0 ? "+" + juce::String (db) : juce::String (db), juce::Rectangle<float> (22.0f, 12.0f).withCentre (pointAt (p, radius - 12.0f)),
+                label (g, db > 0 ? "+" + juce::String (db) : juce::String (db), juce::Rectangle<float> (22.0f, 12.0f).withCentre (dial.at (p, dial.radius - 12.0f)),
                        db >= 0 ? red : ink, 9.0f, Weight::NarrowBold, juce::Justification::centred, 0.0f);
         }
         label (g, "VU", juce::Rectangle<float> (30.0f, 14.0f).withCentre ({ face.getCentreX(), face.getBottom() - 11.0f }), ink, 12.0f, Weight::Bold, juce::Justification::centred, 0.1f);
-        // needle and its shadow
-        const auto tip = pointAt (needle, radius + 2.0f), base = pointAt (needle, 60.0f);
-        g.setColour (juce::Colours::black.withAlpha (0.18f));
-        g.drawLine (juce::Line<float> (base.translated (2.0f, 2.0f), tip.translated (2.0f, 2.0f)), 1.6f);
-        g.setColour (juce::Colour (0xff141414));
-        g.drawLine (juce::Line<float> (base, tip), 1.4f);
-        // shadow of the bezel on the face, then the glass
-        juce::ColourGradient inner (juce::Colours::black.withAlpha (0.45f), 0.0f, face.getY(), juce::Colours::transparentBlack, 0.0f, face.getY() + 9.0f, false);
-        g.setGradientFill (inner);
-        g.fillRect (face.withHeight (9.0f));
-        g.setColour (juce::Colours::white.withAlpha (0.13f));
-        g.fillRoundedRectangle (face.withHeight (face.getHeight() * 0.36f).reduced (2.0f, 1.5f), 2.5f);
     }
 
     void drawScope (juce::Graphics& g, juce::Rectangle<float> r) const
@@ -434,7 +518,8 @@ private:
             juce::Path p;
             const float mid = face.getCentreY(), amp = face.getHeight() * 0.46f;
             const int n = (int) trace.size();
-            for (int i = 0; i < n; ++i)
+            const int stride = juce::jmax (1, n / 400);                                 // at most ~400 points
+            for (int i = 0; i < n; i += stride)
             {
                 const float x = face.getX() + face.getWidth() * (float) i / (float) (n - 1);
                 const float y = mid - juce::jlimit (-1.0f, 1.0f, trace[(size_t) i] * scopeGain) * amp;

@@ -140,7 +140,7 @@ public:
     // Compiled cables; cheap enough to call from the audio thread at the start of a block.
     void setPatch (const PatchState& p) noexcept { routing = Routing::compile (p); }
     const Routing& currentRouting() const noexcept { return routing; }
-    // Samples since the last call that went over full scale before the output limiter (the CLIP lamp).
+    // Samples since the last call within 1 dB of full scale before the output limiter (the CLIP lamp).
     int takeOvers() noexcept { const int o = overs; overs = 0; return o; }
     // Last voltage published on an output jack (for meters / tests).
     float outputVolts (Jack j) const noexcept { const int i = (int) j - kFirstOutput; return i >= 0 && i < kNumOutputs ? outV[i] : 0.0f; }
@@ -259,7 +259,7 @@ public:
             if (euroOut != nullptr) euroOut[n] = y;                                                    // after MIX, before VOLUME
             if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, y * 5.0f);
             y = y * volumeGain (sVolume.v) * 1.6f;
-            if (std::abs (y) > 1.0f) ++overs;                     // the output limiter is catching it: CLIP
+            if (std::abs (y) > 0.89f) ++overs;                    // within 1 dB of full scale, the limiter at work: CLIP
             out[n] = safetyLimit (y);
         }
     }
