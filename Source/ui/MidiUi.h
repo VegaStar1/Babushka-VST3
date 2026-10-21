@@ -214,7 +214,7 @@ public:
         const float pulse = 0.5f + 0.5f * std::sin (phase);
         for (auto& s : sites)
         {
-            if (! s.control->isVisible()) continue;
+            if (! s.control->isShowing()) continue;          // the rear panel's pedals only when it is out
             const auto area = ring (s);
             const int cc = map.ccFor (s.paramId);
             const bool selected = map.isLearning() && map.getLearnTarget() == s.paramId;
@@ -269,7 +269,7 @@ public:
     void mouseDown (const juce::MouseEvent& e) override
     {
         for (auto& s : sites)
-            if (ring (s).contains (e.position)) { map.startLearn (s.paramId); repaint(); return; }
+            if (s.control->isShowing() && ring (s).contains (e.position)) { map.startLearn (s.paramId); repaint(); return; }
     }
 
 private:

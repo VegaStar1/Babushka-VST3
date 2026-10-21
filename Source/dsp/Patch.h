@@ -1,5 +1,6 @@
-// Babushka — patch panel model: 41 patch points (21 inputs, 16 outputs, 4 parallel-wired Mult jacks),
-// cables, and compilation of a patch into per-input routing tables.
+// Babushka — patch panel model: 53 patch points (29 inputs, 20 outputs, 4 parallel-wired Mult jacks),
+// cables, and compilation of a patch into per-input routing tables. 41 of them are the hardware's; the IN / CV / OUT
+// jacks of the four pedals on the rear panel are plugin-only.
 //
 // The jack list follows the Grandmother manual (Patch Point Index, signal-flow diagram). Every input has a
 // "normalled" internal source; plugging a cable into an input breaks that connection (even if the cable
@@ -28,7 +29,8 @@ enum class Jack : uint8_t
     EnvTriggerIn,
     VcaAmtIn, VcaIn, ReverbIn,
     ClockIn, OnOffIn, ResetIn,
-    // ---- outputs (16) ----
+    SatIn, SatCv, PhaIn, PhaCv, ChoIn, ChoCv, TapIn, TapCv,        // pedals (plugin-only)
+    // ---- outputs (20) ----
     GateOut, KbOut, KbVelOut,
     ModWaveOut, ModShOut,
     Osc1WaveOut, Osc2WaveOut,
@@ -37,14 +39,15 @@ enum class Jack : uint8_t
     FilterOut,
     EnvPosOut, EnvNegOut,
     ClockOut, EuroOut, ReverbOut,
+    SatOut, PhaOut, ChoOut, TapOut,                                  // pedals (plugin-only)
     // ---- parallel-wired mult (4) ----
     Mult1, Mult2, Mult3, Mult4,
     Count
 };
 
-constexpr int kNumJacks   = (int) Jack::Count;          // 41
-constexpr int kNumInputs  = (int) Jack::GateOut;        // 21
-constexpr int kNumOutputs = (int) Jack::Mult1 - kNumInputs;   // 16
+constexpr int kNumJacks   = (int) Jack::Count;          // 53
+constexpr int kNumInputs  = (int) Jack::GateOut;        // 29
+constexpr int kNumOutputs = (int) Jack::Mult1 - kNumInputs;   // 20
 constexpr int kFirstOutput = kNumInputs;
 constexpr int kFirstMult   = (int) Jack::Mult1;
 
@@ -76,6 +79,14 @@ inline const JackInfo& jackInfo (Jack j) noexcept
         { "clockIn",        "Arp/Seq (rear)", "Clock In",    JackKind::Input },
         { "onOffIn",        "Arp/Seq (rear)", "On/Off In",   JackKind::Input },
         { "resetIn",        "Arp/Seq (rear)", "Reset In",    JackKind::Input },
+        { "satIn",          "Saturator",  "In",              JackKind::Input },
+        { "satCv",          "Saturator",  "Drive CV",        JackKind::Input },
+        { "phaIn",          "Phaser",     "In",              JackKind::Input },
+        { "phaCv",          "Phaser",     "Rate CV",         JackKind::Input },
+        { "choIn",          "BBD Chorus", "In",              JackKind::Input },
+        { "choCv",          "BBD Chorus", "Rate CV",         JackKind::Input },
+        { "tapIn",          "Tape Echo",  "In",              JackKind::Input },
+        { "tapCv",          "Tape Echo",  "Time CV",         JackKind::Input },
 
         { "gateOut",        "Arp/Seq",    "Gate Out",        JackKind::Output },
         { "kbOut",          "Arp/Seq",    "KB Out",          JackKind::Output },
@@ -93,6 +104,10 @@ inline const JackInfo& jackInfo (Jack j) noexcept
         { "clockOut",       "Arp/Seq (rear)", "Clock Out",   JackKind::Output },
         { "euroOut",        "Audio (rear)", "Eurorack Out",  JackKind::Output },
         { "reverbOut",      "Audio (rear)", "Reverb Out",    JackKind::Output },
+        { "satOut",         "Saturator",  "Out",             JackKind::Output },
+        { "phaOut",         "Phaser",     "Out",             JackKind::Output },
+        { "choOut",         "BBD Chorus", "Out",             JackKind::Output },
+        { "tapOut",         "Tape Echo",  "Out",             JackKind::Output },
 
         { "mult1",          "Utilities",  "Mult 1",          JackKind::Mult },
         { "mult2",          "Utilities",  "Mult 2",          JackKind::Mult },

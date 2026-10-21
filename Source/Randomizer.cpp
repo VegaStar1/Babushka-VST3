@@ -172,7 +172,7 @@ bool BabushkaProcessor::randomize (uint32_t seed)
     auto base = apvts.copyState();
     for (auto* prm : getParameters())
         if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (prm))
-            if (! babushka::isGlobalParam (rp->paramID.toRawUTF8()))
+            if (! keptOnLoad (rp->paramID))
             {
                 auto child = base.getChildWithProperty ("id", rp->paramID);
                 if (child.isValid()) child.setProperty ("value", rp->convertFrom0to1 (rp->getDefaultValue()), nullptr);

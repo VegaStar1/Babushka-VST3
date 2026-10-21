@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "ui/MidiUi.h"
+#include "ui/PedalMenu.h"
 
 using namespace babushka::ui;
 
@@ -17,7 +18,7 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
     buildPanel();
     content.addAndMakeVisible (*cables);
     backdrop = std::make_unique<Backdrop>();
-    backdrop->onClick = [this] { showPresets (false); showSettings (false); showMidi (false); };
+    backdrop->onClick = [this] { showPresets (false); showSettings (false); showMidi (false); showPedal (-1); };
     backdrop->setBounds (0, 0, kW, kH);
     content.addChildComponent (*backdrop);
     content.addChildComponent (*bubble);
@@ -58,6 +59,7 @@ void BabushkaEditor::buildPanel()
     panel->onRearToggled = [this] (bool open) { uiSettings.setValue ("rearOpen", open); uiSettings.saveIfNeeded(); };
     panel->onJacksMoved = [this] (std::vector<JackSite> sites) { cables->setJacks (std::move (sites)); };
     panel->onOpenMidi = [this] { showMidi (true); };
+    panel->onOpenPedal = [this] (int index) { showPedal (index); };
     cables->setJacks (panel->jackSites());
 }
 
@@ -102,6 +104,7 @@ void BabushkaEditor::showPresets (bool show)
         content.addChildComponent (*presets);
     }
     if (settings != nullptr && show) showSettings (false);
+    if (show) showPedal (-1);
     if (presets != nullptr)
     {
         presets->setCentrePosition (kW / 2, kH / 2);
@@ -114,13 +117,34 @@ void BabushkaEditor::showPresets (bool show)
 void BabushkaEditor::updateBackdrop()
 {
     const bool on = (presets != nullptr && presets->isVisible()) || (settings != nullptr && settings->isVisible())
-                    || (midi != nullptr && midi->isVisible());
+                    || (midi != nullptr && midi->isVisible()) || pedalOverlay != nullptr;
     backdrop->setVisible (on);
     if (on) backdrop->toFront (false);
     if (presets != nullptr && presets->isVisible()) presets->toFront (false);
     if (settings != nullptr && settings->isVisible()) settings->toFront (false);
     if (midi != nullptr && midi->isVisible()) midi->toFront (false);
+    if (pedalOverlay != nullptr) pedalOverlay->toFront (false);
     bubble->toFront (false);
+}
+
+// A pedal's menu is built for that pedal each time it opens (and dropped when it closes).
+void BabushkaEditor::showPedal (int index)
+{
+    if (index >= 0) { showPresets (false); showSettings (false); showMidi (false); }
+    if (pedalOverlay != nullptr && (index < 0 || pedalOverlay->pedalIndex() != index))
+    {
+        auto old = std::move (pedalOverlay);          // closed from its own button: deleted once that click has returned
+        old->setVisible (false);
+        juce::MessageManager::callAsync ([o = std::shared_ptr<babushka::ui::PedalOverlay> (old.release())] {});
+    }
+    if (index >= 0 && pedalOverlay == nullptr)
+    {
+        pedalOverlay = std::make_unique<babushka::ui::PedalOverlay> (processor, index);
+        pedalOverlay->onClose = [this] { showPedal (-1); };
+        content.addAndMakeVisible (*pedalOverlay);
+        pedalOverlay->setCentrePosition (kW / 2, kH / 2);
+    }
+    updateBackdrop();
 }
 
 void BabushkaEditor::showSettings (bool show)
@@ -133,6 +157,7 @@ void BabushkaEditor::showSettings (bool show)
         content.addChildComponent (*settings);
     }
     if (presets != nullptr && show) showPresets (false);
+    if (show) showPedal (-1);
     if (settings != nullptr)
     {
         settings->setCentrePosition (kW / 2, kH / 2);
@@ -151,7 +176,7 @@ void BabushkaEditor::showMidi (bool show)
         midi->onLearnOnPanel = [this] { startMidiLearn(); };
         content.addChildComponent (*midi);
     }
-    if (show) { showPresets (false); showSettings (false); }
+    if (show) { showPresets (false); showSettings (false); showPedal (-1); }
     if (midi != nullptr)
     {
         midi->setCentrePosition (kW / 2, kH / 2);

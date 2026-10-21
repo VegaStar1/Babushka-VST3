@@ -36,11 +36,13 @@ void BabushkaProcessor::applyFactoryPreset (int index)
     // Back to defaults (except the global settings), then the preset's own values.
     for (auto* prm : getParameters())
         if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (prm))
-            if (! babushka::isGlobalParam (rp->paramID.toRawUTF8()))
+            if (! keptOnLoad (rp->paramID))
                 rp->setValueNotifyingHost (rp->getDefaultValue());
     for (auto& [id, value] : pr.values)
         if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (id)))
-            rp->setValueNotifyingHost (rp->convertTo0to1 (value));
+        {
+            if (! keptOnLoad (rp->paramID)) rp->setValueNotifyingHost (rp->convertTo0to1 (value));
+        }
         else jassertfalse;   // unknown parameter id in a factory preset
 
     {
@@ -172,14 +174,24 @@ juce::File BabushkaProcessor::saveUserPreset (const juce::String& rawName, const
     return file;
 }
 
-// Loading a preset file keeps the user's global settings (tuning, quality, clock jacks, spring tail length).
+bool BabushkaProcessor::keptOnLoad (const juce::String& paramId) const
+{
+    const auto id = paramId.toStdString();
+    if (babushka::isGlobalParam (id.c_str())) return true;
+    const int pedal = babushka::pedalOfParam (id);
+    if (pedal == babushka::kNumPedals) return (fxLocks.load() & kLockAllFx) != 0;
+    return pedal >= 0 && isPedalLocked (pedal);
+}
+
+// Loading a preset file keeps the user's global settings (tuning, quality, clock jacks, spring tail length)
+// and the locked pedals.
 void BabushkaProcessor::restoreKeepingGlobals (const juce::XmlElement& xml)
 {
     juce::XmlElement copy (xml);
     for (auto* child : copy.getChildIterator())
     {
         const auto id = child->getStringAttribute ("id");
-        if (id.isNotEmpty() && babushka::isGlobalParam (id.toRawUTF8()))
+        if (id.isNotEmpty() && keptOnLoad (id))
             if (auto* raw = apvts.getRawParameterValue (id)) child->setAttribute ("value", (double) raw->load());
     }
     restoreFromXml (copy);

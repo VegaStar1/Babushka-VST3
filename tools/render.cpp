@@ -356,8 +356,8 @@ int main (int argc, char** argv)
             double m = 0; for (size_t i = 0; i < a.size(); ++i) m = std::max (m, (double) std::abs (a[i] - b[i])); return m; };
         char buf[160];
 
-        std::printf ("Patch panel (41 points: %d inputs, %d outputs, 4 mult):\n", kNumInputs, kNumOutputs);
-        check ("jack counts", kNumJacks == 41 && kNumInputs == 21 && kNumOutputs == 16, "21 + 16 + 4 mult");
+        std::printf ("Patch panel (53 points: %d inputs, %d outputs, 4 mult; 12 of them on the pedals):\n", kNumInputs, kNumOutputs);
+        check ("jack counts", kNumJacks == 53 && kNumInputs == 29 && kNumOutputs == 20, "29 + 20 + 4 mult");
         {   // serialisation
             PatchState a = cables ({ { Jack::Osc2WaveOut, Jack::HpfIn }, { Jack::HpfOut, Jack::MixOsc2In }, { Jack::KbOut, Jack::Mult1 }, { Jack::Mult2, Jack::ModRateIn } });
             const auto b = PatchState::fromString (a.toString());

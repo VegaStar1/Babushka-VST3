@@ -5,8 +5,7 @@
 // section gets shorter, so the window keeps its size and every control stays in view.
 #pragma once
 
-#include "Widgets.h"
-#include "../PluginProcessor.h"
+#include "PedalUi.h"
 #include <functional>
 
 namespace babushka::ui
@@ -161,18 +160,53 @@ public:
         addAndMakeVisible (midiSocket);
         addAndMakeVisible (midiLamp);
         addAndMakeVisible (midiLcd);
+        for (int i = 0; i < babushka::kNumPedals; ++i)
+        {
+            auto& u = pedals[(size_t) i];
+            u = std::make_unique<PedalUnit> (p, i);
+            addAndMakeVisible (*u);
+            u->onDragMove = [this] (int pedal, float x) { dragPedal (pedal, x); };
+            u->onDragEnd = [this] (int pedal) { dropPedal (pedal); };
+            u->leftArrow.onClick = [this, i] { movePedal (i, -1); };
+            u->rightArrow.onClick = [this, i] { movePedal (i, +1); };
+            u->lcd.onClick = [this, i] { if (onOpenPedal) onOpenPedal (i); };
+        }
+        syncOrder (true);
         startTimerHz (30);
     }
     MidiSocket midiSocket;                       // onClick: the MIDI menu
+    std::function<void (int)> onOpenPedal;       // a pedal's display was clicked
+    std::function<void()> onJacksMoved;          // the pedals (and their jacks) changed places
 
-    // Jack centres in the panel's own coordinates (the full-height artwork).
-    static std::vector<std::pair<Jack, juce::Point<float>>> jackPositions()
+    void setHints (HintSink* h) { for (auto& u : pedals) u->setHints (h); }
+    std::vector<Knob*> pedalKnobs() const
+    {
+        std::vector<Knob*> all;
+        for (auto& u : pedals) for (auto* k : u->knobControls()) all.push_back (k);
+        return all;
+    }
+
+    // The pedal board: four places of 172 px, 8 px apart, between the MIDI and AUDIO plates.
+    static constexpr float kBoardX = 143.0f, kSlot = 180.0f, kPedalY = 8.0f;
+
+    // Jack centres in the panel's own coordinates (the full-height artwork). The pedals' jacks go where the pedals are.
+    static std::vector<std::pair<Jack, juce::Point<float>>> fixedJacks()
     {
         std::vector<std::pair<Jack, juce::Point<float>>> j;
         j.push_back ({ Jack::EuroOut, { 902.0f, 70.0f } });
         j.push_back ({ Jack::ReverbOut, { 976.0f, 70.0f } });
         const Jack cv[] = { Jack::ClockIn, Jack::OnOffIn, Jack::ResetIn, Jack::ClockOut };
         for (int i = 0; i < 4; ++i) j.push_back ({ cv[i], { 1024.0f + 308.0f * ((float) i + 0.5f) / 4.0f, 70.0f } });
+        return j;
+    }
+    std::vector<std::pair<Jack, juce::Point<float>>> jackPositions() const
+    {
+        auto j = fixedJacks();
+        const Jack pj[][3] = { { Jack::SatIn, Jack::SatCv, Jack::SatOut }, { Jack::PhaIn, Jack::PhaCv, Jack::PhaOut },
+                               { Jack::ChoIn, Jack::ChoCv, Jack::ChoOut }, { Jack::TapIn, Jack::TapCv, Jack::TapOut } };
+        for (int p = 0; p < babushka::kNumPedals; ++p)
+            for (int k = 0; k < 3; ++k)
+                j.push_back ({ pj[p][k], { pedalX[(size_t) p] + PedalUnit::kJackX[k], kPedalY + PedalUnit::kJackY } });
         return j;
     }
 
@@ -183,6 +217,8 @@ public:
         midiSocket.setCentrePosition (71, y + 58);
         midiLamp.setCentrePosition (24, y + 104);
         midiLcd.setBounds (34, y + 95, 90, 18);
+        for (int i = 0; i < babushka::kNumPedals; ++i)
+            pedals[(size_t) i]->setTopLeftPosition ((int) std::lround (pedalX[(size_t) i]), y + (int) kPedalY);
     }
 
     void paint (juce::Graphics& g) override
@@ -208,9 +244,72 @@ private:
     SmallLcd midiLcd;
     uint32_t lastActivity = 0;
     float lampLevel = 0.0f;
+    std::array<std::unique_ptr<PedalUnit>, babushka::kNumPedals> pedals;
+    std::array<int, babushka::kNumPedals> order { 0, 1, 2, 3 };     // chain order: pedal indices, first to last
+    std::array<float, babushka::kNumPedals> pedalX {};               // left edge of each pedal (by pedal index)
+    int orderIndex = -1, refreshTick = 0;
+
+    // ---- order of the chain --------------------------------------------------------------------------------------
+    int slotOf (int pedal) const { for (int k = 0; k < babushka::kNumPedals; ++k) if (order[(size_t) k] == pedal) return k; return 0; }
+
+    // Picks up the order from the parameter (a preset, undo, the host) unless a pedal is being dragged.
+    void syncOrder (bool force = false)
+    {
+        for (auto& u : pedals) if (u->isDragging()) return;
+        const int idx = (int) std::lround (pedalValue (processor, "fxOrder"));
+        if (idx == orderIndex && ! force) return;
+        orderIndex = idx;
+        order = babushka::pedalOrderFromIndex (idx);
+        for (int k = 0; k < babushka::kNumPedals; ++k) pedalX[(size_t) order[(size_t) k]] = kBoardX + kSlot * (float) k;
+        resized();
+        if (onJacksMoved) onJacksMoved();
+    }
+    void setOrder (const std::array<int, babushka::kNumPedals>& o)
+    {
+        setPedalParam (processor, "fxOrder", (float) babushka::pedalOrderIndex (o));
+        syncOrder (true);
+    }
+    void movePedal (int pedal, int delta)
+    {
+        const int k = slotOf (pedal), j = k + delta;
+        if (j < 0 || j >= babushka::kNumPedals) return;
+        auto o = order;
+        std::swap (o[(size_t) k], o[(size_t) j]);
+        setOrder (o);
+    }
+    // While dragging, the pedal follows the pointer and the others make room for it.
+    std::array<int, babushka::kNumPedals> orderWithDragged (int pedal, float x) const
+    {
+        std::array<int, babushka::kNumPedals> o {};
+        const int target = juce::jlimit (0, babushka::kNumPedals - 1, (int) std::lround ((x - kBoardX) / kSlot));
+        int n = 0;
+        for (int k = 0; k < babushka::kNumPedals; ++k)
+        {
+            if (k == target) o[(size_t) k] = pedal;
+            else { while (order[(size_t) n] == pedal) ++n; o[(size_t) k] = order[(size_t) n++]; }
+        }
+        return o;
+    }
+    void dragPedal (int pedal, float x)
+    {
+        x = juce::jlimit (kBoardX, kBoardX + kSlot * (float) (babushka::kNumPedals - 1), x);
+        const auto o = orderWithDragged (pedal, x);
+        for (int k = 0; k < babushka::kNumPedals; ++k)
+            if (o[(size_t) k] != pedal) pedalX[(size_t) o[(size_t) k]] = kBoardX + kSlot * (float) k;
+        pedalX[(size_t) pedal] = x;
+        resized();
+        if (onJacksMoved) onJacksMoved();
+    }
+    void dropPedal (int pedal)
+    {
+        const auto o = orderWithDragged (pedal, pedalX[(size_t) pedal]);
+        if (o != order) setOrder (o); else syncOrder (true);
+    }
 
     void timerCallback() override
     {
+        syncOrder();
+        if (++refreshTick % 3 == 0) for (auto& u : pedals) u->refresh();
         const auto a = processor.midiMap.lastActivity();
         if (a.counter != lastActivity) { lastActivity = a.counter; lampLevel = 1.0f; }
         else lampLevel = juce::jmax (0.0f, lampLevel - 0.12f);
@@ -230,9 +329,18 @@ private:
             g.setGradientFill (metal);
             g.fillRoundedRectangle (back, 4.0f);
             grain (g, back, 0.7f);
-            for (auto p : { juce::Point<float> (148.0f, 18.0f), juce::Point<float> (852.0f, 18.0f),           // between the plates
-                            juce::Point<float> (148.0f, (float) kHeight - 18.0f), juce::Point<float> (852.0f, (float) kHeight - 18.0f) })
-                drawScrew (g, p, 4.5f, 0.6f);
+            {   // the pedal board between the MIDI and AUDIO plates: a ribbed rubber mat the pedals sit on
+                const juce::Rectangle<float> board (139.0f, 6.0f, 721.0f, (float) kHeight - 12.0f);
+                g.setColour (juce::Colour (0xff0a0a0a));
+                g.fillRoundedRectangle (board, 4.0f);
+                for (float yy = board.getY() + 4.0f; yy < board.getBottom() - 2.0f; yy += 4.0f)
+                {
+                    g.setColour (juce::Colours::white.withAlpha (0.035f));
+                    g.fillRect (board.getX() + 3.0f, yy, board.getWidth() - 6.0f, 1.0f);
+                }
+                g.setColour (juce::Colours::black.withAlpha (0.8f));
+                g.drawRoundedRectangle (board, 4.0f, 1.0f);
+            }
 
             auto plate = [&g] (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title) {
                 drawPlate (g, r, fill, true);
@@ -255,7 +363,7 @@ private:
             plate ({ 1024.0f, 8.0f, 308.0f, 134.0f }, S.rearCv, "ARP/SEQ CV");
             static const char* names[][2] = { { "EURORACK", "OUT" }, { "REVERB", "OUT" }, { "CLOCK", "IN" }, { "ON / OFF", "IN" }, { "RESET", "IN" }, { "CLOCK", "OUT" } };
             int i = 0;
-            for (auto& [id, pos] : jackPositions()) { jack (pos, names[i][0], names[i][1], i < 2 ? ink : cvInk); ++i; }
+            for (auto& [id, pos] : fixedJacks()) { jack (pos, names[i][0], names[i][1], i < 2 ? ink : cvInk); ++i; }
         }
     } content;
 };

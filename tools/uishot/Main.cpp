@@ -140,8 +140,64 @@ struct Runner : private juce::Timer
             cc (1, 44, 20);  const float c = cut->getValue();       // now it follows
             std::printf ("soft takeover: %.3f (expect 0.600), %.3f (expect 0.606), %.3f (expect 0.157)\n", a, b, c);
         }
-        if (tick == 208) { proc.midiMap.stopLearn(); ed.synthPanel().setRearOpen (false, false); }
-        if (tick == 210) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        if (tick == 208) { proc.midiMap.stopLearn(); ed.synthPanel().setRearOpen (false, false);
+                           if (auto* l = ed.midiLearn()) if (l->onDone) l->onDone(); }
+        // pedals: three on, the echo first in the chain, a cable from the chorus OUT, the tape echo locked
+        auto set = [this] (const char* id, float real) {
+            auto* rp = dynamic_cast<juce::RangedAudioParameter*> (proc.apvts.getParameter (id));
+            rp->setValueNotifyingHost (rp->convertTo0to1 (real)); };
+        if (tick == 209)
+        {
+            ed.showMidi (false);
+            load ("Two Saws");
+            ed.synthPanel().setRearOpen (true, false);
+            for (auto* id : { "satOn", "choOn", "tapOn" }) set (id, 1.0f);
+            set ("fxOrder", (float) babushka::pedalOrderIndex ({ 3, 0, 1, 2 }));
+            proc.setFxLocks (1 << 3);
+        }
+        if (tick == 211) { cl.pressAt (cl.jackCentre (J::ChoOut), false); cl.dragTo (cl.jackCentre (J::FilterIn)); cl.releaseAt (cl.jackCentre (J::FilterIn));
+                           std::printf ("cable from CHORUS OUT: %d (expect 1)\n", proc.getPatchCopy().count); }
+        if (tick > 211 && tick <= 220) play (48);
+        if (tick == 221) save (ed, out.getChildFile ("ui_pedals.png"));
+        if (tick == 222)
+        {   // FX lock: a preset load keeps the locked echo, resets the rest
+            proc.clearCables();
+            set ("tapTime", 0.9f);
+            load ("Two Saws");
+            std::printf ("locks: tape echo kept %s (expect yes), saturator reset %s (expect yes)\n",
+                         proc.apvts.getRawParameterValue ("tapOn")->load() > 0.5f && std::abs (proc.apvts.getRawParameterValue ("tapTime")->load() - 0.9f) < 0.001f ? "yes" : "no",
+                         proc.apvts.getRawParameterValue ("satOn")->load() < 0.5f ? "yes" : "no");
+            proc.setFxLocks (BabushkaProcessor::kLockAllFx);
+            set ("choOn", 1.0f);
+            set ("fxOrder", 5.0f);
+            load ("Two Saws");
+            std::printf ("FX lock: chorus kept %s, order kept %s (expect yes yes)\n", proc.apvts.getRawParameterValue ("choOn")->load() > 0.5f ? "yes" : "no",
+                         std::lround (proc.apvts.getRawParameterValue ("fxOrder")->load()) == 5 ? "yes" : "no");
+            proc.setFxLocks (0);
+            set ("fxOrder", 0.0f);
+        }
+        for (int p = 0; p < babushka::kNumPedals; ++p)
+        {
+            if (tick == 224 + 3 * p) ed.showPedal (p);
+            if (tick == 226 + 3 * p)
+            {
+                auto name = juce::String (babushka::pedalInfo()[(size_t) p].name).toLowerCase().replaceCharacter (' ', '_');
+                save (ed, out.getChildFile ("ui_pedal_" + name + ".png"));
+                ed.showPedal (-1);
+            }
+        }
+        if (tick == 237)
+        {   // a pedal preset: applied, then recognised on the display; a user preset saved and found again
+            const auto& list = babushka::ui::PedalPresets::list (proc, 3);
+            babushka::ui::PedalPresets::apply (proc, 3, list[1]);
+            std::printf ("pedal preset: '%s' (expect 'Dub Echo')\n", babushka::ui::PedalPresets::match (proc, 3).toRawUTF8());
+            set ("tapFeedback", 0.5f);
+            babushka::ui::PedalPresets::save (proc, 3, "My Echo");
+            std::printf ("user pedal preset: '%s' (expect 'My Echo')\n", babushka::ui::PedalPresets::match (proc, 3).toRawUTF8());
+            for (auto& e : babushka::ui::PedalPresets::list (proc, 3)) if (! e.factory) babushka::ui::PedalPresets::remove (proc, 3, e);
+            ed.synthPanel().setRearOpen (false, false);
+        }
+        if (tick == 239) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };

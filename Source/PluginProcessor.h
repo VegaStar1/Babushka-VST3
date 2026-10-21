@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Engine.h"
 #include "Presets.h"
+#include "PedalInfo.h"
 #include "PresetTags.h"
 #include "MidiMap.h"
 
@@ -76,6 +77,16 @@ public:
     //   User/[<folder>/]<name>.babushka      the user's own presets, optionally in sub-folders
     // A .babushka file is the plugin state as XML plus the preset's tags. Loading a preset keeps the global settings.
     void applyFactoryPreset (int index);
+
+    // FX locks: a locked pedal keeps its settings when a preset loads or the sound is randomized.
+    // Bits 0…3: one pedal each (in pedalInfo() order); kLockAllFx: the whole board, its chain order included.
+    // Saved with the project, not with presets, and not part of undo.
+    static constexpr int kLockAllFx = 1 << babushka::kNumPedals;
+    int getFxLocks() const noexcept { return fxLocks.load(); }
+    void setFxLocks (int mask) noexcept { fxLocks.store (mask & (kLockAllFx * 2 - 1)); }
+    bool isPedalLocked (int pedal) const noexcept { return (fxLocks.load() & (kLockAllFx | (1 << pedal))) != 0; }
+    bool keptOnLoad (const juce::String& paramId) const;  // a global setting or a locked pedal's parameter
+    void commitSoundEdit (const juce::String& label) { soundChanged (label); }   // several parameters set at once (a pedal preset)
     std::unique_ptr<juce::XmlElement> factoryPresetXml (int index) const;   // the state a factory preset sets
     juce::File getPresetRoot() const;
     juce::File getUserPresetDirectory() const { return getPresetRoot().getChildFile ("User"); }
@@ -142,7 +153,8 @@ public:
 
 private:
     babushka::dsp::Engine engine;
-    std::vector<float> mono, ext, euro, reverbOut;
+    std::vector<float> mono, right, ext, euro, reverbOut;
+    std::atomic<int> fxLocks { 0 };
     juce::SpinLock seqLock;
     struct UiNote { int note = 0; int velocity = 0; };      // velocity 0 = note off
     juce::AbstractFifo uiFifo { 256 };

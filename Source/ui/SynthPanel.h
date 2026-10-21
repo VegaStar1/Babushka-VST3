@@ -177,12 +177,19 @@ public:
         redoButton.onRightClick = [this] { showHistoryMenu(); };
         for (juce::Component* b : { (juce::Component*) &presetPrev, (juce::Component*) &presetNext, (juce::Component*) &settingsButton,
                                     (juce::Component*) &randomButton, (juce::Component*) &undoButton, (juce::Component*) &redoButton,
-                                    (juce::Component*) &presetDisplay }) addAndMakeVisible (*b);
-        // rear strip, right: [UNDO / REDO]  [<] display [>]  [SETTINGS / RANDOMIZE], 20 px margins inside the plate
-        // (726 … 1418), 16 px between the groups, everything centred on y = 1000. The preset browser opens from the display.
+                                    (juce::Component*) &presetDisplay, (juce::Component*) &fxLock }) addAndMakeVisible (*b);
+        // rear strip, right: [UNDO / REDO] [FX lock] [<] display [>]  [SETTINGS / RANDOMIZE], 20 px margins inside the
+        // plate (726 … 1418), 14 px between the groups, everything centred on y = 1000. The preset browser opens from the display.
         undoButton.setBounds (746, 963, 70, 32);   redoButton.setBounds (746, 1003, 70, 32);
-        presetPrev.setBounds (832, 984, 36, 32);  presetDisplay.setBounds (878, 967, 348, 66);  presetNext.setBounds (1236, 984, 36, 32);
+        fxLock.setBounds (830, 968, 38, 58);
+        presetPrev.setBounds (882, 984, 30, 32);  presetDisplay.setBounds (920, 967, 316, 66);  presetNext.setBounds (1244, 984, 30, 32);
         settingsButton.setBounds (1288, 963, 110, 32);  randomButton.setBounds (1288, 1003, 110, 32);
+        fxLock.onClick = [this] {
+            processor.setFxLocks (processor.getFxLocks() ^ BabushkaProcessor::kLockAllFx);
+            const bool on = (processor.getFxLocks() & BabushkaProcessor::kLockAllFx) != 0;
+            fxLock.setLocked (on);
+            hints.showHint (fxLock, on ? "FX locked: the pedals stay as they are when you change presets" : "FX unlocked: presets set the pedals"); };
+        fxLock.onHover = [this] { hints.showHint (fxLock, "FX lock: keep the pedals when you change presets"); };
         setupGrip();
         setSize (kW, kH);
         layoutForRear();
@@ -196,13 +203,14 @@ public:
         const float r = std::round (rearPx), shift = (float) frontShift();
         for (auto j : frontJacks) { j.pos.y += shift; all.push_back (j); }
         const bool reachable = rearPx >= (float) RearPanel::kHeight - 0.5f;
-        for (auto& [id, pos] : RearPanel::jackPositions())
+        for (auto& [id, pos] : rear.jackPositions())
             all.push_back ({ id, { (float) RearPanel::kX + pos.x, (float) RearPanel::kY + r - (float) RearPanel::kHeight + pos.y }, reachable });
         return all;
     }
     std::function<void (std::vector<JackSite>)> onJacksMoved;
     std::function<void (bool)> onRearToggled;         // the user opened or closed the rear panel
     std::function<void()> onOpenMidi;                 // the MIDI socket on the rear panel was clicked
+    std::function<void (int)> onOpenPedal;            // a pedal's display was clicked (pedal index)
 
     // Controls that can be bound to a MIDI knob (MIDI learn on the panel): the control and its parameter.
     struct LearnSite { juce::Component* control; juce::String paramId; };
@@ -271,6 +279,7 @@ private:
     PlateButton presetPrev { "<", 17.0f }, presetNext { ">", 17.0f }, settingsButton { "SETTINGS" }, randomButton { "RANDOMIZE" },
                 undoButton { "UNDO" }, redoButton { "REDO" };
     PresetDisplay presetDisplay;
+    FxLockButton fxLock;
     Pad* syncPad = nullptr; Pad* playPad = nullptr; Pad* holdPad = nullptr; Pad* tapPad = nullptr;
     std::unique_ptr<ParamLink> syncLink;
     Lamp* modLamp = nullptr; Lamp* arpLamp = nullptr;
@@ -708,7 +717,7 @@ private:
     {
         const auto patch = processor.getPatchCopy();
         for (int i = 0; i < patch.count; ++i)
-            for (auto& [id, pos] : RearPanel::jackPositions())
+            for (auto& [id, pos] : rear.jackPositions())
                 if (patch.cables[(size_t) i].a == id || patch.cables[(size_t) i].b == id) return true;
         return false;
     }
@@ -723,6 +732,10 @@ private:
     void setupGrip()
     {
         rear.midiSocket.onClick = [this] { if (onOpenMidi) onOpenMidi(); };
+        rear.setHints (&hints);
+        for (auto* k : rear.pedalKnobs()) learnables.push_back ({ k, k->paramId });
+        rear.onOpenPedal = [this] (int pedal) { if (onOpenPedal) onOpenPedal (pedal); };
+        rear.onJacksMoved = [this] { if (onJacksMoved) onJacksMoved (jackSites()); };
         rear.midiSocket.onHover = [this] { hints.showHint (rear.midiSocket, "MIDI controller: knob mapping"); };
         grip.setTopLeftPosition (kW / 2 - grip.getWidth() / 2, 30);
         addAndMakeVisible (grip);
@@ -903,6 +916,7 @@ private:
         arpLamp->setLevel (arpPhase < 0.22f ? 1.0f : 0.12f);
         presetDisplay.setName (processor.getCurrentPresetName());
         presetDisplay.setBadge (processor.isRandomSound() ? "NOT SAVED" : processor.isSoundModified() ? "EDITED" : "");
+        fxLock.setLocked ((processor.getFxLocks() & BabushkaProcessor::kLockAllFx) != 0);
         undoButton.setEnabled (processor.canUndo());
         redoButton.setEnabled (processor.canRedo());
         // the wheels show where pitch bend and modulation are, also when they come from a MIDI keyboard
