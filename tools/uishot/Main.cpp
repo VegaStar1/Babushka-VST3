@@ -103,7 +103,7 @@ struct Runner : private juce::Timer
         if (tick > 170 && tick <= 180) play (48);
         if (tick == 181) save (ed, out.getChildFile ("ui_rear_open.png"));
         if (tick == 182)
-        {   // a loud sound: the CLIP lamp must see the output limiter at work
+        {   // a loud sound: the CLIP lamp must see the output go over 0 dBFS
             const auto before = proc.getClipCount();
             proc.apvts.getParameter ("volume")->setValueNotifyingHost (1.0f);
             proc.apvts.getParameter ("mixOsc2")->setValueNotifyingHost (1.0f);

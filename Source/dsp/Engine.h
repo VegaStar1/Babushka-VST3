@@ -145,7 +145,7 @@ public:
     // Compiled cables; cheap enough to call from the audio thread at the start of a block.
     void setPatch (const PatchState& p) noexcept { routing = Routing::compile (p); }
     const Routing& currentRouting() const noexcept { return routing; }
-    // Samples since the last call at or over full scale (0 dBFS) before the output limiter (the CLIP lamp).
+    // Samples since the last call at or over full scale, 0 dBFS (the CLIP lamp).
     int takeOvers() noexcept { const int o = overs; overs = 0; return o; }
     // Last voltage published on an output jack (for meters / tests).
     float outputVolts (Jack j) const noexcept { const int i = (int) j - kFirstOutput; return i >= 0 && i < kNumOutputs ? outV[i] : 0.0f; }
@@ -282,9 +282,9 @@ public:
             if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, mono * 5.0f);
             const float gain = volumeGain (sVolume.v) * 1.6f;
             y *= gain; yR *= gain;
-            if (std::abs (y) >= 1.0f || std::abs (yR) >= 1.0f) ++overs;     // 0 dBFS reached: it would clip without the limiter
-            if (outR != nullptr) { out[n] = safetyLimit (y); outR[n] = safetyLimit (yR); }
-            else out[n] = safetyLimit (0.5f * (y + yR));
+            if (std::abs (y) >= 1.0f || std::abs (yR) >= 1.0f) ++overs;     // 0 dBFS reached: CLIP
+            if (outR != nullptr) { out[n] = outputGuard (y); outR[n] = outputGuard (yR); }
+            else out[n] = outputGuard (0.5f * (y + yR));
         }
     }
 
@@ -405,14 +405,13 @@ private:
     // 1.0 drives the mixer into overdrive (the hardware preamp brings guitars to 10 Vpp).
     static float extGain (float knob) noexcept { return 2.0f * knob * knob * 2.0f; }
 
-    // Plugin-only protection (not part of the hardware model): transparent below 0.8 (−2 dBFS),
-    // soft knee above, never exceeds 1.2.
-    static float safetyLimit (float x) noexcept
+    // The output is not limited: like any instrument plugin it may go over 0 dBFS (the host's float mix does not clip;
+    // the channel fader takes it down). Only a fault is caught: NaN / Inf become silence, and a runaway (a patch
+    // feeding back on itself) is held at +12 dBFS so it cannot blast the speakers.
+    static float outputGuard (float x) noexcept
     {
-        const float a = std::abs (x);
-        if (a <= 0.8f) return x;
-        const float y = 0.8f + 0.4f * std::tanh ((a - 0.8f) * 2.5f);
-        return x < 0.0f ? -y : y;
+        if (! std::isfinite (x)) return 0.0f;
+        return clampf (x, -4.0f, 4.0f);
     }
 
     // ---- patch helpers -----------------------------------------------------------------------

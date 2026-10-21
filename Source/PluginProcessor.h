@@ -66,7 +66,7 @@ public:
     // (scopeWritePosition() is where the next one goes). The VU meter and the oscilloscope both read it.
     static constexpr int kScopeSize = 8192;
     int scopeWritePosition() const noexcept { return scopePos.load (std::memory_order_acquire); }
-    uint32_t getClipCount() const noexcept { return clipCount.load(); }     // grows whenever the output limiter catches overs
+    uint32_t getClipCount() const noexcept { return clipCount.load(); }     // grows with every output sample at or over 0 dBFS
     float scopeSample (int index) const noexcept { return scope[(size_t) (index & (kScopeSize - 1))].load (std::memory_order_relaxed); }
     double getSampleRateForDisplay() const noexcept { return currentSampleRate; }
     void tapTempo();                                       // TAP button: three taps in a row set the free tempo

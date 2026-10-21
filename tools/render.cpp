@@ -563,7 +563,9 @@ int main (int argc, char** argv)
                 for (float v : o) { if (! std::isfinite (v)) bad = true; maxAbs = std::max (maxAbs, (double) std::abs (v)); }
             }
             std::snprintf (buf, sizeof buf, "max |out| %.3f", maxAbs);
-            check ("fuzz: 60 s of random cables and parameters", ! bad && maxAbs <= 1.21, buf);
+            // The output is not limited (like other instrument plugins); a wild patch may go far over 0 dBFS, but it stays
+            // finite and is held by the guard at +12 dBFS.
+            check ("fuzz: 60 s of random cables and parameters", ! bad && maxAbs <= 4.0001, buf);
         }
         std::printf ("  patch panel tests: %s\n", failures == 0 ? "ALL PASSED" : "FAILURES");
     }

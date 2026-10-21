@@ -399,7 +399,7 @@ public:
         const int zone = p.getDistanceFrom (lampCentre()) < 22.0f ? 1 : vuArea().contains (p) ? 2 : 0;
         if (zone == hintZone) return;
         hintZone = zone;
-        if (zone == 1) hints->showHint (*this, "CLIP: a sample peak reached 0 dBFS (it would clip; the output limiter catches it)");
+        if (zone == 1) hints->showHint (*this, "CLIP: the output reached 0 dBFS - turn VOLUME (or the channel fader) down");
         else if (zone == 2) hints->showHint (*this, "VU: the average level (0 VU = -12 dBFS); the peaks light CLIP");
         else hints->hideHint();
     }
@@ -466,7 +466,7 @@ private:
         constexpr float w = juce::MathConstants<float>::twoPi * 2.1f, zeta = 0.8f;
         needleVel += (w * w * (needleFor (vu) - needle) - 2.0f * zeta * w * needleVel) * dt;
         needle = juce::jlimit (-0.03f, 1.08f, needle + needleVel * dt);
-        // CLIP: samples at 0 dBFS before the output limiter (or at the output itself)
+        // CLIP: output samples at 0 dBFS
         const uint32_t clips = processor.getClipCount();
         if (clips != lastClips || peak >= 0.999f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
         lastClips = clips;
