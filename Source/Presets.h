@@ -1,4 +1,4 @@
-// Babushka — factory presets (176).
+// Babushka — factory presets (178).
 //
 // A preset lists only the parameters that differ from the defaults, in real units (choice index, semitones,
 // 0…1 knob value). Everything else — except the "global" settings listed in kGlobalParams — is reset to its
@@ -536,6 +536,20 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "36 R 36 48 R 46 R 43 R 41 43T 46 R 36 R R",
           "36 R R 36 R R 43 R 36 R R 36 R 46 48 R",
           "36 36 R 48 R 36 R 46" },
+
+        { "Sequences", "Flying Chirps", "Plays by itself: the oscillators are off, the self-oscillating filter sings a high chirping line (Kbd Track 1:1). GATE OUT restarts the LFO saw, which flicks the cutoff through the attenuator. Three variations on OCT/SEQ.",
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "mixOsc1", 0.0f }, { "lfoRate", 0.364f }, { "lfoWave", 1 }, { "cutoff", 0.4669f }, { "resonance", 0.95f }, { "envAmt", 0.02f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.56f }, { "sustain", 0.0f }, { "release", 0.56f }, { "reverbMix", 0.06f }, { "attenuator", 0.08f }, { "arpPlay", 1 }, { "arpHold", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.6944f }, { "arpFreeStep", 2 }, { "volume", 0.95f } },
+          "gateOut:modSyncIn modWaveOut:attIn attOut:filterCutoffIn",
+          "R 92 R R 97 R R 88 R R 100 R 95 R 104 R",
+          "R 92 R 97 R R 100 R R 88 R R 104 R 97 R",
+          "92 R 97 R 88 104 R 92 R 100 R 97 R 109 95 R" },
+
+        { "Sequences", "Flying Bass", "Plays by itself: a bouncing 16-step bass in C# with octave jumps, saw and square a few cents apart, a short filter envelope. Three variations on OCT/SEQ.",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", -0.08f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "lfoRate", 0.46f }, { "lfoWave", 3 }, { "cutoff", 0.4f }, { "resonance", 0.45f }, { "envAmt", 0.42f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.47f }, { "sustain", 0.0f }, { "release", 0.4f }, { "reverbMix", 0.12f }, { "attenuator", 0.5f }, { "arpPlay", 1 }, { "arpHold", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.6944f }, { "arpFreeStep", 2 }, { "volume", 0.85f } },
+          "",
+          "R 37 37 R 37 R 49 37 R 37 40 R 37 R 44 R",
+          "R 37 49 R 37 R 37 52 R 37 R 49 37 R 47 R",
+          "R 37 37 R 37 R 49 37 R 37 40 R 37 R 44 R" },
 
         // ---------------------------------------------------------------- Drums & Percussion
         { "Drums & Percussion", "Analog Kick", "Triangle with a fast pitch drop from the envelope (cables: + ENV OUT -> attenuator -> PITCH IN). Play around C2-C3.",

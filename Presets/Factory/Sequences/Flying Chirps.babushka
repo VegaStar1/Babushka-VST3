@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BABUSHKA seq1="R 92 R R 97 R R 88 R R 100 R 95 R 104 R" seq2="R 92 R 97 R R 100 R R 88 R R 104 R 97 R"
+          seq3="92 R 97 R 88 104 R 92 R 100 R 97 R 109 95 R" patch="gateOut:modSyncIn modWaveOut:attIn attOut:filterCutoffIn"
+          presetName="Flying Chirps" presetModified="0" presetRandom="0"
+          presetFile="" category="Sequences" tags="RESONANT BRIGHT PLUCKY"
+          description="Plays by itself: the oscillators are off, the self-oscillating filter sings a high chirping line (Kbd Track 1:1). GATE OUT restarts the LFO saw, which flicks the cutoff through the attenuator. Three variations on OCT/SEQ.">
+  <PARAM id="arpDirection" value="0.0"/>
+  <PARAM id="arpFreeStep" value="2.0"/>
+  <PARAM id="arpHold" value="1.0"/>
+  <PARAM id="arpMode" value="1.0"/>
+  <PARAM id="arpOctSeq" value="0.0"/>
+  <PARAM id="arpPlay" value="1.0"/>
+  <PARAM id="arpRate" value="0.6944000124931335"/>
+  <PARAM id="arpSync" value="0.0"/>
+  <PARAM id="attack" value="0.0"/>
+  <PARAM id="attenuator" value="0.07999999821186066"/>
+  <PARAM id="bendRange" value="2.0"/>
+  <PARAM id="clockOutPpqn" value="2.0"/>
+  <PARAM id="cutoff" value="0.4668999910354614"/>
+  <PARAM id="decay" value="0.5600000023841858"/>
+  <PARAM id="drift" value="0.25"/>
+  <PARAM id="envAmt" value="0.01999999955296516"/>
+  <PARAM id="extClockMode" value="0.0"/>
+  <PARAM id="extClockPpqn" value="2.0"/>
+  <PARAM id="extLevel" value="0.5"/>
+  <PARAM id="fineTune" value="0.0"/>
+  <PARAM id="glide" value="0.0"/>
+  <PARAM id="glideType" value="2.0"/>
+  <PARAM id="hpCutoff" value="0.0"/>
+  <PARAM id="kbOutRange" value="0.0"/>
+  <PARAM id="kbdTrack" value="2.0"/>
+  <PARAM id="legatoGlide" value="0.0"/>
+  <PARAM id="lfoCutoffAmt" value="0.0"/>
+  <PARAM id="lfoPitchAmt" value="0.0"/>
+  <PARAM id="lfoPwAmt" value="0.0"/>
+  <PARAM id="lfoRate" value="0.363999992609024"/>
+  <PARAM id="lfoWave" value="1.0"/>
+  <PARAM id="localOn" value="1.0"/>
+  <PARAM id="mixNoise" value="0.0"/>
+  <PARAM id="mixOsc1" value="0.0"/>
+  <PARAM id="mixOsc2" value="0.0"/>
+  <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="notePriority" value="0.0"/>
+  <PARAM id="osc1Octave" value="2.0"/>
+  <PARAM id="osc1Wave" value="0.0"/>
+  <PARAM id="osc2Freq" value="0.0"/>
+  <PARAM id="osc2Octave" value="1.0"/>
+  <PARAM id="osc2Sync" value="0.0"/>
+  <PARAM id="osc2Wave" value="0.0"/>
+  <PARAM id="oversampling" value="1.0"/>
+  <PARAM id="release" value="0.5600000023841858"/>
+  <PARAM id="resonance" value="0.949999988079071"/>
+  <PARAM id="reverbDecay" value="1.0"/>
+  <PARAM id="reverbMix" value="0.05999999865889549"/>
+  <PARAM id="sustain" value="0.0"/>
+  <PARAM id="vcaMode" value="0.0"/>
+  <PARAM id="volume" value="0.949999988079071"/>
+</BABUSHKA>

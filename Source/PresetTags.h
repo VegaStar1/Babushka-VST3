@@ -70,6 +70,7 @@ inline const char* factoryPresetTags (std::string_view name)
         { "Seq Acid Line", "RESONANT AGGRESSIVE" }, { "Berlin School", "EVOLVING DARK" }, { "Octave Disco", "PLUCKY BRIGHT" },
         { "Techno Rumble", "DARK FAT" }, { "Electro Funk", "PLUCKY RESONANT" }, { "Ambient Steps", "CLEAN WARM" }, { "Minimal Pulse", "DARK EVOLVING" },
         { "Dark Pulse Seq", "DARK" }, { "Gallop", "FAT AGGRESSIVE" }, { "Bleep Melody", "BRIGHT CLEAN" }, { "Funk Seq", "WARM PLUCKY" },
+        { "Flying Chirps", "RESONANT BRIGHT PLUCKY" }, { "Flying Bass", "FAT PLUCKY" },
         // Drums & Percussion
         { "Analog Kick", "DARK PLUCKY" }, { "Boom Kick", "DARK FAT" }, { "Snare", "NOISY PLUCKY" }, { "Closed Hat", "NOISY BRIGHT PLUCKY" },
         { "Open Hat", "NOISY BRIGHT" }, { "Clap", "NOISY PLUCKY" }, { "Tom", "PLUCKY RESONANT" }, { "Cowbell", "BRIGHT RESONANT" },
