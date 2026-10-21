@@ -14,13 +14,13 @@
   <PARAM id="attack" value="0.0"/>
   <PARAM id="attenuator" value="0.0"/>
   <PARAM id="bendRange" value="2.0"/>
-  <PARAM id="choAge" value="0.300000011920929"/>
-  <PARAM id="choDepth" value="0.6000000238418579"/>
+  <PARAM id="choAge" value="0.25"/>
+  <PARAM id="choDepth" value="0.5"/>
   <PARAM id="choMix" value="0.5"/>
   <PARAM id="choMode" value="0.0"/>
-  <PARAM id="choNoise" value="0.25"/>
+  <PARAM id="choNoise" value="0.2000000029802322"/>
   <PARAM id="choOn" value="0.0"/>
-  <PARAM id="choRate" value="0.4235999882221222"/>
+  <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
   <PARAM id="cutoff" value="0.7419999837875366"/>
@@ -57,20 +57,20 @@
   <PARAM id="osc2Wave" value="1.0"/>
   <PARAM id="oversampling" value="1.0"/>
   <PARAM id="phaCenter" value="0.5"/>
-  <PARAM id="phaDepth" value="0.800000011920929"/>
-  <PARAM id="phaFeedback" value="0.2000000029802322"/>
+  <PARAM id="phaDepth" value="0.699999988079071"/>
+  <PARAM id="phaFeedback" value="0.25"/>
   <PARAM id="phaMix" value="0.5"/>
   <PARAM id="phaMode" value="0.0"/>
   <PARAM id="phaOn" value="0.0"/>
   <PARAM id="phaRate" value="0.300000011920929"/>
-  <PARAM id="phaStereo" value="0.300000011920929"/>
+  <PARAM id="phaStereo" value="0.4000000059604645"/>
   <PARAM id="release" value="0.3779999911785126"/>
   <PARAM id="resonance" value="0.800000011920929"/>
   <PARAM id="reverbDecay" value="1.0"/>
   <PARAM id="reverbMix" value="0.0"/>
   <PARAM id="satBias" value="0.3499999940395355"/>
-  <PARAM id="satBody" value="0.4000000059604645"/>
-  <PARAM id="satDrive" value="0.550000011920929"/>
+  <PARAM id="satBody" value="0.3499999940395355"/>
+  <PARAM id="satDrive" value="0.4000000059604645"/>
   <PARAM id="satMix" value="1.0"/>
   <PARAM id="satMode" value="0.0"/>
   <PARAM id="satOn" value="0.0"/>
@@ -79,16 +79,16 @@
   <PARAM id="sustain" value="0.0"/>
   <PARAM id="tapAge" value="0.300000011920929"/>
   <PARAM id="tapBass" value="0.5"/>
-  <PARAM id="tapFeedback" value="0.119999997317791"/>
+  <PARAM id="tapFeedback" value="0.3499999940395355"/>
   <PARAM id="tapFlutter" value="0.2000000029802322"/>
   <PARAM id="tapHeads" value="0.0"/>
   <PARAM id="tapHold" value="0.0"/>
-  <PARAM id="tapMix" value="0.449999988079071"/>
+  <PARAM id="tapMix" value="0.3499999940395355"/>
   <PARAM id="tapOn" value="0.0"/>
   <PARAM id="tapSync" value="0.0"/>
-  <PARAM id="tapTime" value="0.3736000061035156"/>
-  <PARAM id="tapTreble" value="0.550000011920929"/>
-  <PARAM id="tapWow" value="0.1500000059604645"/>
+  <PARAM id="tapTime" value="0.449999988079071"/>
+  <PARAM id="tapTreble" value="0.5"/>
+  <PARAM id="tapWow" value="0.2000000029802322"/>
   <PARAM id="vcaMode" value="0.0"/>
   <PARAM id="volume" value="1.0"/>
 </BABUSHKA>

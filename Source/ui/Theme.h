@@ -65,6 +65,15 @@ inline int& skinIndex() { static int index = 0; return index; }
 inline const Skin& skin() { return skins()[(size_t) juce::jlimit (0, (int) skins().size() - 1, skinIndex())]; }
 
 // Print colour that reads on a plate: dark ink on light plates, cream ink on dark ones.
+// The panel's type scale: every printed name on every plate uses one of these four sizes.
+namespace type
+{
+    constexpr float title   = 13.0f;   // plate titles, pedal names, plate buttons
+    constexpr float control = 11.5f;   // names of knobs, switches, pads and the pills under knobs
+    constexpr float jack    = 10.0f;   // names of jacks, and the small print by lamps and sockets
+    constexpr float mark    = 9.5f;    // scales and positions round knobs and levers, the pads' key names
+}
+
 inline juce::Colour inkOn (juce::Colour plate) { return plate.getPerceivedBrightness() > 0.42f ? col::inkDark : col::ink; }
 
 // ---- fonts (SIL Open Font License 1.1; see docs/licenses) ----------------------------------------------------------
@@ -93,22 +102,19 @@ inline juce::Font font (Weight w, float height, float kerning = 0.0f)
     return juce::Font ((int) w >= (int) Weight::Narrow ? o.withPointHeight (height) : o.withHeight (height));
 }
 
-// Printed text. It is squeezed sideways rather than cut when the box is narrow, and in a small window the small
-// print grows a little (up to 25 %) so that it keeps a legible size on screen.
+// Printed text. It is squeezed sideways rather than cut when the box is narrow. In a small window all of the panel's
+// print (type scale sizes, up to the plate titles) grows by the same factor, up to 25 %, so it stays legible and every
+// name keeps its place in the scale: a jack name is the same size as every other jack name, a control name as every
+// other control name.
 inline void label (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Colour colour,
                    float height = 9.0f, Weight w = Weight::SemiBold, juce::Justification j = juce::Justification::centred, float kerning = 0.04f,
                    int maxLines = 1)
 {
     const float scale = juce::jmax (0.1f, (float) g.getInternalContext().getPhysicalPixelScaleFactor());
-    float h = juce::jlimit (height, height * 1.25f, 9.5f / scale);
-    if (h > height && maxLines == 1)                   // grow only as far as the box allows without squeezing
-    {
-        const float natural = juce::GlyphArrangement::getStringWidth (font (w, h, kerning), text);
-        if (natural > area.getWidth()) h = juce::jmax (height, h * area.getWidth() / natural);
-    }
+    const float h = height <= type::title + 0.01f ? height * juce::jlimit (1.0f, 1.25f, 1.0f / scale) : height;
     if (maxLines == 1 && area.getHeight() < h * 1.3f) area = area.withSizeKeepingCentre (area.getWidth(), h * 1.3f);
     juce::GlyphArrangement ga;
-    ga.addFittedText (font (w, h, kerning), text, area.getX(), area.getY(), area.getWidth(), area.getHeight(), j, maxLines, 0.7f);
+    ga.addFittedText (font (w, h, kerning), text, area.getX(), area.getY(), area.getWidth(), area.getHeight(), j, maxLines, 0.62f);
     g.setColour (colour);
     ga.draw (g);
 }

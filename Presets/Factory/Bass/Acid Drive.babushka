@@ -14,13 +14,13 @@
   <PARAM id="attack" value="0.0"/>
   <PARAM id="attenuator" value="0.0"/>
   <PARAM id="bendRange" value="2.0"/>
-  <PARAM id="choAge" value="0.300000011920929"/>
-  <PARAM id="choDepth" value="0.6000000238418579"/>
+  <PARAM id="choAge" value="0.25"/>
+  <PARAM id="choDepth" value="0.5"/>
   <PARAM id="choMix" value="0.5"/>
   <PARAM id="choMode" value="0.0"/>
-  <PARAM id="choNoise" value="0.25"/>
+  <PARAM id="choNoise" value="0.2000000029802322"/>
   <PARAM id="choOn" value="0.0"/>
-  <PARAM id="choRate" value="0.4235999882221222"/>
+  <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
   <PARAM id="cutoff" value="0.4129999876022339"/>
@@ -57,13 +57,13 @@
   <PARAM id="osc2Wave" value="1.0"/>
   <PARAM id="oversampling" value="1.0"/>
   <PARAM id="phaCenter" value="0.5"/>
-  <PARAM id="phaDepth" value="0.800000011920929"/>
-  <PARAM id="phaFeedback" value="0.2000000029802322"/>
+  <PARAM id="phaDepth" value="0.699999988079071"/>
+  <PARAM id="phaFeedback" value="0.25"/>
   <PARAM id="phaMix" value="0.5"/>
   <PARAM id="phaMode" value="0.0"/>
   <PARAM id="phaOn" value="0.0"/>
   <PARAM id="phaRate" value="0.300000011920929"/>
-  <PARAM id="phaStereo" value="0.300000011920929"/>
+  <PARAM id="phaStereo" value="0.4000000059604645"/>
   <PARAM id="release" value="0.4329999983310699"/>
   <PARAM id="resonance" value="0.7799999713897705"/>
   <PARAM id="reverbDecay" value="1.0"/>

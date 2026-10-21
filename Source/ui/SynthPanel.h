@@ -19,7 +19,7 @@ namespace babushka::ui
 class PlateButton : public juce::Component
 {
 public:
-    PlateButton (const juce::String& t, float textHeight = 13.0f) : text (t), height (textHeight) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+    PlateButton (const juce::String& t, float textHeight = type::title) : text (t), height (textHeight) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
     std::function<void()> onClick, onRightClick;          // right click (or ctrl-click on a Mac) opens a menu where there is one
     void setText (const juce::String& t) { text = t; repaint(); }
     void paint (juce::Graphics& g) override
@@ -182,7 +182,7 @@ public:
         // plate (726 … 1418), 14 px between the groups, everything centred on y = 1000. The preset browser opens from the display.
         undoButton.setBounds (746, 963, 70, 32);   redoButton.setBounds (746, 1003, 70, 32);
         fxLock.setBounds (830, 968, 38, 58);
-        presetPrev.setBounds (882, 984, 30, 32);  presetDisplay.setBounds (920, 967, 316, 66);  presetNext.setBounds (1244, 984, 30, 32);
+        presetPrev.setBounds (882, 984, 30, 32);  presetDisplay.setBounds (920, 967, 316, 66);  presetNext.setBounds (1244, 984, 30, 32);   // display centre 1078: PRESET is printed over it
         settingsButton.setBounds (1288, 963, 110, 32);  randomButton.setBounds (1288, 1003, 110, 32);
         fxLock.onClick = [this] {
             processor.setFxLocks (processor.getFxLocks() ^ BabushkaProcessor::kLockAllFx);
@@ -190,6 +190,7 @@ public:
             fxLock.setLocked (on);
             hints.showHint (fxLock, on ? "FX locked: the pedals stay as they are when you change presets" : "FX unlocked: presets set the pedals"); };
         fxLock.onHover = [this] { hints.showHint (fxLock, "FX lock: keep the pedals when you change presets"); };
+        fxLock.onLeave = [this] { hints.hideHint(); };
         setupGrip();
         setSize (kW, kH);
         layoutForRear();
@@ -292,7 +293,7 @@ private:
     // A control of the front panel moves with it when the rear panel opens.
     void placed (juce::Component& c) { if (zone == Zone::Front) frontComps.push_back ({ &c, c.getBounds() }); }
 
-    static void drawText (juce::Graphics& g, const juce::String& t, float x, float y, juce::Colour c, float size = 11.0f, Weight w = Weight::NarrowBold,
+    static void drawText (juce::Graphics& g, const juce::String& t, float x, float y, juce::Colour c, float size = type::control, Weight w = Weight::NarrowBold,
                           float width = 120.0f, float kern = 0.06f)
     {
         label (g, t, juce::Rectangle<float> (width, size * 1.5f).withCentre ({ x, y }), c, size, w, juce::Justification::centred, kern);
@@ -304,9 +305,9 @@ private:
         const bool outlined = fill.getAlpha() == 0;
         if (outlined) { g.setColour (plateInk.withAlpha (0.9f)); g.drawRoundedRectangle (r, 2.5f, 1.1f); }
         else { g.setColour (fill); g.fillRoundedRectangle (r, 2.5f); }
-        label (g, t, r.reduced (6.0f, 0.0f), outlined ? plateInk : inkOn (fill), 10.5f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+        label (g, t, r.reduced (6.0f, 0.0f), outlined ? plateInk : inkOn (fill), type::control, Weight::NarrowBold, juce::Justification::centred, 0.08f);
     }
-    void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = 11.0f, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
+    void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = type::control, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
     {
         op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, size, w, width, kern); });
     }
@@ -318,7 +319,7 @@ private:
     {
         currentPlate = r;
         op ([=] (juce::Graphics& g) { drawPlate (g, r, fill, outlined); });
-        if (title.isNotEmpty()) textAt (title, r.getCentreX(), r.getY() + 15.0f, inkOn (fill), 13.0f, Weight::NarrowBold, r.getWidth() - 12.0f, 0.12f);
+        if (title.isNotEmpty()) textAt (title, r.getCentreX(), r.getY() + 15.0f, inkOn (fill), type::title, Weight::NarrowBold, r.getWidth() - 12.0f, 0.12f);
     }
     void jack (Jack id, float x, float y, const juce::String& text, juce::Colour textColour)
     {
@@ -350,23 +351,24 @@ private:
     }
     // Names of the three lever positions, under the lever.
     // (each name keeps a few pixels from its neighbours, so the words never run together)
-    void leverLabels (float cx, float y, const juce::String& a, const juce::String& b, const juce::String& c, juce::Colour ink, float spread = 28.0f, float size = 9.5f)
+    void leverLabels (float cx, float y, const juce::String& a, const juce::String& b, const juce::String& c, juce::Colour ink, float spread = 28.0f)
     {
-        textAt (a, cx - spread, y, ink, size, Weight::NarrowBold, spread - 5.0f, 0.0f);
-        textAt (b, cx, y, ink, size, Weight::NarrowBold, spread + 4.0f, 0.0f);     // the middle name may be the longest
-        textAt (c, cx + spread, y, ink, size, Weight::NarrowBold, spread - 5.0f, 0.0f);
+        // boxes with clear gaps between them: a name too long for its box is squeezed sideways, never run into the next
+        textAt (a, cx - spread, y, ink, type::mark, Weight::NarrowBold, spread - 8.0f, 0.0f);
+        textAt (b, cx, y, ink, type::mark, Weight::NarrowBold, spread + 2.0f, 0.0f);     // the middle name may be the longest
+        textAt (c, cx + spread, y, ink, type::mark, Weight::NarrowBold, spread - 8.0f, 0.0f);
     }
 
     // Jack names. Each gets the room between its plate's frame and halfway to the next jack of its row; a name near
-    // the frame moves a little inwards. The print stays the same size (it only grows in a small window as far as that
-    // room allows), so names never cross the frame or each other.
+    // the frame moves a little inwards. All jack names are one size (in a small window they grow with the rest of the
+    // print); a name longer than its room is squeezed sideways, so names never cross the frame or each other.
     struct JackLabel { juce::String text; float x, y; juce::Colour colour; juce::Rectangle<float> plate; };
     std::vector<JackLabel> jackLabels;
     juce::Rectangle<float> currentPlate;
 
     void placeJackLabels()
     {
-        constexpr float natural = 58.0f, gap = 3.0f;
+        constexpr float natural = 58.0f, gap = 6.0f;
         for (auto& l : jackLabels)
         {
             float lo = l.plate.getX() + 7.0f, hi = l.plate.getRight() - 7.0f;           // inside the printed frame
@@ -380,7 +382,7 @@ private:
             const float left = juce::jmax (lo, l.x - natural * 0.5f), right = juce::jmin (hi, l.x + natural * 0.5f);
             const float x = 0.5f * (left + right), w = right - left;
             const auto t = l.text; const auto c = l.colour; const float y = l.y;
-            op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, 10.0f, Weight::NarrowBold, w, 0.03f); });
+            op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, type::jack, Weight::NarrowBold, w, 0.03f); });
         }
         jackLabels.clear();
     }
@@ -391,18 +393,18 @@ private:
     void bipolarMarks (float cx, float cy, float d, juce::Colour c)
     {
         ticks (cx, cy, d, 11, c, 0.1f, 5);
-        textAt ("0", cx, cy - d * 0.80f, c, 10.5f, Weight::NarrowBold, 20.0f);
-        textAt ("-", cx - d * 0.76f, cy - d * 0.34f, c, 13.0f, Weight::NarrowBold, 14.0f);
-        textAt ("+", cx + d * 0.76f, cy - d * 0.34f, c, 13.0f, Weight::NarrowBold, 14.0f);
+        textAt ("0", cx, cy - d * 0.80f, c, type::mark, Weight::NarrowBold, 20.0f);
+        textAt ("-", cx - d * 0.76f, cy - d * 0.34f, c, type::title, Weight::NarrowBold, 14.0f);
+        textAt ("+", cx + d * 0.76f, cy - d * 0.34f, c, type::title, Weight::NarrowBold, 14.0f);
     }
-    void selectorLabels (float cx, float cy, float d, const std::vector<juce::String>& labels, juce::Colour c, float size = 10.5f)
+    void selectorLabels (float cx, float cy, float d, const std::vector<juce::String>& labels, juce::Colour c)
     {
         const int n = (int) labels.size();
         for (int i = 0; i < n; ++i)
         {
             const float a = juce::degreesToRadians (-135.0f + 270.0f * (float) i / (float) (n - 1));
             const float r = d * 0.5f + 15.0f;
-            textAt (labels[(size_t) i], cx + std::sin (a) * r, cy - std::cos (a) * r, c, size, Weight::NarrowBold, 26.0f, 0.02f);
+            textAt (labels[(size_t) i], cx + std::sin (a) * r, cy - std::cos (a) * r, c, type::mark, Weight::NarrowBold, 26.0f, 0.02f);
         }
         ticks (cx, cy, d, n, c, 0.08f);
     }
@@ -441,7 +443,7 @@ private:
         auto at = [&] (double hz, const juce::String& t, float extra) {
             const float a = juce::degreesToRadians ((float) angleFor (hz));
             const float r = d * 0.5f + 25.0f + extra;
-            textAt (t, cx + std::sin (a) * r, cy - std::cos (a) * r, c, 9.5f, Weight::NarrowBold, 40.0f, 0.02f);
+            textAt (t, cx + std::sin (a) * r, cy - std::cos (a) * r, c, type::mark, Weight::NarrowBold, 40.0f, 0.02f);
         };
         at (20.0, "20Hz", 0.0f); at (200.0, "200Hz", -2.0f); at (2000.0, "2kHz", 0.0f); at (11000.0, "11kHz", 0.0f);
     }
@@ -472,20 +474,20 @@ private:
         jack (Jack::GateOut, 128, 97, "GATE OUT", arpInk); jack (Jack::KbOut, 101, 137, "KB OUT", arpInk); jack (Jack::KbVelOut, 157, 137, "KB VEL OUT", arpInk);
         ticks (127, 210, 52, 11, arpInk);
         knob ("arpRate", 127, 210, 52, [] (double v) { return fmt::arpRate (v); });
-        textAt ("RATE", 127, 249, arpInk, 11.5f);
+        textAt ("RATE", 127, 249, arpInk, type::control);
         arpLamp = addLamp (col::ledRed, 162, 249);
         lever ("arpMode", 131, 284, { 0, 1, 2 }, [] (int p) { static const char* n[] = { "Arpeggiator", "Sequencer", "Record" }; return juce::String (n[p]); });
-        textAt ("ARP", 103, 305, arpInk, 9.5f, Weight::NarrowBold, 30.0f); textAt ("SEQ", 131, 305, arpInk, 9.5f, Weight::NarrowBold, 30.0f);
+        textAt ("ARP", 103, 305, arpInk, type::mark, Weight::NarrowBold, 30.0f); textAt ("SEQ", 131, 305, arpInk, type::mark, Weight::NarrowBold, 30.0f);
         op ([=] (juce::Graphics& g) { const auto r = juce::Rectangle<float> (27.0f, 14.0f).withCentre ({ 159.0f, 305.0f });
                                       g.setColour (arpInk); g.drawRoundedRectangle (r, 2.5f, 1.0f);
-                                      label (g, "REC", r, arpInk, 9.5f, Weight::NarrowBold, juce::Justification::centred, 0.02f); });
-        textAt ("MODE", 131, 320, arpInk, 11.0f);
+                                      label (g, "REC", r, arpInk, type::mark, Weight::NarrowBold, juce::Justification::centred, 0.02f); });
+        textAt ("MODE", 131, 320, arpInk, type::control);
         lever ("arpDirection", 131, 346, { 0, 1, 2 }, [] (int p) { static const char* n[] = { "Order", "Forward / backward", "Random" }; return juce::String (n[p]); });
-        leverLabels (131, 367, "ORDR", "FWD/BKWD", "RNDM", arpInk, 32.0f, 8.5f);
-        textAt ("DIRECTION", 131, 381, arpInk, 11.0f, Weight::NarrowBold, 90.0f);
+        leverLabels (131, 367, "ORDR", "FWD/BKWD", "RNDM", arpInk, 33.0f);
+        textAt ("DIRECTION", 131, 381, arpInk, type::control, Weight::NarrowBold, 90.0f);
         lever ("arpOctSeq", 131, 405, { 0, 1, 2 }, [] (int p) { return juce::String (p + 1); });
         leverLabels (131, 426, "1", "2", "3", arpInk, 22.0f);
-        textAt ("OCT / SEQ", 131, 440, arpInk, 11.0f, Weight::NarrowBold, 90.0f);
+        textAt ("OCT / SEQ", 131, 440, arpInk, type::control, Weight::NarrowBold, 90.0f);
 
         // ---------------- MODULATION ----------------
         module ({ 193, 56, 212, 400 }, S.panel, "MODULATION");
@@ -493,30 +495,30 @@ private:
         jack (Jack::ModSyncIn, 272, 137, "SYNC IN", ink); jack (Jack::ModShOut, 326, 137, "S/H OUT", ink);
         ticks (299, 210, 52, 11, ink);
         knob ("lfoRate", 299, 210, 52, [] (double v) { return fmt::lfoRate (v); });
-        textAt ("RATE", 299, 249, ink, 11.5f);
+        textAt ("RATE", 299, 249, ink, type::control);
         modLamp = addLamp (col::ledRed, 299, 264);
         ticks (243, 309, 46, 11, ink); knob ("lfoPitchAmt", 243, 309, 46, [] (double v) { return fmt::percent (v); });
-        pill ("PITCH AMT", 243, 344, 74, S.pillOsc, ink);
+        pill ("PITCH AMT", 243, 344, 78, S.pillOsc, ink);
         ticks (348, 309, 46, 11, ink); knob ("lfoCutoffAmt", 348, 309, 46, [] (double v) { return fmt::percent (v); });
-        pill ("CUTOFF AMT", 348, 344, 78, S.pillFilter, ink);
+        pill ("CUTOFF AMT", 348, 344, 84, S.pillFilter, ink);
         ticks (252, 405, 46, 11, ink); knob ("lfoPwAmt", 252, 405, 46, [] (double v) { return fmt::percent (v); });
-        pill ("PULSE WIDTH AMT", 252, 440, 106, juce::Colours::transparentBlack, ink);
+        pill ("PULSE WIDTH AMT", 252, 440, 114, juce::Colours::transparentBlack, ink);
         knob ("lfoWave", 350, 402, 46, fmt::names ({ "Sine", "Sawtooth", "Ramp", "Square" }), true);
         selectorGlyphs (350, 402, 46, { Glyph::Sine, Glyph::Saw, Glyph::Ramp, Glyph::Square }, ink);
-        textAt ("WAVEFORM", 350, 440, ink, 11.0f, Weight::NarrowBold, 80.0f);
+        textAt ("WAVEFORM", 350, 440, ink, type::control, Weight::NarrowBold, 80.0f);
 
         // ---------------- OSCILLATORS ----------------
         module ({ 415, 56, 212, 400 }, S.osc, "OSCILLATORS");
         op ([=] (juce::Graphics& g) { g.setColour (oscInk.withAlpha (0.8f)); g.drawLine (521.0f, 82.0f, 521.0f, 444.0f, 1.0f); });
-        textAt ("1", 428, 72, oscInk, 13.0f, Weight::NarrowBold, 16.0f); textAt ("2", 614, 72, oscInk, 13.0f, Weight::NarrowBold, 16.0f);
+        textAt ("1", 428, 72, oscInk, type::title, Weight::NarrowBold, 16.0f); textAt ("2", 614, 72, oscInk, type::title, Weight::NarrowBold, 16.0f);
         jack (Jack::Osc1WaveOut, 469, 97, "WAVE OUT", oscInk); jack (Jack::Osc1PitchIn, 441, 137, "PITCH IN", oscInk); jack (Jack::Osc1PwmIn, 497, 137, "PWM IN", oscInk);
         jack (Jack::Osc2WaveOut, 574, 97, "WAVE OUT", oscInk); jack (Jack::Osc2PitchIn, 546, 137, "PITCH IN", oscInk); jack (Jack::Osc2LinFmIn, 601, 137, "LIN FM IN", oscInk);
         knob ("osc1Octave", 469, 210, 50, fmt::names ({ "32'", "16'", "8'", "4'" }), true);
         selectorLabels (469, 210, 50, { "32'", "16'", "8'", "4'" }, oscInk);
-        textAt ("OCTAVE", 469, 252, oscInk, 11.0f);
+        textAt ("OCTAVE", 469, 252, oscInk, type::control);
         knob ("osc2Octave", 574, 210, 50, fmt::names ({ "16'", "8'", "4'", "2'" }), true);
         selectorLabels (574, 210, 50, { "16'", "8'", "4'", "2'" }, oscInk);
-        textAt ("OCTAVE", 574, 252, oscInk, 11.0f);
+        textAt ("OCTAVE", 574, 252, oscInk, type::control);
         op ([=] (juce::Graphics& g) { g.setColour (oscInk.withAlpha (0.85f)); g.drawLine (494.0f, 306.0f, 546.0f, 306.0f, 1.2f); });
         syncLink = std::make_unique<ParamLink> (apvts, "osc2Sync", [this] (float v) { if (syncPad) syncPad->setLit (v > 0.5f); });
         syncPad = addPad (S.sync, 469, 306, 44);
@@ -524,27 +526,28 @@ private:
         syncPad->onPress = [this] { syncLink->setComplete (syncLink->get() > 0.5f ? 0.0f : 1.0f); };
         syncPad->onHover = [this] { hints.showHint (*syncPad, "Osc 2 Sync   " + juce::String (syncLink->get() > 0.5f ? "on" : "off")); };
         syncLink->setComplete (syncLink->get());
-        textAt ("SYNC", 469, 344, oscInk, 11.0f);
+        syncPad->onLeave = [this] { hints.hideHint(); };
+        textAt ("SYNC", 469, 344, oscInk, type::control);
         bipolarMarks (574, 306, 50, oscInk);
         knob ("osc2Freq", 574, 306, 50, [] (double v) { return fmt::semitones (v); });
-        textAt ("FREQUENCY", 574, 344, oscInk, 11.0f, Weight::NarrowBold, 90.0f);
+        textAt ("FREQUENCY", 574, 344, oscInk, type::control, Weight::NarrowBold, 90.0f);
         knob ("osc1Wave", 469, 403, 46, fmt::names ({ "Triangle", "Sawtooth", "Square", "Narrow pulse" }), true);
         selectorGlyphs (469, 403, 46, { Glyph::Triangle, Glyph::Saw, Glyph::Square, Glyph::Pulse }, oscInk);
-        textAt ("WAVEFORM", 469, 441, oscInk, 11.0f, Weight::NarrowBold, 80.0f);
+        textAt ("WAVEFORM", 469, 441, oscInk, type::control, Weight::NarrowBold, 80.0f);
         knob ("osc2Wave", 574, 403, 46, fmt::names ({ "Triangle", "Sawtooth", "Square", "Narrow pulse" }), true);
         selectorGlyphs (574, 403, 46, { Glyph::Triangle, Glyph::Saw, Glyph::Square, Glyph::Pulse }, oscInk);
-        textAt ("WAVEFORM", 574, 441, oscInk, 11.0f, Weight::NarrowBold, 80.0f);
+        textAt ("WAVEFORM", 574, 441, oscInk, type::control, Weight::NarrowBold, 80.0f);
 
         // ---------------- MIXER ----------------
         module ({ 637, 56, 106, 400 }, S.panel, "MIXER");
         jack (Jack::MixOsc1In, 661, 97, "OSC 1 IN", ink); jack (Jack::MixOsc2In, 719, 97, "OSC 2 IN", ink);
         jack (Jack::MixNoiseIn, 661, 137, "NOISE IN", ink); jack (Jack::MixerOut, 719, 137, "OUTPUT", ink);
         ticks (690, 210, 48, 11, ink); knob ("mixOsc1", 690, 210, 48, [] (double v) { return fmt::percent (v); });
-        pill ("OSCILLATOR 1", 690, 246, 86, S.pillOsc, ink);
+        pill ("OSCILLATOR 1", 690, 246, 92, S.pillOsc, ink);
         ticks (690, 306, 48, 11, ink); knob ("mixOsc2", 690, 306, 48, [] (double v) { return fmt::percent (v); });
-        pill ("OSCILLATOR 2", 690, 342, 86, S.pillOsc, ink);
+        pill ("OSCILLATOR 2", 690, 342, 92, S.pillOsc, ink);
         ticks (690, 403, 48, 11, ink); knob ("mixNoise", 690, 403, 48, [] (double v) { return fmt::percent (v); });
-        textAt ("NOISE", 690, 440, ink, 11.5f);
+        textAt ("NOISE", 690, 440, ink, type::control);
 
         // ---------------- UTILITIES ----------------
         module ({ 753, 56, 107, 400 }, S.panel, "UTILITIES");
@@ -554,13 +557,13 @@ private:
             g.setColour (ink.withAlpha (0.9f));
             g.drawRoundedRectangle (f, 3.0f, 1.6f); });
         jack (Jack::Mult1, 780, 97, "", ink); jack (Jack::Mult2, 836, 97, "", ink); jack (Jack::Mult3, 780, 137, "", ink); jack (Jack::Mult4, 836, 137, "", ink);
-        textAt ("MULT", 808, 161, ink, 11.0f, Weight::NarrowBold, 50.0f);
+        textAt ("MULT", 808, 161, ink, type::control, Weight::NarrowBold, 50.0f);
         ticks (806, 210, 48, 11, ink); knob ("hpCutoff", 806, 210, 48, [] (double v) { return fmt::highPass (v); });
-        textAt ("HIGH PASS", 806, 246, ink, 11.0f, Weight::NarrowBold, 90.0f);
+        textAt ("HIGH PASS", 806, 246, ink, type::control, Weight::NarrowBold, 90.0f);
         jack (Jack::HpfIn, 779, 274, "INPUT", ink); jack (Jack::HpfOut, 835, 274, "OUTPUT", ink);
         bipolarMarks (806, 357, 48, ink);
         knob ("attenuator", 806, 357, 48, [] (double v) { return fmt::bipolar (v); });
-        textAt ("ATTENUATOR", 806, 393, ink, 11.0f, Weight::NarrowBold, 96.0f);
+        textAt ("ATTENUATOR", 806, 393, ink, type::control, Weight::NarrowBold, 96.0f);
         jack (Jack::AttenuatorIn, 779, 422, "INPUT", ink); jack (Jack::AttenuatorOut, 835, 422, "OUTPUT", ink);
 
         // ---------------- FILTER ----------------
@@ -569,45 +572,45 @@ private:
         jack (Jack::FilterEnvAmtIn, 940, 128, "ENV AMT IN", filInk); jack (Jack::FilterCutoffIn, 1012, 128, "CUTOFF IN", filInk);
         knob ("cutoff", 976, 228, 80, [] (double v) { return fmt::cutoff (v); });
         logCutoffScale (976.0f, 228.0f, 80.0f, filInk);
-        textAt ("CUTOFF", 976, 280, filInk, 11.5f, Weight::NarrowBold, 70.0f);
+        textAt ("CUTOFF", 976, 280, filInk, type::control, Weight::NarrowBold, 70.0f);
         lever ("kbdTrack", 976, 306, { 1, 0, 2 }, [] (int p) { static const char* n[] = { "1:2", "off", "1:1" }; return juce::String (n[p]); });
         leverLabels (976, 328, "1:2", "OFF", "1:1", filInk, 29.0f);
-        textAt ("KBD TRACK", 976, 342, filInk, 11.0f, Weight::NarrowBold, 90.0f);
+        textAt ("KBD TRACK", 976, 342, filInk, type::control, Weight::NarrowBold, 90.0f);
         bipolarMarks (922, 404, 50, filInk);
         knob ("envAmt", 922, 404, 50, [] (double v) { return fmt::bipolar (v); });
-        textAt ("ENVELOPE AMT", 922, 441, filInk, 11.0f, Weight::NarrowBold, 100.0f);
+        textAt ("ENVELOPE AMT", 922, 441, filInk, type::control, Weight::NarrowBold, 100.0f);
         ticks (1027, 404, 50, 11, filInk); knob ("resonance", 1027, 404, 50, [] (double v) { return fmt::percent (v); });
-        textAt ("RESONANCE", 1027, 441, filInk, 11.0f, Weight::NarrowBold, 90.0f);
+        textAt ("RESONANCE", 1027, 441, filInk, type::control, Weight::NarrowBold, 90.0f);
 
         // ---------------- ENVELOPE ----------------
         module ({ 1090, 56, 212, 400 }, S.panel, "ENVELOPE");
         jack (Jack::EnvTriggerIn, 1196, 97, "TRIGGER IN", ink);
         jack (Jack::EnvPosOut, 1145, 137, "+ ENV OUT", ink); jack (Jack::EnvNegOut, 1248, 137, "- ENV OUT", ink);
         ticks (1144, 210, 50, 11, ink); knob ("attack", 1144, 210, 50, [] (double v) { return fmt::envTime (v, 0.001); });
-        textAt ("ATTACK", 1144, 247, ink, 11.5f, Weight::NarrowBold, 70.0f);
+        textAt ("ATTACK", 1144, 247, ink, type::control, Weight::NarrowBold, 70.0f);
         ticks (1144, 307, 50, 11, ink); knob ("decay", 1144, 307, 50, [] (double v) { return fmt::envTime (v, 0.002); });
-        textAt ("DECAY", 1144, 344, ink, 11.5f, Weight::NarrowBold, 70.0f);
+        textAt ("DECAY", 1144, 344, ink, type::control, Weight::NarrowBold, 70.0f);
         ticks (1144, 404, 50, 11, ink); knob ("release", 1144, 404, 50, [] (double v) { return fmt::envTime (v, 0.002); });
-        textAt ("RELEASE", 1144, 441, ink, 11.5f, Weight::NarrowBold, 70.0f);
+        textAt ("RELEASE", 1144, 441, ink, type::control, Weight::NarrowBold, 70.0f);
         sustain = std::make_unique<Fader> (apvts, "sustain", 232.0f);
         sustain->hints = &hints;
         sustain->setCentrePosition (1246, 318);
         addAndMakeVisible (*sustain);
         placed (*sustain);
         learnables.push_back ({ sustain.get(), "sustain" });
-        textAt ("SUSTAIN", 1246, 441, ink, 11.5f, Weight::NarrowBold, 70.0f);
+        textAt ("SUSTAIN", 1246, 441, ink, type::control, Weight::NarrowBold, 70.0f);
 
         // ---------------- OUTPUT + SPRING REVERB ----------------
         module ({ 1312, 56, 106, 285 }, S.panel, "OUTPUT");
         jack (Jack::VcaAmtIn, 1365, 98, "VCA AMT IN", ink); jack (Jack::VcaIn, 1337, 138, "VCA IN", ink); jack (Jack::ReverbIn, 1393, 138, "REVERB IN", ink);
         ticks (1365, 214, 50, 11, ink); knob ("volume", 1365, 214, 50, [] (double v) { return fmt::percent (v * v); });
-        textAt ("VOLUME", 1365, 252, ink, 11.5f, Weight::NarrowBold, 70.0f);
+        textAt ("VOLUME", 1365, 252, ink, type::control, Weight::NarrowBold, 70.0f);
         lever ("vcaMode", 1365, 290, { 0, 1, 2 }, [] (int p) { static const char* n[] = { "Envelope", "Keyboard release", "Drone" }; return juce::String (n[p]); });
-        leverLabels (1365, 311, "ENV", "KB RLS", "DRONE", ink, 31.0f, 9.0f);
-        textAt ("VCA MODE", 1365, 325, ink, 10.5f, Weight::NarrowBold, 80.0f);
+        leverLabels (1365, 311, "ENV", "KB RLS", "DRONE", ink, 31.0f);
+        textAt ("VCA MODE", 1365, 325, ink, type::control, Weight::NarrowBold, 80.0f);
         module ({ 1312, 348, 106, 108 }, S.reverb, "SPRING REVERB");
         ticks (1365, 410, 46, 11, revInk); knob ("reverbMix", 1365, 410, 46, [] (double v) { return fmt::percent (v); });
-        textAt ("MIX", 1365, 445, revInk, 11.0f, Weight::NarrowBold, 50.0f);
+        textAt ("MIX", 1365, 445, revInk, type::control, Weight::NarrowBold, 50.0f);
 
         // ---------------- title strip ----------------
         op ([strip = S.strip] (juce::Graphics& g) { drawTitleStrip (g, juce::Rectangle<float> (78.0f, 466.0f, 1340.0f, 62.0f), strip); });
@@ -638,14 +641,14 @@ private:
         zone = Zone::Fixed;
         module ({ 78, 944, 120, 100 }, S.panel, "");
         ticks (138, 984, 36, 11, ink); knob ("fineTune", 138, 984, 36, [] (double v) { return fmt::semitones (v * 100.0).replace (" st", " ct"); });
-        textAt ("FINE TUNE", 138, 1022, ink, 11.0f, Weight::NarrowBold, 90.0f);
+        textAt ("FINE TUNE", 138, 1022, ink, type::control, Weight::NarrowBold, 90.0f);
         module ({ 214, 944, 496, 100 }, S.panel, "");
         meters = std::make_unique<OutputMeters> (processor);
         meters->setBounds (222, 952, 480, 84);
         meters->hints = &hints;
         addAndMakeVisible (*meters);
         module ({ 726, 944, 692, 100 }, S.panel, "");
-        textAt ("PRESET", 1052, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
+        textAt ("PRESET", 1078, 958, ink, type::control, Weight::NarrowBold, 120.0f, 0.2f);
     }
 
     // The left-hand controller and the keyboard bed for the current layout (they change height with the rear panel).
@@ -662,15 +665,15 @@ private:
             g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
         }
         drawKnobTicks (g, { kGlideX, kl.glideY }, 40.0f, 11, lhInk, 0.1f);
-        drawText (g, "GLIDE", kGlideX, kl.glideLabelY, lhInk, 11.0f, Weight::NarrowBold, 60.0f);
-        drawText (g, "[< KB]", kPadX[0], kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        drawText (g, "[SHIFT]", kPadX[1], kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        drawText (g, "[KB >]", kPadX[2], kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "GLIDE", kGlideX, kl.glideLabelY, lhInk, type::control, Weight::NarrowBold, 60.0f);
+        drawText (g, "[< KB]", kPadX[0], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "[SHIFT]", kPadX[1], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "[KB >]", kPadX[2], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
         drawPill (g, "PLAY", kPadX[0], kl.pillY, 42, S.pillArp, lhInk); drawPill (g, "HOLD", kPadX[1], kl.pillY, 42, S.pillArp, lhInk);
         drawPill (g, "TAP", kPadX[2], kl.pillY, 42, S.pillArp, lhInk);
-        drawText (g, "(TIE)", kPadX[0], kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
-        drawText (g, "(REST)", kPadX[1], kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
-        drawText (g, "(ACCENT)", kPadX[2], kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 46.0f, 0.02f);
+        drawText (g, "(TIE)", kPadX[0], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 44.0f, 0.02f);
+        drawText (g, "(REST)", kPadX[1], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 44.0f, 0.02f);
+        drawText (g, "(ACCENT)", kPadX[2], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 46.0f, 0.02f);
         drawPill (g, "PITCH", kWheelX[0], kl.wheelPillY, 52, S.pillWheel, lhInk); drawPill (g, "MOD", kWheelX[1], kl.wheelPillY, 52, S.pillWheel, lhInk);
         g.setColour (juce::Colours::black);
         g.fillRoundedRectangle (juce::Rectangle<float> (298.0f, kl.top, 1120.0f, kl.height), 3.0f);
@@ -738,10 +741,12 @@ private:
         rear.onOpenPedal = [this] (int pedal) { if (onOpenPedal) onOpenPedal (pedal); };
         rear.onJacksMoved = [this] { if (onJacksMoved) onJacksMoved (jackSites()); };
         rear.midiSocket.onHover = [this] { hints.showHint (rear.midiSocket, "MIDI controller: knob mapping"); };
+        rear.midiSocket.onLeave = [this] { hints.hideHint(); };
         grip.setTopLeftPosition (kW / 2 - grip.getWidth() / 2, 30);
         addAndMakeVisible (grip);
         grip.onClick = [this] { toggleRear(); };
         grip.onHover = [this] { hints.showHint (grip, isRearOpen() ? "Push the rear panel back" : "Pull out the rear panel"); };
+        grip.onLeave = [this] { hints.hideHint(); };
         grip.onDrag = [this] (float dy) {
             if (gripDragStart < 0.0f) gripDragStart = rearPx;
             anim.stopTimer();
@@ -899,6 +904,7 @@ private:
         playPad->onHover = [this] { hints.showHint (*playPad, recordMode() ? "Tie (REC)" : "Play arpeggiator / sequencer"); };
         holdPad->onHover = [this] { hints.showHint (*holdPad, recordMode() ? "Rest (REC)    hold = SHIFT" : "Hold    (SHIFT with PLAY / TAP)"); };
         tapPad->onHover = [this] { hints.showHint (*tapPad, recordMode() ? "Accent (REC)" : "Tap tempo"); };
+        for (auto* pad : { playPad, holdPad, tapPad }) pad->onLeave = [this] { hints.hideHint(); };
     }
 
     void timerCallback() override

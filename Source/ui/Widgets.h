@@ -304,7 +304,7 @@ public:
         setMouseCursor (juce::MouseCursor::PointingHandCursor);
     }
     std::function<void()> onPress, onRelease;
-    std::function<void()> onHover;
+    std::function<void()> onHover, onLeave;          // onLeave: the pointer has gone (hides the hint)
     void setLit (bool on) { if (lit != on) { lit = on; repaint(); } }
     bool isLit() const { return lit; }
 
@@ -348,6 +348,7 @@ public:
     void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); if (onPress) onPress(); }
     void mouseUp (const juce::MouseEvent&) override { down = false; repaint(); if (onRelease) onRelease(); }
     void mouseEnter (const juce::MouseEvent&) override { if (onHover) onHover(); }
+    void mouseExit (const juce::MouseEvent&) override { if (onLeave) onLeave(); }
 
 private:
     juce::Colour lampColour;

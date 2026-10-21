@@ -42,18 +42,18 @@ struct PedalParams
     std::array<bool, kNumPedals> on { false, false, false, false };
     // SATURATOR
     int   satMode = 0;                                        // 0 triode, 1 tape, 2 transformer, 3 diode
-    float satDrive = 0.55f, satBias = 0.35f, satBody = 0.4f, satTone = 0.5f, satMix = 1.0f, satOutput = 0.5f;
+    float satDrive = 0.4f, satBias = 0.35f, satBody = 0.35f, satTone = 0.5f, satMix = 1.0f, satOutput = 0.5f;
     // PHASER
     int   phaMode = 0;                                        // 0 4-stage, 1 6-stage, 2 4-stage + colour, 3 8-stage
-    float phaRate = 0.3f, phaDepth = 0.8f, phaFeedback = 0.2f, phaCenter = 0.5f, phaStereo = 0.3f, phaMix = 0.5f;
+    float phaRate = 0.3f, phaDepth = 0.7f, phaFeedback = 0.25f, phaCenter = 0.5f, phaStereo = 0.4f, phaMix = 0.5f;
     // BBD CHORUS
     int   choMode = 0;                                        // 0 I, 1 II, 2 I+II, 3 vibrato, 4 ensemble
-    float choRate = 0.4236f, choDepth = 0.6f, choMix = 0.5f, choWidth = 1.0f, choNoise = 0.25f, choAge = 0.3f;
+    float choRate = 0.45f, choDepth = 0.5f, choMix = 0.5f, choWidth = 1.0f, choNoise = 0.2f, choAge = 0.25f;
     // TAPE ECHO
     int   tapHeads = 0;                                       // 0 1, 1 2, 2 3, 3 1+2, 4 2+3, 5 1+3, 6 1+2+3
     int   tapSync = 0;                                        // 0 free, 1 1/4, 2 1/8, 3 dotted 1/8, 4 1/16
-    float tapTime = 0.3736f, tapFeedback = 0.12f, tapMix = 0.45f, tapWow = 0.15f, tapFlutter = 0.2f, tapAge = 0.3f,
-          tapBass = 0.5f, tapTreble = 0.55f;
+    float tapTime = 0.45f, tapFeedback = 0.35f, tapMix = 0.35f, tapWow = 0.2f, tapFlutter = 0.2f, tapAge = 0.3f,
+          tapBass = 0.5f, tapTreble = 0.5f;
     bool  tapHold = false;
 };
 

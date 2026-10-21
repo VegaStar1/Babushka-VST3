@@ -167,7 +167,7 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
 
     // Pedals on the rear panel (plugin-only, see dsp/Pedals.h). Off by default: a preset without them sounds as before.
     // Knobs read 0 … 10 like the pedals' own scales; rates and the echo time in real units.
-    // Each pedal starts at its first factory preset (PedalInfo.h): WARM TRIODE, VINTAGE SWIRL, MODE I, SLAPBACK.
+    // Each pedal starts at its DEFAULT preset (PedalInfo.h): a neutral setting to start from.
     auto fxKnob = [&] (const char* id, const char* name, float def, std::function<String (float)> text) {
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { id, 1 }, name, NormalisableRange<float> (0.0f, 1.0f), def,
                                                             AudioParameterFloatAttributes().withStringFromValueFunction ([text] (float v, int) { return text (v); }))); };
@@ -179,29 +179,29 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     auto onOff = [&] (const char* id, const char* name) { p.push_back (std::make_unique<AudioParameterBool> (ParameterID { id, 1 }, name, false)); };
     onOff ("satOn", "Saturator On");
     choice ("satMode", "Saturator Character", { "TRIODE", "TAPE", "TRANSFORMER", "DIODE" }, 0);
-    fx ("satDrive", "Saturator Drive", 0.55f);   fx ("satBias", "Saturator Bias", 0.35f);
-    fx ("satBody", "Saturator Body", 0.4f);    fx ("satTone", "Saturator Tone", 0.5f);
+    fx ("satDrive", "Saturator Drive", 0.4f);   fx ("satBias", "Saturator Bias", 0.35f);
+    fx ("satBody", "Saturator Body", 0.35f);    fx ("satTone", "Saturator Tone", 0.5f);
     pct ("satMix", "Saturator Mix", 1.0f);       db ("satOutput", "Saturator Output");
     onOff ("phaOn", "Phaser On");
     choice ("phaMode", "Phaser Mode", { "4-STAGE", "6-STAGE", "4 + COLOR", "8-STAGE" }, 0);
     fxKnob ("phaRate", "Phaser Rate", 0.3f, [hz] (float v) { return hz (babushka::dsp::pedallaw::phaserHz (v)); });
-    fx ("phaDepth", "Phaser Depth", 0.8f);
-    fx ("phaFeedback", "Phaser Color", 0.2f);  fx ("phaCenter", "Phaser Center", 0.5f);
-    fx ("phaStereo", "Phaser Stereo", 0.3f);    pct ("phaMix", "Phaser Mix", 0.5f);
+    fx ("phaDepth", "Phaser Depth", 0.7f);
+    fx ("phaFeedback", "Phaser Color", 0.25f);  fx ("phaCenter", "Phaser Center", 0.5f);
+    fx ("phaStereo", "Phaser Stereo", 0.4f);    pct ("phaMix", "Phaser Mix", 0.5f);
     onOff ("choOn", "Chorus On");
     choice ("choMode", "Chorus Mode", { "I", "II", "I + II", "VIBRATO", "ENSEMBLE" }, 0);
-    fxKnob ("choRate", "Chorus Rate", 0.4236f, [hz] (float v) { return hz (babushka::dsp::pedallaw::chorusHz (v)); });
-    fx ("choDepth", "Chorus Depth", 0.6f);
+    fxKnob ("choRate", "Chorus Rate", 0.45f, [hz] (float v) { return hz (babushka::dsp::pedallaw::chorusHz (v)); });
+    fx ("choDepth", "Chorus Depth", 0.5f);
     pct ("choMix", "Chorus Mix", 0.5f);          fx ("choWidth", "Chorus Width", 1.0f);
-    fx ("choNoise", "Chorus Noise", 0.25f);     fx ("choAge", "Chorus Age", 0.3f);
+    fx ("choNoise", "Chorus Noise", 0.2f);     fx ("choAge", "Chorus Age", 0.25f);
     onOff ("tapOn", "Tape Echo On");
     choice ("tapHeads", "Tape Echo Heads", { "1", "2", "3", "1+2", "2+3", "1+3", "1+2+3" }, 0);
     choice ("tapSync", "Tape Echo Sync", { "FREE", "1/4", "1/8", "1/8 D", "1/16" }, 0);
-    fxKnob ("tapTime", "Tape Echo Time", 0.3736f, [] (float v) { return String (juce::roundToInt (1000.0f * babushka::dsp::pedallaw::echoSeconds (v))) + " ms"; });
-    fx ("tapFeedback", "Tape Echo Feedback", 0.12f);
-    pct ("tapMix", "Tape Echo Mix", 0.45f);      fx ("tapWow", "Tape Echo Wow", 0.15f);
+    fxKnob ("tapTime", "Tape Echo Time", 0.45f, [] (float v) { return String (juce::roundToInt (1000.0f * babushka::dsp::pedallaw::echoSeconds (v))) + " ms"; });
+    fx ("tapFeedback", "Tape Echo Feedback", 0.35f);
+    pct ("tapMix", "Tape Echo Mix", 0.35f);      fx ("tapWow", "Tape Echo Wow", 0.2f);
     fx ("tapFlutter", "Tape Echo Flutter", 0.2f); fx ("tapAge", "Tape Echo Age", 0.3f);
-    db ("tapBass", "Tape Echo Bass");     fxKnob ("tapTreble", "Tape Echo Treble", 0.55f, [] (float v) { const int d = juce::roundToInt ((v - 0.5f) * 24.0f); return (d > 0 ? "+" : "") + String (d) + " dB"; });
+    db ("tapBass", "Tape Echo Bass");     fxKnob ("tapTreble", "Tape Echo Treble", 0.5f, [] (float v) { const int d = juce::roundToInt ((v - 0.5f) * 24.0f); return (d > 0 ? "+" : "") + String (d) + " dB"; });
     onOff ("tapHold", "Tape Echo Hold");
     p.push_back (std::make_unique<AudioParameterInt> (ParameterID { "fxOrder", 1 }, "Pedal Order", 0, 23, 0));
 

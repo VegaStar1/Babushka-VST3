@@ -189,7 +189,9 @@ struct Runner : private juce::Timer
         if (tick == 237)
         {   // a pedal preset: applied, then recognised on the display; a user preset saved and found again
             const auto& list = babushka::ui::PedalPresets::list (proc, 3);
-            babushka::ui::PedalPresets::apply (proc, 3, list[1]);
+            babushka::ui::PedalPresets::apply (proc, 3, list[0]);
+            std::printf ("pedal default: '%s' (expect 'Default')\n", babushka::ui::PedalPresets::match (proc, 3).toRawUTF8());
+            babushka::ui::PedalPresets::apply (proc, 3, list[2]);
             std::printf ("pedal preset: '%s' (expect 'Dub Echo')\n", babushka::ui::PedalPresets::match (proc, 3).toRawUTF8());
             set ("tapFeedback", 0.5f);
             babushka::ui::PedalPresets::save (proc, 3, "My Echo");
@@ -218,7 +220,10 @@ struct Runner : private juce::Timer
             std::printf ("echo: runaway %.3f, 6 s after OFF %.4f (expect < 0.01), after CLEAR %.4f (expect < 0.01)\n", before, after, cleared);
             set ("tapOn", 0.0f);
         }
-        if (tick == 239) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        // the window most people use (about 78 %), rear panel out: the print in its four sizes
+        if (tick == 239) { ed.setSize (1172, 848); load ("Two Saws"); ed.synthPanel().setRearOpen (true, false); }
+        if (tick == 241) { save (ed, out.getChildFile ("ui_mid_rear.png")); ed.setSize (1500, 1085); ed.synthPanel().setRearOpen (false, false); }
+        if (tick == 243) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };

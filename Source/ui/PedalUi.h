@@ -220,7 +220,7 @@ class PedalArrow : public juce::Component
 {
 public:
     explicit PedalArrow (bool leftward) : left (leftward) { setMouseCursor (juce::MouseCursor::PointingHandCursor); setSize (18, 18); }
-    std::function<void()> onClick, onHover;
+    std::function<void()> onClick, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     void paint (juce::Graphics& g) override
     {
         const auto r = getLocalBounds().toFloat().reduced (0.5f);
@@ -236,7 +236,7 @@ public:
         g.strokePath (p, juce::PathStrokeType (1.8f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
     bool left, hover = false;
@@ -247,7 +247,7 @@ class PedalLcd : public juce::Component
 {
 public:
     explicit PedalLcd (juce::Colour glow) : colour (glow) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
-    std::function<void()> onClick, onHover;
+    std::function<void()> onClick, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     void set (const juce::String& l1, const juce::String& l2, bool lockShown, bool on)
     {
         if (l1 == line1 && l2 == line2 && lockShown == locked && on == lit) return;
@@ -283,7 +283,7 @@ public:
         g.drawRoundedRectangle (r.reduced (0.75f), 4.0f, hover ? 1.5f : 1.0f);
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
     static constexpr float kLine1 = 12.0f, kLine2 = 10.0f;
@@ -297,7 +297,7 @@ class Footswitch : public juce::Component, private juce::Timer
 {
 public:
     Footswitch() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setSize (30, 30); }
-    std::function<void()> onToggle, onHover;
+    std::function<void()> onToggle, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     std::function<void (bool)> onHold;             // long press began (true) / ended (false); none: no long press
     void paint (juce::Graphics& g) override
     {
@@ -320,7 +320,7 @@ public:
         g.drawEllipse (c.x - b, c.y - b, 2 * b, 2 * b, hover ? 1.4f : 0.8f);
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseDown (const juce::MouseEvent&) override
     {
         down = true; holding = false; repaint();
@@ -344,7 +344,7 @@ class PushButton : public juce::Component
 {
 public:
     PushButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setSize (24, 24); }
-    std::function<void()> onClick, onHover;
+    std::function<void()> onClick, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     void paint (juce::Graphics& g) override
     {
         const auto c = getLocalBounds().toFloat().getCentre();
@@ -361,7 +361,7 @@ public:
         g.drawEllipse (c.x - b, c.y - b + (down ? 0.6f : 0.0f), 2 * b, 2 * b, hover ? 1.3f : 0.8f);
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); }
     void mouseUp (const juce::MouseEvent& e) override { down = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
@@ -419,6 +419,8 @@ public:
         leftArrow.onHover = [this] { if (hints) hints->showHint (leftArrow, "Earlier in the chain (or drag the pedal)"); };
         rightArrow.onHover = [this] { if (hints) hints->showHint (rightArrow, "Later in the chain (or drag the pedal)"); };
         clear.onHover = [this] { if (hints) hints->showHint (clear, "CLEAR: erase the tape - stops the repeats at once"); };
+        auto hide = [this] { if (hints) hints->hideHint(); };
+        foot.onLeave = hide; lcd.onLeave = hide; leftArrow.onLeave = hide; rightArrow.onLeave = hide; clear.onLeave = hide;
     }
 
     PedalArrow leftArrow { true }, rightArrow { false };
@@ -461,16 +463,16 @@ public:
         for (int i = 0; i < 3; ++i)
         {
             drawJack (g, { kJackX[i], kJackY }, 9.5f);
-            label (g, names[i], juce::Rectangle<float> (36.0f, 12.0f).withCentre ({ kJackX[i], 38.0f }), look.ink, 10.0f, Weight::NarrowBold,
+            label (g, names[i], juce::Rectangle<float> (36.0f, 12.0f).withCentre ({ kJackX[i], 38.0f }), look.ink, type::jack, Weight::NarrowBold,
                    juce::Justification::centred, 0.03f);
         }
         for (int i = 0; i < 2; ++i)
-            label (g, info.knobs[(size_t) i].name, juce::Rectangle<float> (48.0f, 14.0f).withCentre ({ kKnobX[i], kNamesY }), look.ink, 11.0f,
+            label (g, info.knobs[(size_t) i].name, juce::Rectangle<float> (48.0f, 14.0f).withCentre ({ kKnobX[i], kNamesY }), look.ink, type::control,
                    Weight::NarrowBold, juce::Justification::centred, 0.03f);
         if (pedal == 3)
-            label (g, "CLEAR", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ kClearX, kNamesY }), look.ink, 11.0f, Weight::NarrowBold,
+            label (g, "CLEAR", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ kClearX, kNamesY }), look.ink, type::control, Weight::NarrowBold,
                    juce::Justification::centred, 0.03f);
-        label (g, info.name, juce::Rectangle<float> (r.getWidth() - 16.0f, 16.0f).withCentre ({ r.getCentreX(), 124.0f }), look.ink, 13.0f,
+        label (g, info.name, juce::Rectangle<float> (r.getWidth() - 16.0f, 16.0f).withCentre ({ r.getCentreX(), 124.0f }), look.ink, type::title,
                Weight::NarrowBold, juce::Justification::centred, 0.12f);
     }
 
@@ -510,7 +512,7 @@ class FxLockButton : public juce::Component
 {
 public:
     FxLockButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
-    std::function<void()> onClick, onHover;
+    std::function<void()> onClick, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     void setLocked (bool l) { if (l != locked) { locked = l; repaint(); } }
     void paint (juce::Graphics& g) override
     {
@@ -535,11 +537,11 @@ public:
         g.drawRoundedRectangle (key, 5.0f, 1.0f);
         const auto icon = juce::Rectangle<float> (14.0f, 16.0f).withCentre (key.getCentre().translated (0.0f, down ? 1.0f : 0.0f));
         drawLockIcon (g, icon, locked ? juce::Colour (0xff161514) : col::ink.withAlpha (0.85f), locked, 2.0f);
-        label (g, "FX", all.withTop (key.getBottom() + 3.0f), locked ? col::ledAmber : col::ink, 12.0f, Weight::NarrowBold,
+        label (g, "FX", all.withTop (key.getBottom() + 3.0f), locked ? col::ledAmber : col::ink, type::control, Weight::NarrowBold,
                juce::Justification::centredTop, 0.14f);
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); }
     void mouseUp (const juce::MouseEvent& e) override
     {

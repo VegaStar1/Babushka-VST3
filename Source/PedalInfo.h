@@ -74,6 +74,8 @@ inline const std::vector<PedalPreset>& factoryPedalPresets (int pedal)
 {
     static const std::array<std::vector<PedalPreset>, kNumPedals> all { {
         {   // SATURATOR
+            { "Default", { { "satMode", 0 }, { "satDrive", 0.4f }, { "satBias", 0.35f }, { "satBody", 0.35f }, { "satTone", 0.5f }, { "satMix", 1.0f }, { "satOutput", 0.5f } },
+              "The pedal as it comes: the triode at a moderate drive, every other knob in the middle. A start for your own setting." },
             { "Warm Triode", { { "satMode", 0 }, { "satDrive", 0.55f }, { "satBias", 0.35f }, { "satBody", 0.4f }, { "satTone", 0.5f }, { "satMix", 1.0f }, { "satOutput", 0.5f } },
               "A 12AX7 stage pushed gently: rounder, a touch of 2nd harmonic, peaks sag a little." },
             { "Hot Preamp", { { "satMode", 0 }, { "satDrive", 0.85f }, { "satBias", 0.55f }, { "satBody", 0.3f }, { "satTone", 0.62f }, { "satMix", 1.0f }, { "satOutput", 0.45f } },
@@ -90,6 +92,8 @@ inline const std::vector<PedalPreset>& factoryPedalPresets (int pedal)
               "Silicon diodes in the feedback loop: brighter, edgier overdrive." },
         },
         {   // PHASER
+            { "Default", { { "phaMode", 0 }, { "phaRate", 0.3f }, { "phaDepth", 0.7f }, { "phaFeedback", 0.25f }, { "phaCenter", 0.5f }, { "phaStereo", 0.4f }, { "phaMix", 0.5f } },
+              "The pedal as it comes: four stages, a medium sweep, a little colour. A start for your own setting." },
             { "Vintage Swirl", { { "phaMode", 0 }, { "phaRate", 0.3f }, { "phaDepth", 0.8f }, { "phaFeedback", 0.2f }, { "phaCenter", 0.5f }, { "phaStereo", 0.3f }, { "phaMix", 0.5f } },
               "Four JFET stages, a slow round swirl with two notches." },
             { "Orange Slow", { { "phaMode", 0 }, { "phaRate", 0.12f }, { "phaDepth", 0.9f }, { "phaFeedback", 0.1f }, { "phaCenter", 0.5f }, { "phaStereo", 0.2f }, { "phaMix", 0.5f } },
@@ -106,6 +110,8 @@ inline const std::vector<PedalPreset>& factoryPedalPresets (int pedal)
               "A very slow, wide movement for drones and pads." },
         },
         {   // BBD CHORUS
+            { "Default", { { "choMode", 0 }, { "choRate", 0.45f }, { "choDepth", 0.5f }, { "choMix", 0.5f }, { "choWidth", 1.0f }, { "choNoise", 0.2f }, { "choAge", 0.25f } },
+              "The pedal as it comes: mode I, medium rate and depth, full width. A start for your own setting." },
             { "Mode I", { { "choMode", 0 }, { "choRate", 0.4236f }, { "choDepth", 0.6f }, { "choMix", 0.5f }, { "choWidth", 1.0f }, { "choNoise", 0.25f }, { "choAge", 0.3f } },
               "In the manner of the classic polysynth chorus, mode I: ≈0.5 Hz, wide and soft." },
             { "Mode II", { { "choMode", 1 }, { "choRate", 0.519f }, { "choDepth", 0.75f }, { "choMix", 0.5f }, { "choWidth", 1.0f }, { "choNoise", 0.25f }, { "choAge", 0.3f } },
@@ -122,6 +128,8 @@ inline const std::vector<PedalPreset>& factoryPedalPresets (int pedal)
               "A tired unit: dark, hissy, the compander breathing." },
         },
         {   // TAPE ECHO
+            { "Default", { { "tapHeads", 0 }, { "tapSync", 0 }, { "tapTime", 0.45f }, { "tapFeedback", 0.35f }, { "tapMix", 0.35f }, { "tapWow", 0.2f }, { "tapFlutter", 0.2f }, { "tapAge", 0.3f }, { "tapBass", 0.5f }, { "tapTreble", 0.5f } },
+              "The pedal as it comes: head 1, a few repeats, a little wow and flutter. A start for your own setting." },
             { "Slapback", { { "tapHeads", 0 }, { "tapSync", 0 }, { "tapTime", 0.3736f }, { "tapFeedback", 0.12f }, { "tapMix", 0.45f }, { "tapWow", 0.15f }, { "tapFlutter", 0.2f }, { "tapAge", 0.3f }, { "tapBass", 0.5f }, { "tapTreble", 0.55f } },
               "One short repeat, rockabilly style: head 1, almost no feedback." },
             { "Dub Echo", { { "tapHeads", 5 }, { "tapSync", 0 }, { "tapTime", 0.575f }, { "tapFeedback", 0.72f }, { "tapMix", 0.5f }, { "tapWow", 0.3f }, { "tapFlutter", 0.25f }, { "tapAge", 0.45f }, { "tapBass", 0.65f }, { "tapTreble", 0.35f } },

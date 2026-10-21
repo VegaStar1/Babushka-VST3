@@ -15,7 +15,7 @@ class GripHandle : public juce::Component
 {
 public:
     GripHandle() { setMouseCursor (juce::MouseCursor::UpDownResizeCursor); setSize (164, 24); }
-    std::function<void()> onClick, onHover;
+    std::function<void()> onClick, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     std::function<void (float)> onDrag;               // vertical distance from where the drag started (logical px)
     std::function<void()> onDragEnd;
     void setOpen (bool o) { if (o != open) { open = o; repaint(); } }
@@ -64,7 +64,7 @@ public:
         }
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseDown (const juce::MouseEvent&) override { dragging = false; }
     void mouseDrag (const juce::MouseEvent& e) override
     {
@@ -87,7 +87,7 @@ class MidiSocket : public juce::Component
 {
 public:
     MidiSocket() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setSize (58, 58); }
-    std::function<void()> onClick, onHover;
+    std::function<void()> onClick, onHover, onLeave;   // onLeave: the pointer has gone (hides the hint)
     void paint (juce::Graphics& g) override
     {
         const auto c = getLocalBounds().toFloat().getCentre();
@@ -116,7 +116,7 @@ public:
         g.fillRoundedRectangle (c.x - 4.0f, c.y + h * 0.62f, 8.0f, 4.0f, 1.5f);
     }
     void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
-    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); if (onLeave) onLeave(); }
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
     bool hover = false;
@@ -346,20 +346,20 @@ private:
 
             auto plate = [&g] (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title) {
                 drawPlate (g, r, fill, true);
-                label (g, title, juce::Rectangle<float> (r.getWidth() - 12.0f, 19.5f).withCentre ({ r.getCentreX(), r.getY() + 15.0f }), inkOn (fill), 13.0f,
+                label (g, title, juce::Rectangle<float> (r.getWidth() - 12.0f, 19.5f).withCentre ({ r.getCentreX(), r.getY() + 15.0f }), inkOn (fill), type::title,
                        Weight::NarrowBold, juce::Justification::centred, 0.12f);
             };
             // the name under the jack, on two lines when it is long (EURORACK / OUT)
             auto jack = [&g] (juce::Point<float> c, const juce::String& line1, const juce::String& line2, juce::Colour textColour) {
                 drawJack (g, c);
-                label (g, line1, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, 10.0f, Weight::NarrowBold,
+                label (g, line1, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, type::jack, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
                 if (line2.isNotEmpty())
-                    label (g, line2, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 32.0f }), textColour, 10.0f, Weight::NarrowBold,
+                    label (g, line2, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 32.0f }), textColour, type::jack, Weight::NarrowBold,
                            juce::Justification::centred, 0.03f);
             };
             plate ({ 8.0f, 8.0f, 126.0f, 134.0f }, S.panel, "MIDI");
-            label (g, juce::String::fromUTF8 ("MIDI IN · MAP"), juce::Rectangle<float> (110.0f, 14.0f).withCentre ({ 71.0f, 128.0f }), ink, 10.0f, Weight::NarrowBold,
+            label (g, juce::String::fromUTF8 ("MIDI IN · MAP"), juce::Rectangle<float> (110.0f, 14.0f).withCentre ({ 71.0f, 128.0f }), ink, type::jack, Weight::NarrowBold,
                    juce::Justification::centred, 0.05f);
             plate ({ kAudioX, 8.0f, kAudioW, 134.0f }, S.panel, "AUDIO");
             plate ({ kCvX, 8.0f, kCvW, 134.0f }, S.rearCv, "ARP/SEQ CV");
@@ -415,7 +415,7 @@ public:
         g.fillEllipse (c.x - 5.5f, c.y - 5.0f, 11.0f, 11.0f);
         g.setColour (clipHold > 0.0f ? col::ledRed.brighter (0.3f) : col::ledRed.withMultipliedBrightness (0.25f));
         g.fillEllipse (c.x - 4.5f, c.y - 4.5f, 9.0f, 9.0f);
-        label (g, "CLIP", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ c.x, c.y + 16.0f }), col::ink, 10.0f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+        label (g, "CLIP", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ c.x, c.y + 16.0f }), col::ink, type::jack, Weight::NarrowBold, juce::Justification::centred, 0.08f);
     }
 
 private:
@@ -471,7 +471,7 @@ private:
         if (clips != lastClips || peak >= 0.89f) clipHold = 1.2f; else clipHold = juce::jmax (0.0f, clipHold - dt);
         lastClips = clips;
         // backlight: follows the needle, warming up quicker than it cools down, like a filament
-        const float wantedLight = juce::jlimit (0.0f, 1.0f, 0.15f + needle * 1.25f);
+        const float wantedLight = juce::jlimit (0.0f, 1.0f, 0.3f + needle * 1.1f);
         const float newLight = backlight + (wantedLight - backlight) * (wantedLight > backlight ? 0.25f : 0.07f);
         const bool lightChanged = std::abs (newLight - backlight) > 0.002f;
         backlight = newLight;
@@ -538,7 +538,7 @@ private:
                 *im = juce::Image (juce::Image::ARGB, w, h, true);
                 juce::Graphics ig (*im);
                 ig.addTransform (juce::AffineTransform::scale (scale));
-                drawFace (ig, face.withPosition (0.0f, 0.0f), im == &faceLit ? 1.0f : 0.72f);   // at rest: lit, just less
+                drawFace (ig, face.withPosition (0.0f, 0.0f), im == &faceLit ? 1.0f : 0.88f);   // at rest: well lit, just less than with signal
             }
             cachedScale = scale;
         }
