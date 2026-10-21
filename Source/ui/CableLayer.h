@@ -18,7 +18,8 @@
 
 namespace babushka::ui
 {
-struct JackSite { babushka::dsp::Jack id; juce::Point<float> pos; };
+// enabled = false: the jack is out of reach (the rear panel is pushed in); cables stay, new ones can't be plugged.
+struct JackSite { babushka::dsp::Jack id; juce::Point<float> pos; bool enabled = true; };
 
 class CableLayer : public juce::Component, private juce::Timer
 {
@@ -32,7 +33,7 @@ public:
 
     HintSink* hints = nullptr;
 
-    void setJacks (std::vector<JackSite> sites) { jacks = std::move (sites); }
+    void setJacks (std::vector<JackSite> sites) { jacks = std::move (sites); repaint(); }
 
     // Mouse only reaches this layer near a jack (or while a plug is in hand).
     bool hitTest (int x, int y) override
@@ -183,6 +184,7 @@ private:
         int best = -1; float bestD = radius;
         for (size_t i = 0; i < jacks.size(); ++i)
         {
+            if (! jacks[i].enabled) continue;
             const float d = jacks[i].pos.getDistanceFrom (p);
             if (d <= bestD) { bestD = d; best = (int) i; }
         }

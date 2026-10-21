@@ -53,6 +53,10 @@ void BabushkaEditor::buildPanel()
                                           [this] { showPresets (true); },
                                           [this] { showSettings (true); });
     content.addAndMakeVisible (*panel, 0);
+    // the rear panel stays as the user left it (closed the very first time)
+    panel->setRearOpen (uiSettings.getBoolValue ("rearOpen", false), false);
+    panel->onRearToggled = [this] (bool open) { uiSettings.setValue ("rearOpen", open); uiSettings.saveIfNeeded(); };
+    panel->onJacksMoved = [this] (std::vector<JackSite> sites) { cables->setJacks (std::move (sites)); };
     cables->setJacks (panel->jackSites());
 }
 

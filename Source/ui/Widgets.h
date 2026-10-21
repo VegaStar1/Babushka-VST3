@@ -451,8 +451,9 @@ public:
     HintSink* hints = nullptr;
     juce::String title;
 
-    void setValueFromParameter (float v01) { if (! dragging) { value = v01; repaint(); } }
+    void setValueFromParameter (float v01) { if (! dragging && std::abs (v01 - value) > 1.0e-4f) { value = v01; repaint(); } }
     float getValue() const { return value; }
+    bool isBusy() const { return dragging || isTimerRunning(); }      // in the hand, or springing back
 
     void paint (juce::Graphics& g) override
     {

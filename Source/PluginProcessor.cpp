@@ -313,6 +313,7 @@ void BabushkaProcessor::setUiPitchBend (float normalised)
 {
     uiBend.store (juce::jlimit (-1.0f, 1.0f, normalised));
     uiBendDirty.store (true);
+    bendPosition.store (juce::jlimit (-1.0f, 1.0f, normalised));
 }
 
 // TAP: at least three taps in a row set the free tempo (as on the hardware).
@@ -374,17 +375,31 @@ babushka::dsp::Sequence BabushkaProcessor::sequenceFromString (const juce::Strin
     return s;
 }
 
+// Recent samples of the main output, for the VU meter and the oscilloscope on the panel.
+void BabushkaProcessor::meterBlock (const float* x, int n) noexcept
+{
+    int pos = scopePos.load (std::memory_order_relaxed);
+    for (int i = 0; i < n; ++i, ++pos)
+        scope[(size_t) (pos & (kScopeSize - 1))].store (x[i], std::memory_order_relaxed);
+    scopePos.store (pos & 0x3fffffff, std::memory_order_release);
+}
+
 void BabushkaProcessor::handleMidi (const juce::MidiMessage& m)
 {
     if (m.isNoteOn()) { engine.noteOn (m.getNoteNumber(), m.getVelocity()); setHeld (m.getNoteNumber(), true); }
     else if (m.isNoteOff()) { engine.noteOff (m.getNoteNumber()); setHeld (m.getNoteNumber(), false); }
-    else if (m.isPitchWheel()) engine.setPitchBend ((float) (m.getPitchWheelValue() - 8192) / 8192.0f);
+    else if (m.isPitchWheel())
+    {
+        const float bend = juce::jlimit (-1.0f, 1.0f, (float) (m.getPitchWheelValue() - 8192) / 8192.0f);
+        engine.setPitchBend (bend);
+        bendPosition.store (bend);
+    }
     // All Notes Off / All Sound Off are controllers (CC 123 / 120), so they must be tested before the generic CC branch.
     else if (m.isAllNotesOff() || m.isAllSoundOff()) { engine.allNotesOff(); heldBits[0] = 0; heldBits[1] = 0; }
     else if (m.isController())
     {
         const int cc = m.getControllerNumber(), v = m.getControllerValue();
-        if (cc == 1) engine.setModWheelCC ((float) v / 127.0f);
+        if (cc == 1) { engine.setModWheelCC ((float) v / 127.0f); modWheelCC.store ((float) v / 127.0f); }
         else if (cc == 64) engine.setSustain (v >= 64);
     }
 }
@@ -490,6 +505,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     {   // main output (mono voice on every channel of bus 0) and the two optional mono outputs
         auto mainOut = getBusBuffer (buffer, false, 0);
         for (int ch = 0; ch < mainOut.getNumChannels(); ++ch) mainOut.copyFrom (ch, 0, mono.data(), numSamples);
+        meterBlock (mono.data(), numSamples);
         if (euroOn)
         {
             auto b = getBusBuffer (buffer, false, 1);

@@ -9,6 +9,7 @@
 #include "KeyboardWidget.h"
 #include "Widgets.h"
 #include "CableLayer.h"
+#include "RearPanel.h"
 #include "../dsp/ArpSeq.h"
 #include <functional>
 
@@ -159,6 +160,8 @@ public:
                 std::function<void()> openPresets, std::function<void()> openSettings)
         : processor (p), apvts (p.apvts), hints (hintSink), keyboard (p)
     {
+        addAndMakeVisible (frontArt);          // behind every control
+        addChildComponent (rear);
         buildLayout();
         presetPrev.onClick = std::move (prev);
         presetNext.onClick = std::move (next);
@@ -180,14 +183,41 @@ public:
         undoButton.setBounds (746, 963, 70, 32);   redoButton.setBounds (746, 1003, 70, 32);
         presetPrev.setBounds (832, 984, 36, 32);  presetDisplay.setBounds (878, 967, 348, 66);  presetNext.setBounds (1236, 984, 36, 32);
         settingsButton.setBounds (1288, 963, 110, 32);  randomButton.setBounds (1288, 1003, 110, 32);
+        setupGrip();
         setSize (kW, kH);
+        layoutForRear();
         startTimerHz (30);
     }
 
-    std::vector<JackSite> jackSites() const { return jacks; }
+    // Jack positions for the cable layer; they move while the rear panel slides. onJacksMoved reports every change.
+    std::vector<JackSite> jackSites() const
+    {
+        std::vector<JackSite> all;
+        const float r = std::round (rearPx);
+        for (auto j : frontJacks) { j.pos.y += r; all.push_back (j); }
+        const bool reachable = rearPx >= (float) RearPanel::kHeight - 0.5f;
+        for (auto& [id, pos] : RearPanel::jackPositions())
+            all.push_back ({ id, { (float) RearPanel::kX + pos.x, (float) RearPanel::kY + r - (float) RearPanel::kHeight + pos.y }, reachable });
+        return all;
+    }
+    std::function<void (std::vector<JackSite>)> onJacksMoved;
+    std::function<void (bool)> onRearToggled;         // the user opened or closed the rear panel
+
+    bool isRearOpen() const { return rearTarget > 0.5f; }
+    // Opens or closes the rear panel, with the slide animation or at once.
+    void setRearOpen (bool open, bool animate = true)
+    {
+        rearTarget = open ? (float) RearPanel::kHeight : 0.0f;
+        grip.setOpen (open);
+        if (! animate) { anim.stopTimer(); rearPx = rearTarget; layoutForRear(); return; }
+        animFrom = rearPx; animStart = juce::Time::getMillisecondCounterHiRes();
+        anim.startTimerHz (60);
+    }
+
     void paint (juce::Graphics& g) override
     {
-        for (auto& op : drawOps) op (g);
+        for (auto& op : fixedOps) op (g);
+        paintKeysSection (g);
     }
 
 private:
@@ -196,8 +226,32 @@ private:
     BabushkaProcessor& processor;
     juce::AudioProcessorValueTreeState& apvts;
     HintSink& hints;
-    std::vector<std::function<void (juce::Graphics&)>> drawOps;
-    std::vector<JackSite> jacks;
+    // Static artwork is recorded once. Ops of the front panel (modules and title strip) go into a layer that slides
+    // down with the rear panel and is cached as an image; the rest (chassis, bottom strip) stays put.
+    enum class Zone { Fixed, Front, Keys };
+    Zone zone = Zone::Fixed;
+    struct ArtLayer : public juce::Component
+    {
+        ArtLayer() { setInterceptsMouseClicks (false, false); setBufferedToImage (true); }
+        std::vector<std::function<void (juce::Graphics&)>> ops;
+        void paint (juce::Graphics& g) override { g.addTransform (juce::AffineTransform::translation (0.0f, -(float) kFrontTop)); for (auto& o : ops) o (g); }
+    } frontArt;
+    static constexpr int kFrontTop = 56, kFrontBottom = 532;          // the front panel's rows, closed position
+    std::vector<std::function<void (juce::Graphics&)>> fixedOps;
+    std::vector<JackSite> frontJacks;
+    std::vector<std::pair<juce::Component*, juce::Rectangle<int>>> frontComps;   // controls of the front panel, closed position
+    RearPanel rear;
+    GripHandle grip;
+    std::unique_ptr<OutputMeters> meters;
+    Knob* glideKnob = nullptr;
+    float rearPx = 0.0f, rearTarget = 0.0f, animFrom = 0.0f;
+    double animStart = 0.0;
+    float gripDragStart = 0.0f;
+    int knownPatchVersion = -1;
+    struct AnimTimer : public juce::Timer { std::function<void()> tick; void timerCallback() override { tick(); } } anim;
+    // Left-hand controller and keyboard: positions for the current opening of the rear panel.
+    struct KeysLayout { float top = 552, height = 376, labelsY = 573, padY = 610, glideY = 606, glideLabelY = 640, pillY = 645, subY = 663,
+                        wheelTop = 680, wheelBottom = 876, wheelPillY = 901; } kl;
     std::vector<std::unique_ptr<Knob>> knobs;
     std::vector<std::unique_ptr<LeverSwitch>> levers;
     std::vector<std::unique_ptr<Pad>> pads;
@@ -217,21 +271,31 @@ private:
     float modPhase = 0.0f, arpPhase = 0.0f;
 
     // ---- recording of static artwork -------------------------------------------------------------------------------------
-    void op (std::function<void (juce::Graphics&)> f) { drawOps.push_back (std::move (f)); }
+    void op (std::function<void (juce::Graphics&)> f) { (zone == Zone::Front ? frontArt.ops : fixedOps).push_back (std::move (f)); }
+    // A control of the front panel moves with it when the rear panel opens.
+    void placed (juce::Component& c) { if (zone == Zone::Front) frontComps.push_back ({ &c, c.getBounds() }); }
 
-    void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = 11.0f, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
+    static void drawText (juce::Graphics& g, const juce::String& t, float x, float y, juce::Colour c, float size = 11.0f, Weight w = Weight::NarrowBold,
+                          float width = 120.0f, float kern = 0.06f)
     {
-        op ([=] (juce::Graphics& g) { label (g, t, juce::Rectangle<float> (width, size * 1.5f).withCentre ({ x, y }), c, size, w, juce::Justification::centred, kern); });
+        label (g, t, juce::Rectangle<float> (width, size * 1.5f).withCentre ({ x, y }), c, size, w, juce::Justification::centred, kern);
     }
     // Label in a box: filled with the skin's colour, or just outlined in the plate's ink when the skin has no fill.
+    static void drawPill (juce::Graphics& g, const juce::String& t, float x, float y, float w, juce::Colour fill, juce::Colour plateInk)
+    {
+        const auto r = juce::Rectangle<float> (w, 17.0f).withCentre ({ x, y });
+        const bool outlined = fill.getAlpha() == 0;
+        if (outlined) { g.setColour (plateInk.withAlpha (0.9f)); g.drawRoundedRectangle (r, 2.5f, 1.1f); }
+        else { g.setColour (fill); g.fillRoundedRectangle (r, 2.5f); }
+        label (g, t, r.reduced (3.0f, 0.0f), outlined ? plateInk : inkOn (fill), 10.5f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+    }
+    void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = 11.0f, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
+    {
+        op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, size, w, width, kern); });
+    }
     void pill (const juce::String& t, float x, float y, float w, juce::Colour fill, juce::Colour plateInk)
     {
-        op ([=] (juce::Graphics& g) {
-            const auto r = juce::Rectangle<float> (w, 17.0f).withCentre ({ x, y });
-            const bool outlined = fill.getAlpha() == 0;
-            if (outlined) { g.setColour (plateInk.withAlpha (0.9f)); g.drawRoundedRectangle (r, 2.5f, 1.1f); }
-            else { g.setColour (fill); g.fillRoundedRectangle (r, 2.5f); }
-            label (g, t, r.reduced (3.0f, 0.0f), outlined ? plateInk : inkOn (fill), 10.5f, Weight::NarrowBold, juce::Justification::centred, 0.08f); });
+        op ([=] (juce::Graphics& g) { drawPill (g, t, x, y, w, fill, plateInk); });
     }
     void module (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title, bool outlined = true)
     {
@@ -240,7 +304,7 @@ private:
     }
     void jack (Jack id, float x, float y, const juce::String& text, juce::Colour textColour)
     {
-        jacks.push_back ({ id, { x, y } });
+        frontJacks.push_back ({ id, { x, y } });
         op ([=] (juce::Graphics& g) { drawJack (g, { x, y }); });
         if (text.isNotEmpty()) textAt (text, x, y + 20.0f, textColour, 10.0f, Weight::NarrowBold, 58.0f, 0.03f);
     }
@@ -250,6 +314,7 @@ private:
         k->hints = &hints;
         k->setCentrePosition ((int) std::lround (cx), (int) std::lround (cy));
         addAndMakeVisible (*k);
+        placed (*k);
         knobs.push_back (std::move (k));
         return knobs.back().get();
     }
@@ -259,6 +324,7 @@ private:
         l->hints = &hints;
         l->setCentrePosition ((int) std::lround (cx), (int) std::lround (cy));
         addAndMakeVisible (*l);
+        placed (*l);
         levers.push_back (std::move (l));
         return levers.back().get();
     }
@@ -337,7 +403,7 @@ private:
         using namespace babushka::dsp;
         const auto& S = skin();
         const auto ink = inkOn (S.panel);
-        const auto arpInk = inkOn (S.arp), oscInk = inkOn (S.osc), filInk = inkOn (S.filter), revInk = inkOn (S.reverb), cvInk = inkOn (S.rearCv);
+        const auto arpInk = inkOn (S.arp), oscInk = inkOn (S.osc), filInk = inkOn (S.filter), revInk = inkOn (S.reverb);
 
         // chassis
         op ([c = S.chassis] (juce::Graphics& g) {
@@ -352,6 +418,7 @@ private:
             g.drawRoundedRectangle (r.reduced (0.7f), 20.0f, 1.2f); });
 
         // ---------------- ARP / SEQ ----------------
+        zone = Zone::Front;
         module ({ 78, 56, 107, 400 }, S.arp, "ARP/SEQ");
         jack (Jack::GateOut, 128, 97, "GATE OUT", arpInk); jack (Jack::KbOut, 101, 137, "KB OUT", arpInk); jack (Jack::KbVelOut, 157, 137, "KB VEL OUT", arpInk);
         ticks (127, 210, 52, 11, arpInk);
@@ -476,6 +543,7 @@ private:
         sustain->hints = &hints;
         sustain->setCentrePosition (1246, 318);
         addAndMakeVisible (*sustain);
+        placed (*sustain);
         textAt ("SUSTAIN", 1246, 441, ink, 11.5f, Weight::NarrowBold, 70.0f);
 
         // ---------------- OUTPUT + SPRING REVERB ----------------
@@ -493,62 +561,140 @@ private:
         // ---------------- title strip ----------------
         op ([strip = S.strip] (juce::Graphics& g) { drawTitleStrip (g, juce::Rectangle<float> (78.0f, 466.0f, 1340.0f, 62.0f), strip); });
 
-        // ---------------- left-hand controller ----------------
-        op ([] (juce::Graphics& g) {
-            const juce::Rectangle<float> r (66.0f, 556.0f, 232.0f, 372.0f);
-            g.setColour (juce::Colour (0xff0c0c0c));
-            g.fillRoundedRectangle (r, 6.0f);
-            grain (g, r, 0.8f);
-            g.setColour (juce::Colours::white.withAlpha (0.10f));
-            g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f); });
-        const auto lhInk = col::ink;
-        ticks (101, 606, 40, 11, lhInk);
-        knob ("glide", 101, 606, 40, [] (double v) { return fmt::glide (v); });
-        textAt ("GLIDE", 101, 640, lhInk, 11.0f, Weight::NarrowBold, 60.0f);
-        const float padY = 610;
-        playPad = addPad (S.play, 162, padY, 40);
-        holdPad = addPad (S.hold, 207, padY, 40);
-        tapPad  = addPad (S.tap, 252, padY, 40);
-        textAt ("[< KB]", 162, 573, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f); textAt ("[SHIFT]", 207, 573, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        textAt ("[KB >]", 252, 573, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
-        pill ("PLAY", 162, 645, 42, S.pillArp, lhInk); pill ("HOLD", 207, 645, 42, S.pillArp, lhInk); pill ("TAP", 252, 645, 42, S.pillArp, lhInk);
-        textAt ("(TIE)", 162, 663, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f); textAt ("(REST)", 207, 663, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
-        textAt ("(ACCENT)", 252, 663, lhInk, 9.0f, Weight::NarrowSemi, 46.0f, 0.02f);
+        // ---------------- left-hand controller and keyboard (laid out by layoutKeys, drawn by paintKeysSection) ----------
+        zone = Zone::Keys;
+        glideKnob = knob ("glide", 101, 606, 40, [] (double v) { return fmt::glide (v); });
+        playPad = addPad (S.play, 162, 610, 40);
+        holdPad = addPad (S.hold, 207, 610, 40);
+        tapPad  = addPad (S.tap, 252, 610, 40);
         setupPads();
         pitchWheel = std::make_unique<Wheel> (true, 196.0f, S.wheel);
         pitchWheel->title = "Pitch";
         pitchWheel->hints = &hints;
         pitchWheel->onChange = [this] (float v) { processor.setUiPitchBend ((v - 0.5f) * 2.0f); };
-        pitchWheel->setCentrePosition (134, 778);
         addAndMakeVisible (*pitchWheel);
         modWheel = std::make_unique<Wheel> (false, 196.0f, S.wheel);
         modWheel->title = "Mod wheel";
         modWheel->hints = &hints;
         modLink = std::make_unique<ParamLink> (apvts, "modWheel", [this] (float v) { if (modWheel) modWheel->setValueFromParameter (v); });
         modWheel->onChange = [this] (float v) { modLink->setComplete (v); };
-        modWheel->setCentrePosition (226, 778);
         addAndMakeVisible (*modWheel);
-        pill ("PITCH", 134, 901, 52, S.pillWheel, lhInk); pill ("MOD", 226, 901, 52, S.pillWheel, lhInk);
-
-        // ---------------- keyboard ----------------
-        op ([] (juce::Graphics& g) {
-            const juce::Rectangle<float> r (298.0f, 552.0f, 1124.0f, 376.0f);
-            g.setColour (juce::Colours::black);
-            g.fillRoundedRectangle (r, 3.0f); });
-        keyboard.setBounds (302, 556, 1116, 366);
         addAndMakeVisible (keyboard);
 
-        // ---------------- rear strip ----------------
+        // ---------------- bottom strip: fine tune, output meters, presets ----------------
+        zone = Zone::Fixed;
         module ({ 78, 944, 120, 100 }, S.panel, "");
         ticks (138, 984, 36, 11, ink); knob ("fineTune", 138, 984, 36, [] (double v) { return fmt::semitones (v * 100.0).replace (" st", " ct"); });
         textAt ("FINE TUNE", 138, 1022, ink, 11.0f, Weight::NarrowBold, 90.0f);
-        module ({ 214, 944, 190, 100 }, S.panel, "AUDIO");
-        jack (Jack::EuroOut, 275, 990, "EURORACK OUT", ink); jack (Jack::ReverbOut, 343, 990, "REVERB OUT", ink);
-        module ({ 420, 944, 290, 100 }, S.rearCv, "ARP/SEQ CV");
-        jack (Jack::ClockIn, 462, 990, "CLOCK IN", cvInk); jack (Jack::OnOffIn, 531, 990, "ON / OFF IN", cvInk);
-        jack (Jack::ResetIn, 600, 990, "RESET IN", cvInk); jack (Jack::ClockOut, 669, 990, "CLOCK OUT", cvInk);
+        module ({ 214, 944, 496, 100 }, S.panel, "");
+        meters = std::make_unique<OutputMeters> (processor);
+        meters->setBounds (222, 952, 480, 84);
+        addAndMakeVisible (*meters);
         module ({ 726, 944, 692, 100 }, S.panel, "");
         textAt ("PRESET", 1052, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
+    }
+
+    // The left-hand controller and the keyboard bed for the current layout (they change height with the rear panel).
+    void paintKeysSection (juce::Graphics& g) const
+    {
+        const auto& S = skin();
+        const auto lhInk = col::ink;
+        {
+            const juce::Rectangle<float> r (66.0f, kl.top + 4.0f, 232.0f, kl.height - 4.0f);
+            g.setColour (juce::Colour (0xff0c0c0c));
+            g.fillRoundedRectangle (r, 6.0f);
+            grain (g, r, 0.8f);
+            g.setColour (juce::Colours::white.withAlpha (0.10f));
+            g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
+        }
+        drawKnobTicks (g, { 101.0f, kl.glideY }, 40.0f, 11, lhInk, 0.1f);
+        drawText (g, "GLIDE", 101, kl.glideLabelY, lhInk, 11.0f, Weight::NarrowBold, 60.0f);
+        drawText (g, "[< KB]", 162, kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "[SHIFT]", 207, kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawText (g, "[KB >]", 252, kl.labelsY, lhInk, 9.5f, Weight::NarrowBold, 44.0f, 0.02f);
+        drawPill (g, "PLAY", 162, kl.pillY, 42, S.pillArp, lhInk); drawPill (g, "HOLD", 207, kl.pillY, 42, S.pillArp, lhInk);
+        drawPill (g, "TAP", 252, kl.pillY, 42, S.pillArp, lhInk);
+        drawText (g, "(TIE)", 162, kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
+        drawText (g, "(REST)", 207, kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 44.0f, 0.02f);
+        drawText (g, "(ACCENT)", 252, kl.subY, lhInk, 9.0f, Weight::NarrowSemi, 46.0f, 0.02f);
+        drawPill (g, "PITCH", 134, kl.wheelPillY, 52, S.pillWheel, lhInk); drawPill (g, "MOD", 226, kl.wheelPillY, 52, S.pillWheel, lhInk);
+        g.setColour (juce::Colours::black);
+        g.fillRoundedRectangle (juce::Rectangle<float> (298.0f, kl.top, 1124.0f, kl.height), 3.0f);
+    }
+
+    // ---- rear panel: positions of everything for the current opening ---------------------------------------------------
+    // rearPx = 0 (closed) … RearPanel::kHeight (open). The front panel moves down by rearPx; the keyboard section keeps
+    // its bottom edge and gets shorter, its left-hand controller packs tighter (closed and open layouts, blended).
+    void layoutForRear()
+    {
+        const int r = (int) std::lround (rearPx);
+        const float t = juce::jlimit (0.0f, 1.0f, (float) r / (float) RearPanel::kHeight);
+        rear.setBounds (RearPanel::kX, RearPanel::kY, RearPanel::kWidth, r);
+        rear.setVisible (r > 0);
+        frontArt.setBounds (0, kFrontTop + r, kW, kFrontBottom - kFrontTop);
+        for (auto& [c, b] : frontComps) c->setBounds (b.translated (0, r));
+
+        auto mix = [t] (float closed, float open) { return closed + (open - closed) * t; };
+        kl.top = 552.0f + (float) r;
+        kl.height = 376.0f - (float) r;
+        kl.labelsY = kl.top + mix (21, 14);    kl.padY = kl.top + mix (58, 44);
+        kl.glideY = kl.top + mix (54, 42);     kl.glideLabelY = kl.top + mix (88, 74);
+        kl.pillY = kl.top + mix (93, 76);      kl.subY = kl.top + mix (111, 91);
+        kl.wheelTop = kl.top + mix (128, 104); kl.wheelBottom = kl.top + kl.height - mix (52, 30);
+        kl.wheelPillY = kl.top + kl.height - mix (27, 14);
+        glideKnob->setCentrePosition (101, (int) std::lround (kl.glideY));
+        playPad->setCentrePosition (162, (int) std::lround (kl.padY));
+        holdPad->setCentrePosition (207, (int) std::lround (kl.padY));
+        tapPad->setCentrePosition (252, (int) std::lround (kl.padY));
+        const int wheelH = (int) std::lround (kl.wheelBottom - kl.wheelTop);
+        pitchWheel->setBounds (134 - 31, (int) std::lround (kl.wheelTop), 62, wheelH);
+        modWheel->setBounds (226 - 31, (int) std::lround (kl.wheelTop), 62, wheelH);
+        keyboard.setBounds (302, (int) std::lround (kl.top) + 4, 1116, (int) std::lround (kl.height) - 10);
+        repaint();
+        if (onJacksMoved) onJacksMoved (jackSites());
+    }
+
+    bool rearCablesPlugged() const
+    {
+        const auto patch = processor.getPatchCopy();
+        for (int i = 0; i < patch.count; ++i)
+            for (auto& [id, pos] : RearPanel::jackPositions())
+                if (patch.cables[(size_t) i].a == id || patch.cables[(size_t) i].b == id) return true;
+        return false;
+    }
+
+    void toggleRear()
+    {
+        if (isRearOpen() && rearCablesPlugged()) { hints.showHint (grip, "Unplug the cables from the rear jacks first"); return; }
+        setRearOpen (! isRearOpen());
+        if (onRearToggled) onRearToggled (isRearOpen());
+    }
+
+    void setupGrip()
+    {
+        grip.setTopLeftPosition (kW / 2 - grip.getWidth() / 2, 30);
+        addAndMakeVisible (grip);
+        grip.onClick = [this] { toggleRear(); };
+        grip.onHover = [this] { hints.showHint (grip, isRearOpen() ? "Push the rear panel back" : "Pull out the rear panel"); };
+        grip.onDrag = [this] (float dy) {
+            if (gripDragStart < 0.0f) gripDragStart = rearPx;
+            anim.stopTimer();
+            const bool locked = rearCablesPlugged() && isRearOpen();
+            rearPx = juce::jlimit (locked ? (float) RearPanel::kHeight : 0.0f, (float) RearPanel::kHeight, gripDragStart + dy);
+            layoutForRear(); };
+        grip.onDragEnd = [this] {
+            gripDragStart = -1.0f;
+            const bool wasOpen = isRearOpen();
+            setRearOpen (rearPx > (float) RearPanel::kHeight * 0.5f);
+            if (wasOpen != isRearOpen() && onRearToggled) onRearToggled (isRearOpen()); };
+        gripDragStart = -1.0f;
+        anim.tick = [this] {
+            const double elapsed = (juce::Time::getMillisecondCounterHiRes() - animStart) / 280.0;      // 0.28 s
+            const float e = (float) juce::jlimit (0.0, 1.0, elapsed);
+            const float eased = 1.0f - std::pow (1.0f - e, 3.0f);                                     // ease-out
+            rearPx = animFrom + (rearTarget - animFrom) * eased;
+            if (e >= 1.0f) { rearPx = rearTarget; anim.stopTimer(); }
+            layoutForRear(); };
     }
 
     // Logotype in the manner of the hardware: the first half of the name solid, the second half in outline; then
@@ -642,6 +788,7 @@ private:
         auto l = std::make_unique<Lamp> (c, 7.0f);
         l->setCentrePosition ((int) x, (int) y);
         addAndMakeVisible (*l);
+        placed (*l);
         lamps.push_back (std::move (l));
         return lamps.back().get();
     }
@@ -650,6 +797,7 @@ private:
         auto p = std::make_unique<Pad> (c, size);
         p->setCentrePosition ((int) x, (int) y);
         addAndMakeVisible (*p);
+        placed (*p);
         pads.push_back (std::move (p));
         return pads.back().get();
     }
@@ -705,6 +853,15 @@ private:
         presetDisplay.setBadge (processor.isRandomSound() ? "NOT SAVED" : processor.isSoundModified() ? "EDITED" : "");
         undoButton.setEnabled (processor.canUndo());
         redoButton.setEnabled (processor.canRedo());
+        // the wheels show where pitch bend and modulation are, also when they come from a MIDI keyboard
+        if (! pitchWheel->isBusy()) pitchWheel->setValueFromParameter (0.5f + 0.5f * processor.getPitchBendPosition());
+        if (! modWheel->isBusy()) modWheel->setValueFromParameter (juce::jmax (modLink->get(), processor.getModWheelCC()));
+        // a preset with cables in the rear jacks pulls the rear panel out
+        if (const int v = processor.getPatchVersion(); v != knownPatchVersion)
+        {
+            knownPatchVersion = v;
+            if (! isRearOpen() && rearCablesPlugged()) { setRearOpen (true); if (onRearToggled) onRearToggled (true); }
+        }
     }
 
     // Right click on RANDOMIZE: which kind of sound it makes (remembered while the plugin is open).

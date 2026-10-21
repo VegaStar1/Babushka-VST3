@@ -23,6 +23,25 @@ struct Runner : private juce::Timer
     Runner (BabushkaProcessor& p, BabushkaEditor& e, juce::File o) : proc (p), ed (e), out (o) { startTimer (100); }
     BabushkaProcessor& proc; BabushkaEditor& ed; juce::File out; int tick = 0;
 
+    void midiWheels (int bend, int mod)
+    {
+        juce::AudioBuffer<float> buf (2, 256);
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::pitchWheel (1, bend), 0);
+        midi.addEvent (juce::MidiMessage::controllerEvent (1, 1, mod), 0);
+        proc.processBlock (buf, midi);
+    }
+    // ~100 ms of audio with a held note, so the VU meter and the scope have something to show
+    void play (int note)
+    {
+        juce::AudioBuffer<float> buf (2, 480);
+        for (int i = 0; i < 10; ++i)
+        {
+            juce::MidiBuffer midi;
+            if (i == 0) midi.addEvent (juce::MidiMessage::noteOn (1, note, (juce::uint8) 100), 0);
+            proc.processBlock (buf, midi);
+        }
+    }
     void load (const char* name) { for (auto& r : proc.listPresets()) if (r.name == name) proc.loadPreset (r); }
 
     void timerCallback() override
@@ -65,13 +84,25 @@ struct Runner : private juce::Timer
         // RANDOMIZE: the display shows the new, unsaved sound
         if (tick == 152) { const bool ok = proc.randomize (777); std::printf ("randomize: %s -> '%s'\n", ok ? "ok" : "FAILED", proc.getCurrentPresetName().toRawUTF8()); }
         if (tick == 156) save (ed, out.getChildFile ("ui_random.png"));
+        // rear panel: half way (no animation), then fully out with a cable into a rear jack
+        if (tick == 157) ed.synthPanel().setRearOpen (false, false);
+        if (tick == 158) { ed.synthPanel().setRearOpen (true, true); }
+        if (tick == 159) { save (ed, out.getChildFile ("ui_rear_sliding.png")); }
         // the other skin, with a few cables, then a small window (legibility of the print)
-        if (tick == 160) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
+        if (tick == 166) { std::printf ("rear open: %s\n", ed.synthPanel().isRearOpen() ? "yes" : "no");
+                           cl.pressAt (cl.jackCentre (J::ClockOut), false); cl.dragTo (cl.jackCentre (J::EnvTriggerIn)); cl.releaseAt (cl.jackCentre (J::EnvTriggerIn));
+                           std::printf ("cable into CLOCK OUT: %d (expect 1)\n", proc.getPatchCopy().count); }
+        if (tick == 170) load ("Two Saws");
+        if (tick > 170 && tick <= 180) play (48);
+        if (tick == 181) save (ed, out.getChildFile ("ui_rear_open.png"));
+        if (tick == 182) { proc.clearCables(); ed.synthPanel().setRearOpen (false, false); }
+        if (tick == 183) { skinBefore = babushka::ui::skinIndex(); ed.setSkin (1); load ("Random Notes");
                            for (auto* id : { "osc2Sync", "arpHold" }) proc.apvts.getParameter (id)->setValueNotifyingHost (1.0f); }
-        if (tick == 190) save (ed, out.getChildFile ("ui_black.png"));
-        if (tick == 191) ed.setSize (900, 651);
-        if (tick == 194) save (ed, out.getChildFile ("ui_small_black.png"));
-        if (tick == 195) { ed.setSkin (0); }
+        if (tick == 186) midiWheels (8191 + 6000, 100);      // a MIDI keyboard's wheels: the panel's wheels must follow
+        if (tick == 192) { save (ed, out.getChildFile ("ui_black.png")); midiWheels (8192, 0); }
+        if (tick == 193) ed.setSize (900, 651);
+        if (tick == 195) save (ed, out.getChildFile ("ui_small_black.png"));
+        if (tick == 196) { ed.setSkin (0); }
         if (tick == 198) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1500, 1085); ed.setSkin (skinBefore); }
         if (tick == 200) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }

@@ -55,6 +55,16 @@ public:
     void setUiPitchBend (float normalised);                 // −1 … +1
     bool isNoteHeld (int note) const noexcept { return note >= 0 && note < 128 && ((heldBits[note >> 6].load() >> (note & 63)) & 1ull) != 0; }
     int getPatchVersion() const noexcept { return patchVersion.load(); }   // changes whenever the cables change
+    // Where the wheels are, whatever moved them (MIDI or the screen), so the panel can follow.
+    float getPitchBendPosition() const noexcept { return bendPosition.load(); }    // −1 … +1
+    float getModWheelCC() const noexcept { return modWheelCC.load(); }              // 0 … 1, CC 1 from MIDI
+
+    // Output meters (audio thread → editor): the most recent samples of the main output, a ring of kScopeSize samples
+    // (scopeWritePosition() is where the next one goes). The VU meter and the oscilloscope both read it.
+    static constexpr int kScopeSize = 8192;
+    int scopeWritePosition() const noexcept { return scopePos.load (std::memory_order_acquire); }
+    float scopeSample (int index) const noexcept { return scope[(size_t) (index & (kScopeSize - 1))].load (std::memory_order_relaxed); }
+    double getSampleRateForDisplay() const noexcept { return currentSampleRate; }
     void tapTempo();                                       // TAP button: three taps in a row set the free tempo
 
     // ---- Presets (message thread; PresetLibrary.cpp) -------------------------------------------------------
@@ -137,6 +147,9 @@ private:
     std::atomic<float> uiBend { 0.0f };
     std::atomic<bool> uiBendDirty { false };
     std::atomic<uint64_t> heldBits[2] { 0, 0 };
+    std::atomic<float> bendPosition { 0.0f }, modWheelCC { 0.0f };
+    std::array<std::atomic<float>, kScopeSize> scope {};
+    std::atomic<int> scopePos { 0 };
     std::atomic<int> patchVersion { 0 };
     juce::Array<double> tapTimes;
     void setHeld (int note, bool on) noexcept
@@ -177,6 +190,7 @@ private:
     static babushka::dsp::ArpSeqParams arpParamsFromState (const std::function<float (const char*)>& value);
     void setSequences (const std::array<babushka::dsp::Sequence, 3>&);
     void handleMidi (const juce::MidiMessage& m);
+    void meterBlock (const float* x, int n) noexcept;
     babushka::dsp::Params readParams() const;
     babushka::dsp::ArpSeqParams readArpParams() const;
     static juce::String sequenceToString (const babushka::dsp::Sequence&);
