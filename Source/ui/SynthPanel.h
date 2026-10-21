@@ -551,8 +551,11 @@ private:
         textAt ("PRESET", 1052, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
     }
 
-    // Logotype in the manner of the hardware: the first half of the name solid, the second half in outline;
-    // the maker's mark on the right.
+    // Logotype in the manner of the hardware: the first half of the name solid, the second half in outline; then
+    // SEMI-MODULAR / ANALOG SYNTHESIZER on two lines; the maker's mark on the right. The three share one band: the
+    // capitals of the name, the two lines of print and the mark all run from its top to its bottom, the band is centred
+    // in the strip and the margins left of the name and right of the mark are equal. Sizes come from the outlines of
+    // the letters, not from font metrics, so the edges line up exactly.
     static void drawTitleStrip (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour fill)
     {
         const auto print = inkOn (fill);
@@ -565,31 +568,62 @@ private:
         grain (g, r, 0.8f);
         if (dark) { g.setColour (col::outline.withAlpha (0.78f)); g.drawRoundedRectangle (r.reduced (4.5f), 2.0f, 1.0f); }
 
-        auto wordPath = [] (const juce::String& text, float x, float baseline) {
+        const auto band = r.reduced (0.0f, 13.0f);          // 36 px tall, centred
+        const float margin = 26.0f;
+
+        // Outline of a line of text at the origin (baseline y = 0).
+        auto textPath = [] (const juce::String& text, Weight w, float size, float kerning) {
             juce::GlyphArrangement ga;
-            ga.addLineOfText (font (Weight::Bold, 47.0f, 0.02f), text, 0.0f, 0.0f);
+            ga.addLineOfText (font (w, size, kerning), text, 0.0f, 0.0f);
             juce::Path p; ga.createPath (p);
-            const float width = ga.getBoundingBox (0, -1, true).getRight();
-            p.applyTransform (juce::AffineTransform::scale (1.14f, 1.0f).translated (x, baseline));
-            return std::make_pair (p, width * 1.14f);
+            return p;
         };
-        const float baseline = r.getY() + 48.0f;
-        auto [solid, w1] = wordPath ("BABU", r.getX() + 22.0f, baseline);
-        auto [hollow, w2] = wordPath ("SHKA", r.getX() + 22.0f + w1 + 3.0f, baseline);
+        // Bounds of the drawn outline (Path::getBounds includes the curves' control points, which stick out).
+        auto tight = [] (const juce::Path& p) {
+            float x0 = 1.0e9f, y0 = 1.0e9f, x1 = -1.0e9f, y1 = -1.0e9f;
+            for (juce::PathFlatteningIterator it (p, {}, 0.05f); it.next();)
+            {
+                x0 = juce::jmin (x0, it.x1, it.x2); x1 = juce::jmax (x1, it.x1, it.x2);
+                y0 = juce::jmin (y0, it.y1, it.y2); y1 = juce::jmax (y1, it.y1, it.y2);
+            }
+            return juce::Rectangle<float>::leftTopRightBottom (x0, y0, x1, y1);
+        };
+        // Scales and moves a path so its outline spans [top, top + height] and starts at x.
+        auto place = [] (juce::Path& p, const juce::Rectangle<float>& bounds, float x, float top, float height, float stretch) {
+            const float k = height / bounds.getHeight();
+            p.applyTransform (juce::AffineTransform::translation (-bounds.getX(), -bounds.getY()).scaled (k * stretch, k).translated (x, top));
+            return bounds.getWidth() * k * stretch;
+        };
+
+        // BABUSHKA: both halves measured together so they share one scale and baseline.
+        auto solid = textPath ("BABU", Weight::Bold, 47.0f, 0.02f), hollow = textPath ("SHKA", Weight::Bold, 47.0f, 0.02f);
+        const float gapHalves = 3.0f / 1.14f;
+        hollow.applyTransform (juce::AffineTransform::translation (solid.getBounds().getRight() + gapHalves, 0.0f));
+        auto both = solid; both.addPath (hollow);
+        const auto nameBounds = tight (both);
+        const float nameW = place (solid, nameBounds, band.getX() + margin, band.getY(), band.getHeight(), 1.14f);
+        place (hollow, nameBounds, band.getX() + margin, band.getY(), band.getHeight(), 1.14f);
         g.setColour (print);
         g.fillPath (solid);
         g.strokePath (hollow, juce::PathStrokeType (1.7f, juce::PathStrokeType::mitered));
-        const float textX = r.getX() + 22.0f + w1 + 3.0f + w2 + 26.0f;
-        label (g, "SEMI-MODULAR", { textX, r.getY() + 13.0f, 320.0f, 19.0f }, print, 17.0f, Weight::Bold, juce::Justification::centredLeft, 0.04f);
-        label (g, "ANALOG SYNTHESIZER", { textX, r.getY() + 31.0f, 340.0f, 19.0f }, print, 17.0f, Weight::Bold, juce::Justification::centredLeft, 0.04f);
-        // NUWMUN mark (vector, traced from the logo artwork)
+
+        // Two lines of print: the first starts at the top of the band, the second ends at its bottom.
+        const float capH = band.getHeight() / 2.6f, textX = band.getX() + margin + nameW + 24.0f;
+        auto line1 = textPath ("SEMI-MODULAR", Weight::Bold, 17.0f, 0.04f), line2 = textPath ("ANALOG SYNTHESIZER", Weight::Bold, 17.0f, 0.04f);
+        // capitals of the font (a flat-topped letter) set the scale for both lines; round letters may overshoot a little
+        const auto capRef = tight (textPath ("H", Weight::Bold, 17.0f, 0.04f));
+        const float k = capH / capRef.getHeight();
+        line1.applyTransform (juce::AffineTransform::scale (k).translated (textX, band.getY() - capRef.getY() * k));
+        line2.applyTransform (juce::AffineTransform::scale (k).translated (textX, band.getBottom() - capH - capRef.getY() * k));
+        g.fillPath (line1);
+        g.fillPath (line2);
+
+        // NUWMUN mark (vector, from the logo artwork), as tall as the band, the same margin from the right edge.
         const auto& logo = nuwmunLogo();
-        const auto lb = logo.getBounds();
-        const float inset = dark ? 9.5f : 5.0f;            // inside the printed frame on the dark strip
-        const float h = r.getHeight() - 2.0f * inset, w = h * lb.getWidth() / lb.getHeight();
-        const juce::Rectangle<float> dest (r.getRight() - 24.0f - w, r.getY() + inset, w, h);
-        g.setColour (print);
-        g.fillPath (logo, juce::RectanglePlacement (juce::RectanglePlacement::centred).getTransformToFit (lb, dest));
+        static const auto lb = tight (logo);
+        const float w = band.getHeight() * lb.getWidth() / lb.getHeight();
+        const juce::Rectangle<float> dest (band.getRight() - margin - w, band.getY(), w, band.getHeight());
+        g.fillPath (logo, juce::RectanglePlacement (juce::RectanglePlacement::stretchToFit).getTransformToFit (lb, dest));
     }
 
     static const juce::Path& nuwmunLogo()

@@ -1,5 +1,7 @@
 // Renders the editor to PNG files so the look of the interface can be checked without a host.
 //   babushka_uishot <outdir>
+//   babushka_uishot --icons <dir>     renders the Standalone app icons (app_icon_big.png 1024 px, app_icon_small.png
+//                                     512 px with thicker strokes for 16-32 px use) from Source/ui/art/nuwmun_logo.svg
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../../Source/PluginProcessor.h"
 #include "../../Source/PluginEditor.h"
@@ -77,9 +79,55 @@ struct Runner : private juce::Timer
 };
 }
 
+// App icon: the NUWMUN logo in amber-yellow with a soft glow on a dark tile, as wide as most of the tile.
+juce::Image renderIcon (int size, float thicken)
+{
+    const juce::String svg (BinaryData::nuwmun_logo_svg, (size_t) BinaryData::nuwmun_logo_svgSize);
+    auto logo = juce::Drawable::parseSVGPath (svg.fromFirstOccurrenceOf (" d=\"", false, false).upToFirstOccurrenceOf ("\"", false, false));
+    logo.setUsingNonZeroWinding (false);
+    juce::Image img (juce::Image::ARGB, size, size, true);
+    juce::Graphics g (img);
+    const float s = (float) size;
+    juce::ColourGradient bg (juce::Colour (0xff292826), s * 0.5f, s * 0.42f, juce::Colour (0xff0d0d0c), 0.0f, 0.0f, true);
+    g.setGradientFill (bg);
+    g.fillAll();
+    juce::Random rnd (7);
+    for (int i = 0; i < size * size / 40; ++i)               // faint grain, as on the panel
+    {
+        g.setColour (juce::Colours::white.withAlpha (0.012f + 0.02f * rnd.nextFloat()));
+        g.fillRect ((float) rnd.nextInt (size), (float) rnd.nextInt (size), 1.0f, 1.0f);
+    }
+    const auto lb = logo.getBounds();
+    const float w = s * 0.84f, h = w * lb.getHeight() / lb.getWidth();
+    logo.applyTransform (juce::RectanglePlacement (juce::RectanglePlacement::centred).getTransformToFit (lb, { (s - w) * 0.5f, (s - h) * 0.5f, w, h }));
+    const juce::Colour yellow (0xffffe614);
+    for (int i = 12; i >= 1; --i)                             // glow: wide, faint strokes under the letters
+    {
+        g.setColour (yellow.withAlpha (0.018f));
+        g.strokePath (logo, juce::PathStrokeType (s * 0.0035f * (float) i, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+    g.setColour (yellow);
+    g.fillPath (logo);
+    if (thicken > 0.0f) g.strokePath (logo, juce::PathStrokeType (s * thicken, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    return img;
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    if (argc > 2 && juce::String (argv[1]) == "--icons")
+    {
+        const juce::File dir (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
+        for (auto [name, size, thicken] : { std::make_tuple ("app_icon_big.png", 1024, 0.0f), std::make_tuple ("app_icon_small.png", 512, 0.012f) })
+        {
+            const auto f = dir.getChildFile (name);
+            f.deleteFile();
+            juce::FileOutputStream os (f);
+            juce::PNGImageFormat().writeImageToStream (renderIcon (size, thicken), os);
+            std::printf ("wrote %s\n", f.getFullPathName().toRawUTF8());
+        }
+        return 0;
+    }
     const juce::File out (argc > 1 ? argv[1] : ".");
     out.createDirectory();
     BabushkaProcessor proc;

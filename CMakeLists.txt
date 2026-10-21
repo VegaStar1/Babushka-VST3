@@ -30,7 +30,7 @@ juce_add_plugin(Babushka
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Synth Mono
-    ICON_BIG Source/ui/art/app_icon_big.png       # Standalone app icon: the NUWMUN logo
+    ICON_BIG Source/ui/art/app_icon_big.png       # Standalone app icon: the NUWMUN logo (babushka_uishot --icons)
     ICON_SMALL Source/ui/art/app_icon_small.png)  # the same, strokes thickened for 16-32 px
 
 # Fonts embedded in the editor (Montserrat and Barlow Semi Condensed, SIL Open Font License 1.1 — see docs/licenses)
