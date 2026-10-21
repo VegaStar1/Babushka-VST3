@@ -381,6 +381,8 @@ public:
         if (first) { speedSmooth.snap (head1); first = false; }
     }
     bool isRinging() const noexcept { return ringing > 0; }
+    // CLEAR: the tape is erased (after a 15 ms fade, so it does not click) and the repeats stop at once.
+    void requestClear() noexcept { clearLeft = clearLength = std::max (1, (int) (0.015f * fs)); }
 
     // in: the mono sum; on: recording. Returns the echo (mono) to add to the dry signal.
     float process (float in, bool on) noexcept
@@ -400,25 +402,34 @@ public:
         for (int h = 0; h < 3; ++h)
             if (m & (1 << h)) { sum += readHermite (tape, pos, (float) (h + 1) * t1 * mod * fs); ++count; }
         const float echo = sum / std::sqrt ((float) std::max (count, 1));
-        // feedback: the playback is re-recorded through the tape's saturation and losses
-        const float fbGain = hold ? 1.0f : feedback * 1.12f;
+        // feedback: the playback is re-recorded through the tape's saturation and losses. Switched off, the loop no
+        // longer sustains itself: whatever the FEEDBACK knob says, the repeats die away within a few seconds.
+        const float fbGain = hold ? 1.0f : std::min (feedback * 1.12f, on ? 2.0f : 0.6f);
         float fb = lp.process (echo);
         fb = fb - fbLow.process (fb);
         fb = std::tanh (fb * fbGain * 1.3f) / 1.3f;
         const float hiss = rng.bipolar() * age * 0.0009f * inGain;          // tape hiss, while recording
-        tape[(size_t) pos] = in * inGain + fb + hiss;
+        float duck = 1.0f;
+        if (clearLeft > 0) duck = (float) --clearLeft / (float) clearLength;
+        tape[(size_t) pos] = (in * inGain + fb + hiss) * duck;
         if (++pos >= (int) tape.size()) pos = 0;
+        if (clearLeft == 0 && clearLength > 0)
+        {
+            std::fill (tape.begin(), tape.end(), 0.0f);
+            lp.reset(); fbLow.reset();
+            clearLength = 0;
+        }
         // echo level and the two-band tone of the playback amplifier
         const float lo = bassSplit.process (echo), hiSplit = trebleSplit.process (echo);
         const float mid = hiSplit - lo, hi = echo - hiSplit;
         const float out = lo * dbToGain ((bass - 0.5f) * 24.0f) + mid + hi * dbToGain ((treble - 0.5f) * 24.0f);
         ringing = std::abs (out) > 1.0e-5f || inGain > 1.0e-4f ? (int) (fs * 0.1f) : std::max (0, ringing - 1);
-        return out * mix * 1.25f;
+        return out * duck * mix * 1.25f;
     }
 
 private:
     std::vector<float> tape;
-    int pos = 0, heads = 0, ringing = 0;
+    int pos = 0, heads = 0, ringing = 0, clearLeft = 0, clearLength = 0;
     float fs = 48000.0f, feedback = 0.4f, mix = 0.35f, wow = 0.2f, flutter = 0.2f, age = 0.3f, bass = 0.5f, treble = 0.5f, head1 = 0.2f;
     float inGain = 0.0f, wowPhase = 0.0f, flutPhase = 0.0f, drift = 0.0f;
     bool hold = false, first = true;
@@ -431,7 +442,7 @@ private:
 
 // ---- the board -----------------------------------------------------------------------------------------------------
 // Runs the pedals in order on a stereo pair, one host-rate sample at a time. Each pedal fades in and out over ~10 ms
-// when switched; an echo switched off keeps ringing. The patch jacks of the pedals (IN replaces the chain's signal
+// when switched; an echo switched off keeps ringing until its repeats have died away. The patch jacks of the pedals (IN replaces the chain's signal
 // into a pedal, CV moves its main knob, OUT carries what it puts out) are passed in per sample.
 class PedalBoard
 {
@@ -451,6 +462,7 @@ public:
         fade = 1.0f - std::exp (-1.0f / (0.01f * fs));
     }
     void reset() { sat.reset(); pha.reset(); cho.reset(); tap.reset(); }
+    void clearEcho() noexcept { tap.requestClear(); }
 
     // Parameters for this block; cv shifts each pedal's main knob (drive, rate, rate, time).
     void set (const PedalParams& p, double bpm, const std::array<float, kNumPedals>& cv = {}) noexcept

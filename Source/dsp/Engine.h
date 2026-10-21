@@ -211,6 +211,7 @@ public:
     void setModWheelCC (float v) noexcept { ccWheel = clampf (v, 0.0f, 1.0f); }
     void allNotesOff() { heldCount = 0; sustainPedal = false; updateKey (false); arp.stopAll(); }
     void releaseVoiceKeys() { heldCount = 0; updateKey (false); }
+    void clearEcho() noexcept { board.clearEcho(); }        // the tape echo's CLEAR
 
     // ---- Audio ------------------------------------------------------------------------------
     void process (float* out, int numSamples) noexcept { process (out, nullptr, numSamples); }

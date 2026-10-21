@@ -495,6 +495,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
 
     engine.setParams (readParams());
+    if (echoClearRequests.exchange (0) > 0) engine.clearEcho();
 
     // Cables edited in the UI: pick them up without ever blocking the audio thread.
     if (patchDirty.exchange (false))

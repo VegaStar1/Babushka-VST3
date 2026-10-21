@@ -87,6 +87,7 @@ public:
     bool isPedalLocked (int pedal) const noexcept { return (fxLocks.load() & (kLockAllFx | (1 << pedal))) != 0; }
     bool keptOnLoad (const juce::String& paramId) const;  // a global setting or a locked pedal's parameter
     void commitSoundEdit (const juce::String& label) { soundChanged (label); }   // several parameters set at once (a pedal preset)
+    void clearEcho() noexcept { echoClearRequests.fetch_add (1); }       // tape echo CLEAR (any thread)
     std::unique_ptr<juce::XmlElement> factoryPresetXml (int index) const;   // the state a factory preset sets
     juce::File getPresetRoot() const;
     juce::File getUserPresetDirectory() const { return getPresetRoot().getChildFile ("User"); }
@@ -154,7 +155,7 @@ public:
 private:
     babushka::dsp::Engine engine;
     std::vector<float> mono, right, ext, euro, reverbOut;
-    std::atomic<int> fxLocks { 0 };
+    std::atomic<int> fxLocks { 0 }, echoClearRequests { 0 };
     juce::SpinLock seqLock;
     struct UiNote { int note = 0; int velocity = 0; };      // velocity 0 = note off
     juce::AbstractFifo uiFifo { 256 };

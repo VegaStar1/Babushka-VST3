@@ -197,6 +197,27 @@ struct Runner : private juce::Timer
             for (auto& e : babushka::ui::PedalPresets::list (proc, 3)) if (! e.factory) babushka::ui::PedalPresets::remove (proc, 3, e);
             ed.synthPanel().setRearOpen (false, false);
         }
+        if (tick == 238)
+        {   // a runaway echo: switched off its repeats die away; CLEAR stops them at once
+            auto level = [this] (int blocks) {
+                juce::AudioBuffer<float> buf (2, 480); float peak = 0.0f;
+                for (int i = 0; i < blocks; ++i) { juce::MidiBuffer m; proc.processBlock (buf, m); peak = juce::jmax (peak, buf.getMagnitude (0, 480)); }
+                return peak; };
+            auto release = [this] { juce::AudioBuffer<float> buf (2, 64); juce::MidiBuffer m; m.addEvent (juce::MidiMessage::allNotesOff (1), 0); proc.processBlock (buf, m); };
+            load ("Init");
+            play (60); release(); level (300);
+            std::printf ("echo: baseline without the echo %.4f\n", level (10));
+            set ("tapOn", 1.0f); set ("tapFeedback", 1.0f); set ("tapMix", 0.6f);
+            play (60); release(); level (300);
+            const float before = level (10);
+            set ("tapOn", 0.0f); level (600);                          // 6 s
+            const float after = level (10);
+            set ("tapOn", 1.0f); play (60); release(); level (300);
+            proc.clearEcho(); level (2);
+            const float cleared = level (10);
+            std::printf ("echo: runaway %.3f, 6 s after OFF %.4f (expect < 0.01), after CLEAR %.4f (expect < 0.01)\n", before, after, cleared);
+            set ("tapOn", 0.0f);
+        }
         if (tick == 239) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;

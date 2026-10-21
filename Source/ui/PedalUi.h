@@ -269,19 +269,16 @@ public:
             g.setGradientFill (haze);
             g.fillRoundedRectangle (glass, 3.0f);
         }
-        auto top = glass.withHeight (glass.getHeight() * 0.56f).withTrimmedTop (1.0f);
-        const auto bottom = glass.withTrimmedTop (glass.getHeight() * 0.52f).withTrimmedBottom (1.0f);
-        auto f = font (Weight::NarrowBold, 11.5f, 0.05f);
-        const float textW = juce::GlyphArrangement::getStringWidth (f, line1) + (locked ? 13.0f : 0.0f);
-        float x = glass.getCentreX() - juce::jmin (textW, glass.getWidth() - 8.0f) * 0.5f;
-        if (locked)
-        {
-            drawLockIcon (g, { x, top.getCentreY() - 5.0f, 8.0f, 9.5f }, ink, true, 1.2f);
-            x += 13.0f;
-        }
-        label (g, line1, top.withLeft (x).withRight (glass.getRight() - 4.0f), ink, 11.5f, Weight::NarrowBold,
-               locked ? juce::Justification::centredLeft : juce::Justification::centred, 0.05f);
-        label (g, line2, bottom.reduced (4.0f, 0.0f), ink.withMultipliedAlpha (0.78f), 9.5f, Weight::NarrowSemi, juce::Justification::centred, 0.04f);
+        // two lines as one block, centred in the glass; with the padlock, padlock and name are centred together
+        const float cy = glass.getCentreY();
+        const auto top = juce::Rectangle<float> (glass.getX() + 5.0f, cy - 12.5f, glass.getWidth() - 10.0f, 13.0f);
+        const auto bottom = juce::Rectangle<float> (glass.getX() + 5.0f, cy + 0.5f, glass.getWidth() - 10.0f, 11.0f);
+        const float lockW = locked ? 12.0f : 0.0f;
+        const float textW = juce::jmin (juce::GlyphArrangement::getStringWidth (font (Weight::NarrowBold, kLine1, 0.05f), line1), top.getWidth() - lockW);
+        const float x = top.getCentreX() - (textW + lockW) * 0.5f;
+        if (locked) drawLockIcon (g, { x, top.getCentreY() - 5.0f, 8.0f, 9.5f }, ink, true, 1.2f);
+        label (g, line1, { x + lockW, top.getY(), textW + 1.0f, top.getHeight() }, ink, kLine1, Weight::NarrowBold, juce::Justification::centred, 0.05f);
+        label (g, line2, bottom, ink.withMultipliedAlpha (0.8f), kLine2, Weight::NarrowSemi, juce::Justification::centred, 0.04f);
         g.setColour (hover ? col::ledAmber : juce::Colours::white.withAlpha (0.06f));
         g.drawRoundedRectangle (r.reduced (0.75f), 4.0f, hover ? 1.5f : 1.0f);
     }
@@ -289,6 +286,7 @@ public:
     void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
+    static constexpr float kLine1 = 12.0f, kLine2 = 10.0f;
     juce::Colour colour;
     juce::String line1, line2;
     bool locked = false, lit = false, hover = false;
@@ -341,15 +339,45 @@ private:
     void timerCallback() override { stopTimer(); if (down) { holding = true; if (onHold) onHold (true); } }
 };
 
+// A small black push button sunk in a chrome bezel (the tape echo's CLEAR).
+class PushButton : public juce::Component
+{
+public:
+    PushButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setSize (24, 24); }
+    std::function<void()> onClick, onHover;
+    void paint (juce::Graphics& g) override
+    {
+        const auto c = getLocalBounds().toFloat().getCentre();
+        const float r = 9.0f, b = down ? 6.0f : 6.6f;
+        g.setColour (juce::Colours::black.withAlpha (0.5f));
+        g.fillEllipse (c.x - r, c.y - r + 1.4f, 2 * r, 2 * r);
+        juce::ColourGradient bezel (juce::Colour (0xffe6e8ea), c.x - r, c.y - r, juce::Colour (0xff53565b), c.x + r, c.y + r, false);
+        g.setGradientFill (bezel);
+        g.fillEllipse (c.x - r, c.y - r, 2 * r, 2 * r);
+        juce::ColourGradient cap (juce::Colour (0xff3a3836), c.x - b * 0.5f, c.y - b * 0.6f, juce::Colour (0xff050505), c.x + b, c.y + b, true);
+        g.setGradientFill (cap);
+        g.fillEllipse (c.x - b, c.y - b + (down ? 0.6f : 0.0f), 2 * b, 2 * b);
+        g.setColour (hover ? col::ledAmber : juce::Colours::black.withAlpha (0.6f));
+        g.drawEllipse (c.x - b, c.y - b + (down ? 0.6f : 0.0f), 2 * b, 2 * b, hover ? 1.3f : 0.8f);
+    }
+    void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); if (onHover) onHover(); }
+    void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+    void mouseDown (const juce::MouseEvent&) override { down = true; repaint(); }
+    void mouseUp (const juce::MouseEvent& e) override { down = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
+private:
+    bool hover = false, down = false;
+};
+
 // ---- a pedal ---------------------------------------------------------------------------------------------------------
-// 172 × 134: arrows and the IN / CV / OUT jacks on the top edge (the jacks themselves are drawn here; the cable layer
+// 192 × 134: arrows and the IN / CV / OUT jacks on the top edge (the jacks themselves are drawn here; the cable layer
 // plugs into them), the display, two knobs, the LED and the footswitch, the name at the bottom. Dragging the
 // enclosure moves the pedal along the chain.
 class PedalUnit : public juce::Component
 {
 public:
-    static constexpr int kW = 172, kH = 134;
-    static constexpr float kJackY = 20.0f, kJackX[3] = { 52.0f, 86.0f, 120.0f };
+    static constexpr int kW = 192, kH = 134;
+    static constexpr float kJackY = 20.0f, kJackX[3] = { 58.0f, 96.0f, 134.0f };
+    static constexpr float kKnobX[2] = { 30.0f, 76.0f }, kRowY = 105.0f, kNamesY = 84.0f, kFootX = 162.0f, kClearX = 127.0f;
 
     PedalUnit (BabushkaProcessor& p, int pedalIndex)
         : lcd (pedalLook (pedalIndex).lcd), processor (p), pedal (pedalIndex), look (pedalLook (pedalIndex)), info (babushka::pedalInfo()[(size_t) pedalIndex])
@@ -359,14 +387,14 @@ public:
         for (int i = 0; i < 2; ++i)
         {
             knobs[(size_t) i] = std::make_unique<Knob> (p.apvts, info.knobs[(size_t) i].id, 24.0f);
-            knobs[(size_t) i]->setCentrePosition (i == 0 ? 30 : 70, 101);
+            knobs[(size_t) i]->setCentrePosition ((int) kKnobX[i], (int) kRowY);
             addAndMakeVisible (*knobs[(size_t) i]);
         }
-        led.setCentrePosition (136, 81);
+        led.setCentrePosition ((int) kFootX, (int) kNamesY);
         addAndMakeVisible (led);
-        foot.setCentrePosition (136, 104);
+        foot.setCentrePosition ((int) kFootX, (int) kRowY);
         addAndMakeVisible (foot);
-        lcd.setBounds (9, 46, kW - 18, 28);
+        lcd.setBounds (10, 45, kW - 20, 30);
         addAndMakeVisible (lcd);
         leftArrow.setTopLeftPosition (6, 11);
         rightArrow.setTopLeftPosition (kW - 24, 11);
@@ -374,7 +402,12 @@ public:
         addAndMakeVisible (rightArrow);
         foot.onToggle = [this] { setPedalParam (processor, info.onId, pedalValue (processor, info.onId) > 0.5f ? 0.0f : 1.0f); refresh(); };
         if (pedal == 3)
+        {
             foot.onHold = [this] (bool held) { setPedalParam (processor, "tapHold", held ? 1.0f : 0.0f, false); refresh(); };
+            clear.setCentrePosition ((int) kClearX, (int) kRowY);
+            addAndMakeVisible (clear);
+            clear.onClick = [this] { processor.clearEcho(); };
+        }
     }
 
     void setHints (HintSink* h)
@@ -385,6 +418,7 @@ public:
         lcd.onHover = [this] { if (hints) hints->showHint (lcd, juce::String (info.name) + ": presets and every setting"); };
         leftArrow.onHover = [this] { if (hints) hints->showHint (leftArrow, "Earlier in the chain (or drag the pedal)"); };
         rightArrow.onHover = [this] { if (hints) hints->showHint (rightArrow, "Later in the chain (or drag the pedal)"); };
+        clear.onHover = [this] { if (hints) hints->showHint (clear, "CLEAR: erase the tape - stops the repeats at once"); };
     }
 
     PedalArrow leftArrow { true }, rightArrow { false };
@@ -427,14 +461,17 @@ public:
         for (int i = 0; i < 3; ++i)
         {
             drawJack (g, { kJackX[i], kJackY }, 9.5f);
-            label (g, names[i], juce::Rectangle<float> (34.0f, 11.0f).withCentre ({ kJackX[i], 38.0f }), look.ink, 9.0f, Weight::NarrowBold,
-                   juce::Justification::centred, 0.04f);
+            label (g, names[i], juce::Rectangle<float> (36.0f, 12.0f).withCentre ({ kJackX[i], 38.0f }), look.ink, 10.0f, Weight::NarrowBold,
+                   juce::Justification::centred, 0.03f);
         }
         for (int i = 0; i < 2; ++i)
-            label (g, info.knobs[(size_t) i].name, juce::Rectangle<float> (40.0f, 11.0f).withCentre ({ i == 0 ? 30.0f : 70.0f, 82.0f }), look.ink, 9.0f,
-                   Weight::NarrowBold, juce::Justification::centred, 0.04f);
-        label (g, info.name, juce::Rectangle<float> (r.getWidth() - 16.0f, 14.0f).withCentre ({ r.getCentreX(), 124.5f }), look.ink, 12.5f,
-               Weight::NarrowBold, juce::Justification::centred, 0.14f);
+            label (g, info.knobs[(size_t) i].name, juce::Rectangle<float> (48.0f, 14.0f).withCentre ({ kKnobX[i], kNamesY }), look.ink, 11.0f,
+                   Weight::NarrowBold, juce::Justification::centred, 0.03f);
+        if (pedal == 3)
+            label (g, "CLEAR", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ kClearX, kNamesY }), look.ink, 11.0f, Weight::NarrowBold,
+                   juce::Justification::centred, 0.03f);
+        label (g, info.name, juce::Rectangle<float> (r.getWidth() - 16.0f, 16.0f).withCentre ({ r.getCentreX(), 124.0f }), look.ink, 13.0f,
+               Weight::NarrowBold, juce::Justification::centred, 0.12f);
     }
 
     void mouseDown (const juce::MouseEvent& e) override { grabX = e.getMouseDownX(); dragging = false; }
@@ -463,6 +500,7 @@ private:
     std::array<std::unique_ptr<Knob>, 2> knobs;
     Lamp led { juce::Colour (0xffff3b2a), 7.0f };
     Footswitch foot;
+    PushButton clear;                              // tape echo only
     int grabX = 0, blink = 0;
     bool dragging = false;
 };

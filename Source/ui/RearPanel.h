@@ -186,17 +186,19 @@ public:
         return all;
     }
 
-    // The pedal board: four places of 172 px, 8 px apart, between the MIDI and AUDIO plates.
-    static constexpr float kBoardX = 143.0f, kSlot = 180.0f, kPedalY = 8.0f;
+    // The pedal board: four places of 192 px, 8 px apart, between the MIDI and AUDIO plates. The plates on the right:
+    // AUDIO 944 … 1084, ARP/SEQ CV 1094 … 1332.
+    static constexpr float kBoardX = 143.0f, kSlot = 200.0f, kPedalY = 8.0f;
+    static constexpr float kAudioX = 944.0f, kAudioW = 140.0f, kCvX = 1094.0f, kCvW = 238.0f;
 
     // Jack centres in the panel's own coordinates (the full-height artwork). The pedals' jacks go where the pedals are.
     static std::vector<std::pair<Jack, juce::Point<float>>> fixedJacks()
     {
         std::vector<std::pair<Jack, juce::Point<float>>> j;
-        j.push_back ({ Jack::EuroOut, { 902.0f, 70.0f } });
-        j.push_back ({ Jack::ReverbOut, { 976.0f, 70.0f } });
+        j.push_back ({ Jack::EuroOut, { kAudioX + kAudioW * 0.26f, 70.0f } });
+        j.push_back ({ Jack::ReverbOut, { kAudioX + kAudioW * 0.74f, 70.0f } });
         const Jack cv[] = { Jack::ClockIn, Jack::OnOffIn, Jack::ResetIn, Jack::ClockOut };
-        for (int i = 0; i < 4; ++i) j.push_back ({ cv[i], { 1024.0f + 308.0f * ((float) i + 0.5f) / 4.0f, 70.0f } });
+        for (int i = 0; i < 4; ++i) j.push_back ({ cv[i], { kCvX + kCvW * ((float) i + 0.5f) / 4.0f, 70.0f } });
         return j;
     }
     std::vector<std::pair<Jack, juce::Point<float>>> jackPositions() const
@@ -330,7 +332,7 @@ private:
             g.fillRoundedRectangle (back, 4.0f);
             grain (g, back, 0.7f);
             {   // the pedal board between the MIDI and AUDIO plates: a ribbed rubber mat the pedals sit on
-                const juce::Rectangle<float> board (139.0f, 6.0f, 721.0f, (float) kHeight - 12.0f);
+                const juce::Rectangle<float> board (139.0f, 6.0f, 800.0f, (float) kHeight - 12.0f);
                 g.setColour (juce::Colour (0xff0a0a0a));
                 g.fillRoundedRectangle (board, 4.0f);
                 for (float yy = board.getY() + 4.0f; yy < board.getBottom() - 2.0f; yy += 4.0f)
@@ -350,17 +352,17 @@ private:
             // the name under the jack, on two lines when it is long (EURORACK / OUT)
             auto jack = [&g] (juce::Point<float> c, const juce::String& line1, const juce::String& line2, juce::Colour textColour) {
                 drawJack (g, c);
-                label (g, line1, juce::Rectangle<float> (70.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, 10.0f, Weight::NarrowBold,
+                label (g, line1, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, 10.0f, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
                 if (line2.isNotEmpty())
-                    label (g, line2, juce::Rectangle<float> (70.0f, 14.0f).withCentre ({ c.x, c.y + 32.0f }), textColour, 10.0f, Weight::NarrowBold,
+                    label (g, line2, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 32.0f }), textColour, 10.0f, Weight::NarrowBold,
                            juce::Justification::centred, 0.03f);
             };
             plate ({ 8.0f, 8.0f, 126.0f, 134.0f }, S.panel, "MIDI");
             label (g, juce::String::fromUTF8 ("MIDI IN · MAP"), juce::Rectangle<float> (110.0f, 14.0f).withCentre ({ 71.0f, 128.0f }), ink, 10.0f, Weight::NarrowBold,
                    juce::Justification::centred, 0.05f);
-            plate ({ 864.0f, 8.0f, 150.0f, 134.0f }, S.panel, "AUDIO");
-            plate ({ 1024.0f, 8.0f, 308.0f, 134.0f }, S.rearCv, "ARP/SEQ CV");
+            plate ({ kAudioX, 8.0f, kAudioW, 134.0f }, S.panel, "AUDIO");
+            plate ({ kCvX, 8.0f, kCvW, 134.0f }, S.rearCv, "ARP/SEQ CV");
             static const char* names[][2] = { { "EURORACK", "OUT" }, { "REVERB", "OUT" }, { "CLOCK", "IN" }, { "ON / OFF", "IN" }, { "RESET", "IN" }, { "CLOCK", "OUT" } };
             int i = 0;
             for (auto& [id, pos] : fixedJacks()) { jack (pos, names[i][0], names[i][1], i < 2 ? ink : cvInk); ++i; }
@@ -382,11 +384,26 @@ class OutputMeters : public juce::Component, private juce::Timer
 public:
     explicit OutputMeters (BabushkaProcessor& p) : processor (p)
     {
-        setInterceptsMouseClicks (false, false);
+        setInterceptsMouseClicks (true, false);           // only for the hints
         lastPos = processor.scopeWritePosition();
         lastClips = processor.getClipCount();
         startTimerHz (60);
     }
+
+    HintSink* hints = nullptr;
+    // What the meters show, when the pointer rests on them.
+    void mouseMove (const juce::MouseEvent& e) override
+    {
+        if (hints == nullptr) return;
+        const auto p = e.position;
+        const int zone = p.getDistanceFrom (lampCentre()) < 22.0f ? 1 : vuArea().contains (p) ? 2 : 0;
+        if (zone == hintZone) return;
+        hintZone = zone;
+        if (zone == 1) hints->showHint (*this, "CLIP: a sample peak reached -1 dBFS (the output limiter is at work)");
+        else if (zone == 2) hints->showHint (*this, "VU: the average level (0 VU = -12 dBFS); the peaks light CLIP");
+        else hints->hideHint();
+    }
+    void mouseExit (const juce::MouseEvent&) override { hintZone = 0; if (hints) hints->hideHint(); }
 
     void paint (juce::Graphics& g) override
     {
@@ -414,6 +431,7 @@ private:
 
     juce::Rectangle<float> vuArea() const { return { 6.0f, 4.0f, 206.0f, (float) getHeight() - 8.0f }; }
     juce::Rectangle<float> scopeArea() const { return { 222.0f, 4.0f, 206.0f, (float) getHeight() - 8.0f }; }
+    int hintZone = 0;
     juce::Point<float> lampCentre() const { return { (float) getWidth() - 24.0f, (float) getHeight() * 0.5f - 10.0f }; }
 
     // VU scale: the needle moves in proportion to the signal voltage, from −20 VU to +3 VU.

@@ -249,6 +249,8 @@ public:
         {
             addAndMakeVisible (holdKey);
             holdKey.onHold = [this] (bool held) { setPedalParam (processor, "tapHold", held ? 1.0f : 0.0f, false); refresh(); };
+            addAndMakeVisible (clearChip);
+            clearChip.onClick = [this] { processor.clearEcho(); };
         }
         auto addChips = [this] (const juce::String& id, std::vector<std::unique_ptr<ChipButton>>& chips) {
             if (auto* rp = pedalParam (processor, id))
@@ -321,9 +323,10 @@ public:
         saveButton.setBounds (34, 494, 130, 32);
         deleteButton.setBounds (174, 494, 130, 32);
         closeButton.setBounds (getWidth() - 150, getHeight() - 62, 116, 36);
-        onChip.setBounds (getWidth() - 270, 22, 70, 28);
-        lockChip.setBounds (getWidth() - 190, 22, 76, 28);
-        if (pedal == 3) holdKey.setBounds (getWidth() - 106, 22, 72, 28);
+        const int chipsX = getWidth() - (pedal == 3 ? 352 : 270);
+        onChip.setBounds (chipsX, 22, 70, 28);
+        lockChip.setBounds (chipsX + 80, 22, 76, 28);
+        if (pedal == 3) { holdKey.setBounds (chipsX + 166, 22, 72, 28); clearChip.setBounds (chipsX + 248, 22, 80, 28); }
         auto place = [] (std::vector<std::unique_ptr<ChipButton>>& chips, int x, int y) {
             for (auto& c : chips)
             {
@@ -359,6 +362,7 @@ private:
     PlateButton saveButton, deleteButton, closeButton;
     ChipButton onChip { "ON" }, lockChip { "LOCK" };
     HoldKey holdKey { "HOLD" };
+    ChipButton clearChip { "CLEAR" };
     std::vector<std::unique_ptr<ChipButton>> modeChips, syncChips;
     std::vector<std::unique_ptr<Knob>> knobs;
     PedalPicture picture;

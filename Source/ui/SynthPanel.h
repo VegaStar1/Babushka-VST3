@@ -642,6 +642,7 @@ private:
         module ({ 214, 944, 496, 100 }, S.panel, "");
         meters = std::make_unique<OutputMeters> (processor);
         meters->setBounds (222, 952, 480, 84);
+        meters->hints = &hints;
         addAndMakeVisible (*meters);
         module ({ 726, 944, 692, 100 }, S.panel, "");
         textAt ("PRESET", 1052, 958, ink, 11.0f, Weight::NarrowBold, 120.0f, 0.2f);
