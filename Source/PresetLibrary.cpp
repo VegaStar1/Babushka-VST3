@@ -23,7 +23,7 @@ juce::String cleanFolder (const juce::String& folder)
     return parts.joinIntoString ("/");
 }
 
-constexpr const char* kFactoryVersion = "factory-presets-1";   // bump when the factory set changes
+constexpr const char* kFactoryVersion = "factory-presets-2";   // bump when the factory set changes
 }
 
 // ---- factory presets ------------------------------------------------------------------------------------------------
