@@ -241,12 +241,14 @@ private:
         return r;
     }
 
-    // Keeps the rope list in step with the patch stored in the processor.
+    // Keeps the rope list in step with the patch stored in the processor (preset loads, undo, other editors).
+    // Repaints whenever the list changed: a removed rope must disappear even when nothing else moves.
     void syncWithModel()
     {
         const int v = processor.getPatchVersion();
         if (v == knownVersion) return;
         knownVersion = v;
+        repaint();
         const auto cab = processor.getPatchCopy();
         // drop ropes that are no longer in the patch
         for (int i = (int) ropes.size() - 1; i >= 0; --i)
