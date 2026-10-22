@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="1.0"/>
   <PARAM id="mixOsc2" value="0.800000011920929"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="2.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

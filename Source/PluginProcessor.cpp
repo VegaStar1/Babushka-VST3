@@ -67,6 +67,7 @@ namespace ids
     static constexpr const char* clockOutPpqn = "clockOutPpqn";
     // Global settings (manual p. 38)
     static constexpr const char* localOn    = "localOn";
+    static constexpr const char* noiseFloor = "noiseFloor";
     static constexpr const char* kbOutRange = "kbOutRange";
 }
 
@@ -164,6 +165,8 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ids::clockOutPpqn, 1 }, "Clock Out PPQN", 1, 48, 2));
     p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::localOn, 1 }, "Local On", true));
     choice (ids::kbOutRange, "KB Out Range", { "-5 to +5 V", "0 to +10 V" }, 0);
+    // Plugin-only, no control on the panel yet: the hardware's hiss (≈ −68 dBFS) in the pauses. Off by default.
+    p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::noiseFloor, 1 }, "Noise Floor", false));
 
     // Pedals on the rear panel (plugin-only, see dsp/Pedals.h). Off by default: a preset without them sounds as before.
     // Knobs read 0 … 10 like the pedals' own scales; rates and the echo time in real units.
@@ -287,6 +290,7 @@ babushka::dsp::Params BabushkaProcessor::paramsFromState (const std::function<fl
     p.extLevel = f (ids::extLevel);
     p.hpCutoff = f (ids::hpCutoff); p.attenuator = f (ids::attenuator);
     p.localOn = f (ids::localOn) > 0.5f; p.kbOutRange = i (ids::kbOutRange);
+    p.noiseFloor = f (ids::noiseFloor) > 0.5f;
     auto& q = p.pedals;
     q.order = babushka::pedalOrderFromIndex (i ("fxOrder"));
     q.on = { f ("satOn") > 0.5f, f ("phaOn") > 0.5f, f ("choOn") > 0.5f, f ("tapOn") > 0.5f };

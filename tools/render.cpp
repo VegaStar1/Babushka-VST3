@@ -118,6 +118,12 @@ static void renderAB (const std::string& dir, int fs)
         for (int i = 0; i < 16; ++i) { evs.push_back ({ 0.2 * i, 0, 36, 0 }); evs.push_back ({ 0.2 * i + 0.12, 1, 36, 0 }); }
         auto x = renderSeq (p, evs, 3.6, fs); normaliseRms (x); writeWav (dir + "/ab_repeat.wav", x, fs);
     }
+    {   // Not normalised: short plucks with pauses, the optional noise floor on (the pauses are not digital silence).
+        Params p; p.osc1Octave = 2; p.osc1Wave = 3; p.mixOsc1 = 0.6f; p.cutoff = 0.55f; p.envAmt = 0.5f; p.resonance = 0.2f;
+        p.decay = 0.3f; p.sustain = 0.0f; p.release = 0.3f; p.kbdTrack = 1; p.noiseFloor = true;
+        auto x = renderSeq (p, notes ({ { 0.0, 0.1, 60 }, { 1.2, 0.1, 67 }, { 2.4, 0.1, 64 } }), 4.0, fs);
+        writeWav (dir + "/ab_noise_floor_on.wav", x, fs);
+    }
     {   // Not normalised: a saw note (mixer 60 %) and then the self-oscillating filter (resonance 95 %), same Volume,
         // to hear the balance between the two.
         Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.6f; p.kbdTrack = 2; p.sustain = 1.0f; p.release = 0.2f;
@@ -262,6 +268,23 @@ int main (int argc, char** argv)
             if (drift == 0.0f) std::printf ("  drift 0, notes identical: %s\n", hi - lo < 0.02 ? "OK" : "FAIL");
         }
         std::printf ("  drift 0.25, notes differ by 0.5 ... 4 cents: %s\n", spread25 > 0.5 && spread25 < 4.0 ? "OK" : "FAIL");
+    }
+
+    // ---------------- 2e. Closed-VCA bleed and the optional noise floor ------------------------------------
+    {
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.7f; p.sustain = 1.0f; p.release = 0.0f; p.volume = 0.8f; p.drift = 0.0f;
+        auto y = renderSeq (p, notes ({ { 0.0, 1.0, 57 } }), 2.5);
+        auto rmsOf = [&y] (double a, double b) { double t = 0; size_t n = 0; for (size_t i = (size_t) (a * 48000); i < (size_t) (b * 48000); ++i, ++n) t += y[i] * y[i]; return std::sqrt (t / n); };
+        const double bleed = 20 * std::log10 (rmsOf (2.0, 2.5) / rmsOf (0.5, 1.0));
+        Params q; q.mixOsc1 = 0.0f; q.noiseFloor = true;
+        auto z = renderSeq (q, {}, 2.0);
+        double t = 0; for (size_t i = z.size() / 2; i < z.size(); ++i) t += z[i] * z[i];
+        const double floorDb = 10 * std::log10 (t / (z.size() / 2));
+        Params r; r.mixOsc1 = 0.0f;
+        auto w = renderSeq (r, {}, 2.0);
+        float wp = 0; for (float v : w) wp = std::max (wp, std::abs (v));
+        std::printf ("Closed VCA bleed %.1f dB below the note (hardware −60 … −77)  %s; noise floor on: %.1f dBFS rms (hardware −65 … −70)  %s, off: peak %.1e\n",
+                     -bleed, bleed < -60.0 && bleed > -77.0 ? "OK" : "FAIL", floorDb, floorDb < -65.0 && floorDb > -71.0 ? "OK" : "FAIL", wp);
     }
 
     // ---------------- 3. Spring reverb impulse response ---------------------------------------

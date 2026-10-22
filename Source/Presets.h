@@ -34,7 +34,7 @@ inline bool isGlobalParam (const char* id)
 {
     static const char* kGlobalParams[] = { "oversampling", "bendRange", "notePriority", "fineTune", "drift", "extLevel",
                                            "extClockMode", "extClockPpqn", "clockOutPpqn", "localOn", "kbOutRange",
-                                           "reverbDecay" };
+                                           "reverbDecay", "noiseFloor" };
     for (auto* g : kGlobalParams) if (std::string_view (g) == id) return true;
     return false;
 }

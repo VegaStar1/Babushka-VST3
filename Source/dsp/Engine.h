@@ -84,6 +84,7 @@ struct Params
     // Global settings of the hardware (manual p. 38)
     bool  localOn = true;            // off: keyboard, pitch wheel and ARP/SEQ only drive KB OUT / GATE OUT / KB VEL OUT
     int   kbOutRange = 0;            // KB OUT voltage range: 0 = −5…+5 V, 1 = 0…+10 V
+    bool  noiseFloor = false;        // plugin-only, host parameter without a control: the hardware's hiss in the pauses
     // Plugin-only: the pedals on the rear panel
     PedalParams pedals;
 };
@@ -117,6 +118,7 @@ public:
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
         spreadRng.seed (0x5EEDu);
         noise.seed (0xBAB05CAu);
+        floorNoise.seed (0xF100Du);
 
         for (auto* s : { &sCutoff, &sRes, &sMix1, &sMix2, &sMixN, &sEnvAmt, &sOsc2Freq,
                          &sLfoPitch, &sLfoCut, &sLfoPw, &sWheel, &sRevMix, &sVolume, &sLfoRate })
@@ -285,6 +287,7 @@ public:
             if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, mono * 5.0f);
             const float gain = volumeGain (sVolume.v) * 1.6f;
             y *= gain; yR *= gain;
+            if (params.noiseFloor) { const float h = kNoiseFloorRms * floorNoise.gaussianish(); y += h; yR += h; }
             if (std::abs (y) >= 1.0f || std::abs (yR) >= 1.0f) ++overs;     // 0 dBFS reached: CLIP
             if (outR != nullptr) { out[n] = outputGuard (y); outR[n] = outputGuard (yR); }
             else out[n] = outputGuard (0.5f * (y + yR));
@@ -321,7 +324,7 @@ private:
     NoteSpread spread;
     Rng spreadRng;
     float spreadScale = 0.0f;
-    Rng noise;
+    Rng noise, floorNoise;
     std::vector<float> osBuf;
 
     Smoother sCutoff, sRes, sMix1, sMix2, sMixN, sEnvAmt, sOsc2Freq, sLfoPitch, sLfoCut, sLfoPw,
@@ -430,6 +433,8 @@ private:
     static float glideTime (float knob) noexcept { return knob <= 0.001f ? 0.0f : 0.002f * std::pow (2500.0f, knob); }         // ASSUMPTION: 2 ms..5 s
     static float mixerGain (float knob) noexcept { return 1.3f * std::pow (clampf (knob, 0.0f, 1.0f), 1.3f); }
     static float volumeGain (float knob) noexcept { return knob * knob; }
+    // Noise floor of the recordings of the hardware: ≈ −65 … −70 dBFS. ASSUMPTION: white, after VOLUME, −68 dBFS rms.
+    static constexpr float kNoiseFloorRms = 3.98e-4f;
     // Plugin-only: 0.5 ≈ a full-scale host signal hits the mixer like an oscillator at ~2 o'clock;
     // 1.0 drives the mixer into overdrive (the hardware preamp brings guitars to 10 Vpp).
     static float extGain (float knob) noexcept { return 2.0f * knob * knob * 2.0f; }
@@ -674,7 +679,8 @@ private:
         y = filterDc.process (y);
         if (isUsed (Jack::FilterOut)) setOut (Jack::FilterOut, acOut[2].process (y) * 5.0f);
 
-        // VCA (902-style): gain from ENV / KB RLS / DRONE, mild output saturation and tiny bleed.
+        // VCA (902-style): gain from ENV / KB RLS / DRONE, mild output saturation and a small bleed when closed
+        // (−66 dB; recordings of the hardware: −60 … −77 dB below the sounding note).
         // VCA AMT IN: in DRONE it alone sets the level (0 … +8 V); in ENV / KB RLS it multiplies the envelope.
         float gain = p.vcaMode == 0 ? e : (p.vcaMode == 1 ? kb : 1.0f);
         if (patched (Jack::VcaAmtIn))
@@ -683,7 +689,7 @@ private:
             gain = p.vcaMode == 2 ? std::max (c, 0.0f) : gain * c;
         }
         const float offset = kVcaOffset * gain;
-        gain = gain + 1.0e-4f;
+        gain = gain + 5.0e-4f;
         const float vIn = patched (Jack::VcaIn) ? readIn (Jack::VcaIn) * 0.2f : y;
         const float v = vIn * gain * 1.25f + offset;
         if (patched (Jack::ReverbIn)) revAcc += readIn (Jack::ReverbIn) * 0.2f;
