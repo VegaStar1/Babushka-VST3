@@ -194,6 +194,36 @@ int main (int argc, char** argv)
         std::printf ("  bass loss at 50 Hz, resonance 90 %% vs 0: %.1f dB  %s\n", loss, std::abs (loss + 13.6) < 1.0 ? "OK" : "FAIL");
     }
 
+    // ---------------- 2c. CV feedthrough ("thump"): mixer at zero, fast filter envelope ---------------
+    {
+        // Bass-like patch with every mixer channel at zero: what is left is the leak of the control signals.
+        Params p; p.mixOsc1 = 0.0f; p.mixOsc2 = 0.0f; p.mixNoise = 0.0f; p.cutoff = 0.3f; p.resonance = 0.0f; p.envAmt = 1.0f;
+        p.attack = 0.0f; p.decay = 0.3f; p.sustain = 0.4f; p.release = 0.2f; p.volume = 1.0f; p.drift = 0.0f;
+        const double gateOff = 0.5;
+        auto y = renderSeq (p, notes ({ { 0.1, gateOff - 0.1, 36 } }), 1.5);
+        Params full = p; full.mixOsc1 = 0.6f;
+        auto n = renderSeq (full, notes ({ { 0.1, gateOff - 0.1, 36 } }), 1.5);
+        float pk = 0, pkN = 0; for (size_t i = 0; i < y.size(); ++i) { pk = std::max (pk, std::abs (y[i])); pkN = std::max (pkN, std::abs (n[i])); }
+        // After the gate: the leak must swing through zero (undershoot) and settle.
+        const size_t g = (size_t) (gateOff * fs);
+        float postMax = 0, postMin = 0; for (size_t i = g; i < y.size(); ++i) { postMax = std::max (postMax, y[i]); postMin = std::min (postMin, y[i]); }
+        const float before = y[g - 1];
+        size_t settle = y.size();
+        const float postPk = std::max (postMax, -postMin);
+        for (size_t i = y.size() - 1; i > g; --i) if (std::abs (y[i]) > 0.1f * postPk) { settle = i; break; }
+        const bool flips = (before > 0 ? postMin < -0.1f * postPk : postMax > 0.1f * postPk);
+        // Slow envelope: the leak must stay far below the fast one (no click, only a slow DC shift).
+        Params slow = p; slow.attack = 0.5f; slow.decay = 0.6f;
+        auto ys = renderSeq (slow, notes ({ { 0.1, 1.0, 36 } }), 1.5);
+        float pkS = 0; for (float v : ys) pkS = std::max (pkS, std::abs (v));
+        const double rel = 20 * std::log10 (pk / pkN), relS = 20 * std::log10 (pkS / pkN);
+        const double settleMs = 1000.0 * (double) (settle - g) / fs;
+        std::printf ("CV feedthrough: thump peak %.1f dB below a full note, sign flip after the gate %s, back within 10 %% in %.0f ms, "
+                     "slow envelope %.1f dB below a full note  %s\n", -rel, flips ? "yes" : "no", settleMs, -relS,
+                     rel > -40.0 && rel < -30.0 && flips && settleMs > 60.0 && settleMs < 500.0 && relS < rel - 6.0 ? "OK" : "FAIL");
+        writeWav (dir + "/test_cv_thump.wav", y, fs);
+    }
+
     // ---------------- 3. Spring reverb impulse response ---------------------------------------
     {
         SpringReverb rv; rv.prepare ((float) fs);

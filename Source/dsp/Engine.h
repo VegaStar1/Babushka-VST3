@@ -111,6 +111,7 @@ public:
         outDc.setCutoff (4.0f, fsBase); outDcR.setCutoff (4.0f, fsBase);
         // Patch outputs marked "AC coupled" in the manual (oscillator, filter, high-pass and reverb outputs).
         for (auto& b : acOut) b.setCutoff (2.0f, fsOs);
+        cutoffFeedHp.setCutoff (kCutoffFeedHz, fsOs);
         revOutDc.setCutoff (2.0f, fsBase);
         accentDecay = std::exp (-1.0f / (0.06f * fsOs));    // ASSUMPTION: accent envelope release ≈ 60 ms
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
@@ -132,7 +133,7 @@ public:
         filter.reset(); env.reset(); kbRls.reset(); lfo.reset(); reverb.reset(); decimator.reset();
         filterDc.reset(); outDc.reset(); outDcR.reset(); revOutDc.reset(); board.reset();
         for (auto& b : acOut) b.reset();
-        hpf.reset();
+        hpf.reset(); cutoffFeedHp.reset();
         heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f;
         for (auto& h : held) h = { -1, false };
         std::fill (std::begin (outV), std::end (outV), 0.0f);
@@ -311,6 +312,7 @@ private:
     double hostBpm = 120.0;
     DcBlocker acOut[3];                 // AC-coupled patch outputs: Osc 1, Osc 2, Filter
     OnePoleHP hpf;                      // Utilities: static 6 dB/oct high-pass
+    OnePoleHP cutoffFeedHp;             // CV feedthrough of the ladder (envelope sweep leaking into the audio)
     Drift drift1, drift2;
     Rng noise;
     std::vector<float> osBuf;
@@ -496,6 +498,16 @@ private:
     // with a recording of one oscillator at mixer 25/50/75/100 %. The self-oscillation level does not depend on the
     // input, so against notes it is ≈10 dB quieter than at 0.6 (the self-oscillating presets were re-levelled).
     static constexpr float kLadderDrive = 2.0f;
+    // CV feedthrough ("thump"): the hardware is not perfectly balanced, so its control signals leak into the audio.
+    // Ladder: a fast envelope sweep of the cutoff unbalances the ladder's bias currents; modelled as the envelope's
+    // share of the cutoff (in octaves) through a high-pass, added to the filter output. VCA (902): the control current
+    // leaves a small offset at the output, proportional to the gain. Both pass the AC coupling after them, so a fast
+    // attack gives a short low "thump" and the end of a note a slow return to zero with an undershoot (as seen in the
+    // recordings of the hardware after the gate closes). Slow envelopes leak only a slow, inaudible DC shift.
+    // ASSUMPTION: levels chosen for a thump ≈ −34 dB below a full note (no recording with the mixer at zero yet).
+    static constexpr float kCutoffFeedPerOct = 0.0006f;    // ladder output per octave of envelope sweep
+    static constexpr float kCutoffFeedHz = 20.0f;         // ASSUMPTION: feedthrough coupling corner
+    static constexpr float kVcaOffset = 0.004f;           // VCA output offset at full gain
     // ASSUMPTION: PWM IN 0 … +5 V moves the duty cycle by up to +0.45 (matches the internal LFO path).
     static constexpr float kPwmPerVolt = 0.09f;
 
@@ -608,8 +620,9 @@ private:
         const float track = p.kbdTrack == 0 ? 0.0f : (p.kbdTrack == 1 ? 0.5f : 1.0f);
         float envAmt = sEnvAmt.v;
         if (patched (Jack::FilterEnvAmtIn)) envAmt += 0.2f * readIn (Jack::FilterEnvAmtIn);
+        const float envOctaves = envAmt * 6.0f * e;
         float octaves = sCutoff.v * std::log2 (11000.0f / 10.0f)
-                        + envAmt * 6.0f * e
+                        + envOctaves
                         + track * (kbCv - 60.0f) * (1.0f / 12.0f)
                         + cutMod;
         if (patched (Jack::FilterCutoffIn)) octaves += readIn (Jack::FilterCutoffIn);
@@ -623,6 +636,7 @@ private:
         // the output is scaled back, so the small-signal gain is unchanged.
         const float fIn = patched (Jack::FilterIn) ? readIn (Jack::FilterIn) * 0.2f : mixed;
         float y = filter.process (fIn * kLadderDrive, fcTuned, k) * (1.0f / kLadderDrive);
+        y += kCutoffFeedPerOct * cutoffFeedHp.process (envOctaves);
         y = filterDc.process (y);
         if (isUsed (Jack::FilterOut)) setOut (Jack::FilterOut, acOut[2].process (y) * 5.0f);
 
@@ -634,9 +648,10 @@ private:
             const float c = readIn (Jack::VcaAmtIn) * (1.0f / 8.0f);
             gain = p.vcaMode == 2 ? std::max (c, 0.0f) : gain * c;
         }
+        const float offset = kVcaOffset * gain;
         gain = gain + 1.0e-4f;
         const float vIn = patched (Jack::VcaIn) ? readIn (Jack::VcaIn) * 0.2f : y;
-        const float v = vIn * gain * 1.25f;
+        const float v = vIn * gain * 1.25f + offset;
         if (patched (Jack::ReverbIn)) revAcc += readIn (Jack::ReverbIn) * 0.2f;
         return std::tanh (v * 0.8f) * (1.0f / 0.8f) * 0.8f;
     }
