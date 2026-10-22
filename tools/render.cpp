@@ -65,10 +65,66 @@ static void normalisePeak (std::vector<float>& x, float peak = 0.89f)
     if (m > 0) for (float& v : x) v *= peak / m;
 }
 
+// Loudness-matched A/B: every file at the same RMS, so a change is not heard as "louder = better".
+static void normaliseRms (std::vector<float>& x, float rmsTarget = 0.125f)
+{
+    double a = 0; for (float v : x) a += (double) v * v;
+    const double r = std::sqrt (a / std::max<size_t> (1, x.size()));
+    if (r > 0) for (float& v : x) v = (float) (v * rmsTarget / r);
+}
+
+// Amplitude of harmonic h of f (single-bin DFT over the whole buffer; use an integer number of periods).
+static double harmonic (const std::vector<float>& y, size_t from, double f, int fs, int h)
+{
+    double re = 0, im = 0;
+    for (size_t i = from; i < y.size(); ++i)
+    {
+        const double ph = 6.283185307179586 * f * h * (double) (i - from) / fs;
+        re += y[i] * std::cos (ph); im -= y[i] * std::sin (ph);
+    }
+    return 2.0 * std::sqrt (re * re + im * im) / (double) (y.size() - from);
+}
+
+// A/B material for listening tests (same three patches before / after every change in the sound).
+static void renderAB (const std::string& dir, int fs)
+{
+    {   // Bass with a fast filter envelope: two saws 16', low cutoff, short decay.
+        Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 1; p.osc2Freq = 0.06f;
+        p.mixOsc1 = 0.75f; p.mixOsc2 = 0.65f; p.cutoff = 0.28f; p.resonance = 0.3f; p.envAmt = 0.55f;
+        p.attack = 0.0f; p.decay = 0.3f; p.sustain = 0.35f; p.release = 0.18f; p.kbdTrack = 1;
+        auto seq = notes ({ {0.0,0.2,33},{0.25,0.2,33},{0.5,0.2,45},{0.75,0.2,33},{1.0,0.2,36},{1.25,0.2,38},{1.5,0.4,40},
+                            {2.0,0.2,33},{2.25,0.2,33},{2.5,0.2,45},{2.75,0.2,43},{3.0,0.7,40} });
+        auto x = renderSeq (p, seq, 4.2, fs); normaliseRms (x); writeWav (dir + "/ab_bass.wav", x, fs);
+    }
+    {   // Lead with 60 % resonance, a little glide and reverb.
+        Params p; p.osc1Octave = 2; p.osc1Wave = 1; p.osc2Octave = 1; p.osc2Wave = 2; p.osc2Freq = 0.1f;
+        p.mixOsc1 = 0.7f; p.mixOsc2 = 0.5f; p.cutoff = 0.55f; p.resonance = 0.6f; p.envAmt = 0.3f; p.kbdTrack = 1;
+        p.attack = 0.05f; p.decay = 0.45f; p.sustain = 0.7f; p.release = 0.3f; p.glide = 0.25f; p.reverbMix = 0.15f;
+        auto seq = notes ({ {0.0,0.45,60},{0.5,0.45,63},{1.0,0.45,67},{1.5,0.9,72},{2.5,0.45,70},{3.0,1.2,67} });
+        auto x = renderSeq (p, seq, 5.0, fs); normaliseRms (x); writeWav (dir + "/ab_lead.wav", x, fs);
+    }
+    {   // Pad: two slightly detuned saws, slow attack, filter half open.
+        Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 1; p.osc2Wave = 1; p.osc2Freq = 0.12f;
+        p.mixOsc1 = 0.6f; p.mixOsc2 = 0.6f; p.cutoff = 0.5f; p.resonance = 0.15f; p.envAmt = 0.15f;
+        p.attack = 0.55f; p.decay = 0.6f; p.sustain = 0.8f; p.release = 0.55f; p.reverbMix = 0.3f;
+        auto seq = notes ({ {0.0,2.2,48},{2.5,2.2,51},{5.0,2.5,44} });
+        auto x = renderSeq (p, seq, 9.0, fs); normaliseRms (x); writeWav (dir + "/ab_pad.wav", x, fs);
+    }
+    {   // Not normalised: a saw note (mixer 60 %) and then the self-oscillating filter (resonance 95 %), same Volume,
+        // to hear the balance between the two.
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.6f; p.kbdTrack = 2; p.sustain = 1.0f; p.release = 0.2f;
+        auto x = renderSeq (p, notes ({ { 0.0, 1.5, 57 }, { 2.0, 1.5, 57 } }), 4.0, fs, 2, [] (Params& q, double t) {
+            if (t > 1.9) { q.mixOsc1 = 0.0f; q.resonance = 0.95f; } });
+        writeWav (dir + "/ab_note_then_selfosc.wav", x, fs);
+    }
+}
+
 int main (int argc, char** argv)
 {
     const std::string dir = argc > 1 ? argv[1] : ".";
     const int fs = 48000;
+    renderAB (dir, fs);
+    if (argc > 2 && std::string (argv[2]) == "ab") return 0;     // "render <dir> ab": only the A/B files
 
     // ---------------- 1. Filter small-signal impulse responses (for frequency response) -------
     for (float res : { 0.0f, 0.5f, 0.9f })
@@ -102,6 +158,40 @@ int main (int argc, char** argv)
         const double f = count > 1 ? (count - 1) / ((tLast - tFirst) / 96000.0) : 0.0;
         std::printf ("  cutoff %7.1f Hz -> oscillates at %8.2f Hz (%+6.1f cents), peak %.3f\n",
                      fc, f, f > 0 ? 1200.0 * std::log2 (f / fc) : 0.0, amp);
+    }
+
+    // ---------------- 2b. Mixer + ladder drive: saw 110 Hz, mixer 25/50/75/100 % ---------------
+    {
+        // The saw has its own 2nd harmonic (−6 dB), so even-order distortion is read on the triangle (ideally none).
+        std::printf ("Ladder drive, 110 Hz, Resonance 0, VCA DRONE (H1 relative to mixer gain; H2/H3 relative to H1):\n");
+        for (int wave : { 1, 0 })
+        for (float cut : { 1.0f, 0.527f })   // 11 kHz (open) and ≈400 Hz
+        {
+            std::printf ("  %s, cutoff %s:", wave == 1 ? "saw" : "tri", cut > 0.9f ? "open  " : "400 Hz");
+            for (float lvl : { 0.25f, 0.5f, 0.75f, 1.0f })
+            {
+                Params p; p.osc1Octave = 2; p.osc1Wave = wave; p.mixOsc1 = lvl; p.cutoff = cut; p.resonance = 0.0f;
+                p.vcaMode = 2; p.volume = 1.0f; p.drift = 0.0f; p.reverbMix = 0.0f;
+                auto y = renderSeq (p, notes ({ { 0.0, 2.0, 45 } }), 2.0);
+                const size_t from = y.size() / 2;
+                const double h1 = harmonic (y, from, 110.0, fs, 1), h2 = harmonic (y, from, 110.0, fs, 2), h3 = harmonic (y, from, 110.0, fs, 3);
+                const double g = 1.3 * std::pow (lvl, 1.3);
+                std::printf ("  [%3d%%] H1 %+5.1f dB, H2 %5.1f, H3 %5.1f |", (int) (lvl * 100), 20 * std::log10 (h1 / g), 20 * std::log10 (h2 / h1), 20 * std::log10 (h3 / h1));
+            }
+            std::printf ("\n");
+        }
+        // Bass loss with resonance (small signal, filter alone): README quotes −13.6 dB at 90 % (k = 3.78).
+        auto lowGain = [] (float k) {
+            LadderFilter lf; lf.prepare (96000.0f); lf.setThermalNoise (0.0f);
+            double a = 0, b = 0;
+            for (int i = 0; i < 96000 * 2; ++i)
+            {
+                const float x = 0.001f * (float) std::sin (6.283185307179586 * 50.0 * i / 96000.0), yv = lf.process (x, 1000.0f, k);
+                if (i >= 96000) { a += (double) x * x; b += (double) yv * yv; }
+            }
+            return 10.0 * std::log10 (b / a); };
+        const double loss = lowGain (4.2f * 0.9f) - lowGain (0.0f);    // k = 4.2 · res, as in the impulse responses above
+        std::printf ("  bass loss at 50 Hz, resonance 90 %% vs 0: %.1f dB  %s\n", loss, std::abs (loss + 13.6) < 1.0 ? "OK" : "FAIL");
     }
 
     // ---------------- 3. Spring reverb impulse response ---------------------------------------
