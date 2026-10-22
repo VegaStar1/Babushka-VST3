@@ -50,7 +50,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.684f }, { "resonance", 0.15f }, { "envAmt", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.67f }, { "sustain", 0.8f }, { "release", 0.567f }, { "volume", 0.729f } } },
 
         { "Basic", "Sine Oscillator", "The filter self-oscillates and is played from the keyboard (Kbd Track 1:1): a pure sine. Oscillators are off.",
-          { { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 0.95f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.588f }, { "volume", 0.914f } } },
+          { { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 0.98f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.588f }, { "volume", 1.0f } } },
 
         { "Basic", "Mixer Overdrive", "Both oscillators and noise pushed hard into the mixer: the summing amp saturates before the ladder filter, as on the hardware.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.25f }, { "cutoff", 0.643f }, { "resonance", 0.3f }, { "envAmt", 0.25f }, { "attack", 0.0f }, { "decay", 0.622f }, { "sustain", 0.7f }, { "release", 0.481f }, { "volume", 0.647f } } },
@@ -168,7 +168,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.14f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.55f }, { "cutoff", 0.465f }, { "resonance", 0.35f }, { "envAmt", 0.55f }, { "kbdTrack", 1 }, { "attack", 0.544f }, { "decay", 0.751f }, { "sustain", 0.65f }, { "release", 0.751f }, { "reverbMix", 0.35f }, { "glide", 0.383f }, { "lfoRate", 0.434f }, { "lfoPitchAmt", 0.087f }, { "modWheel", 0.3f }, { "volume", 0.662f } } },
 
         { "Legends", "Sandworm Drone", "In the style of the huge low drones of Hans Zimmer's 'Dune' (2021): sub saw and pulse in DRONE mode, a throaty resonant vowel moving very slowly, noise breath.",
-          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.15f }, { "cutoff", 0.396f }, { "resonance", 0.6f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.22f }, { "modWheel", 1.0f }, { "volume", 0.479f } } },
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 3 }, { "osc2Freq", 0.07f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.15f }, { "cutoff", 0.396f }, { "resonance", 0.6f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.35f }, { "lfoRate", 0.0f }, { "lfoCutoffAmt", 0.22f }, { "modWheel", 1.0f }, { "volume", 0.63f } } },
 
         { "Legends", "Braam", "In the style of the trailer 'BRAAM' made famous by 'Inception' (2010): a low overdriven brass blast that swells open. Hold low notes.",
           { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.15f }, { "cutoff", 0.314f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "attack", 0.476f }, { "decay", 0.785f }, { "sustain", 0.7f }, { "release", 0.73f }, { "reverbMix", 0.35f }, { "volume", 0.622f } } },
@@ -693,7 +693,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "36 36 R 48 R 36 R 46" },
 
         { "Sequences", "Flying Chirps", "Plays by itself: the oscillators are off, the self-oscillating filter sings a high chirping line (Kbd Track 1:1). GATE OUT restarts the LFO saw, which flicks the cutoff through the attenuator. Three variations on OCT/SEQ.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "mixOsc1", 0.0f }, { "lfoRate", 0.364f }, { "lfoWave", 1 }, { "cutoff", 0.4669f }, { "resonance", 0.95f }, { "envAmt", 0.02f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.56f }, { "sustain", 0.0f }, { "release", 0.56f }, { "reverbMix", 0.06f }, { "attenuator", 0.08f }, { "arpPlay", 1 }, { "arpHold", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.6944f }, { "arpFreeStep", 2 }, { "volume", 0.95f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "mixOsc1", 0.15f }, { "lfoRate", 0.364f }, { "lfoWave", 1 }, { "cutoff", 0.4669f }, { "resonance", 1.0f }, { "envAmt", 0.02f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.56f }, { "sustain", 0.0f }, { "release", 0.56f }, { "reverbMix", 0.06f }, { "attenuator", 0.08f }, { "arpPlay", 1 }, { "arpHold", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.6944f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
           "gateOut:modSyncIn modWaveOut:attIn attOut:filterCutoffIn",
           "R 92 R R 97 R R 88 R R 100 R 95 R 104 R",
           "R 92 R 97 R R 100 R R 88 R R 104 R 97 R",
@@ -821,7 +821,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "mixOsc1", 0.6f }, { "cutoff", 0.814f }, { "resonance", 0.2f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "reverbMix", 0.2f }, { "lfoRate", 0.312f }, { "lfoWave", 2 }, { "lfoPitchAmt", 0.707f }, { "modWheel", 1.0f }, { "volume", 0.644f } } },
 
         { "FX", "Geiger Counter", "Random clicks: the S/H out triggers the envelope (cable: MOD S/H OUT -> TRIGGER IN) of a short noise click. DRONE off: hold a key.",
-          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.742f }, { "resonance", 0.8f }, { "envAmt", 0.3f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.378f }, { "sustain", 0.0f }, { "release", 0.378f }, { "lfoRate", 0.617f }, { "volume", 1.0f } },
+          { { "mixOsc1", 0.0f }, { "mixNoise", 1.0f }, { "cutoff", 0.92f }, { "resonance", 0.8f }, { "envAmt", 0.3f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.378f }, { "sustain", 0.0f }, { "release", 0.378f }, { "lfoRate", 0.617f }, { "volume", 1.0f } },
           "modShOut:envTriggerIn" },
 
         { "FX", "Thunder", "Low rumbling noise in a long envelope into the spring tank.",
@@ -872,7 +872,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "modWaveOut:envTriggerIn" },
 
         { "FX", "Bubbles", "The self-oscillating filter pinged by the LFO square at random pitches from S/H: underwater bubbles. Hold a key. Cables: MOD WAVE OUT -> TRIGGER IN, MOD S/H OUT -> attenuator -> CUTOFF IN.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "mixOsc1", 0.3f }, { "cutoff", 0.643f }, { "resonance", 0.9f }, { "envAmt", 0.4f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.399f }, { "sustain", 0.0f }, { "release", 0.399f }, { "reverbMix", 0.35f }, { "lfoRate", 0.469f }, { "lfoWave", 3 }, { "attenuator", 0.45f }, { "volume", 1.0f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 0 }, { "mixOsc1", 0.55f }, { "cutoff", 0.643f }, { "resonance", 0.92f }, { "envAmt", 0.4f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.399f }, { "sustain", 0.0f }, { "release", 0.399f }, { "reverbMix", 0.35f }, { "lfoRate", 0.469f }, { "lfoWave", 3 }, { "attenuator", 0.45f }, { "volume", 1.0f } },
           "modWaveOut:envTriggerIn modShOut:attIn attOut:filterCutoffIn" },
 
         { "FX", "Runaway Droid", "Droid Chatter into a tape echo on the edge of self-oscillation: the robot talks over its own echoes.",
@@ -941,7 +941,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "modWaveOut:envTriggerIn" },
 
         { "Patch Bay", "Filter as Oscillator", "The self-oscillating filter is the only voice, its frequency modulated by oscillator 1 for FM-like tones. Cables: OSC 1 WAVE OUT -> attenuator -> CUTOFF IN.",
-          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 0.95f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.67f }, { "sustain", 0.7f }, { "release", 0.588f }, { "reverbMix", 0.2f }, { "attenuator", 0.25f }, { "volume", 1.0f } },
+          { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "mixOsc1", 0.0f }, { "cutoff", 0.466f }, { "resonance", 1.0f }, { "kbdTrack", 2 }, { "attack", 0.0f }, { "decay", 0.67f }, { "sustain", 0.7f }, { "release", 0.588f }, { "reverbMix", 0.2f }, { "attenuator", 0.25f }, { "volume", 1.0f } },
           "osc1WaveOut:attIn attOut:filterCutoffIn" },
 
         { "Patch Bay", "S/H Pulse Width", "Random pulse width on every LFO step: a jittery, lively square. Cable: MOD S/H OUT -> OSC 1 PWM IN.",

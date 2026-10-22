@@ -491,6 +491,11 @@ private:
 
     // ASSUMPTION: linear FM depth is not given in the manual; 100 Hz per volt (±5 V audio → ±500 Hz).
     static constexpr float kLinFmHzPerVolt = 100.0f;
+    // ASSUMPTION: ladder input level for a full-scale mixer (was 0.6). At 2.0 the fundamental of a 110 Hz saw at
+    // mixer max through a 400 Hz cutoff is compressed ≈1.8 dB more than at 0.6 (≈0.5 dB at 12 o'clock); to calibrate
+    // with a recording of one oscillator at mixer 25/50/75/100 %. The self-oscillation level does not depend on the
+    // input, so against notes it is ≈10 dB quieter than at 0.6 (the self-oscillating presets were re-levelled).
+    static constexpr float kLadderDrive = 2.0f;
     // ASSUMPTION: PWM IN 0 … +5 V moves the duty cycle by up to +0.45 (matches the internal LFO path).
     static constexpr float kPwmPerVolt = 0.09f;
 
@@ -613,9 +618,11 @@ private:
         const float k = 4.5f * sRes.v;
         const float fcTuned = std::min (cutoffHz * LadderFilter::tuningCompensation (k), 24000.0f);
 
-        // Drive scaling: mixer level ±1 ≈ 0.6 in ladder units (clean-ish when moderate, saturates when hot).
+        // Drive scaling: mixer level ±1 ≈ kLadderDrive in ladder units (2·Vt). Hot enough that a mixer above
+        // 12 o'clock also drives the ladder itself (the harmonics near and above the cutoff are compressed);
+        // the output is scaled back, so the small-signal gain is unchanged.
         const float fIn = patched (Jack::FilterIn) ? readIn (Jack::FilterIn) * 0.2f : mixed;
-        float y = filter.process (fIn * 0.6f, fcTuned, k) * (1.0f / 0.6f);
+        float y = filter.process (fIn * kLadderDrive, fcTuned, k) * (1.0f / kLadderDrive);
         y = filterDc.process (y);
         if (isUsed (Jack::FilterOut)) setOut (Jack::FilterOut, acOut[2].process (y) * 5.0f);
 
