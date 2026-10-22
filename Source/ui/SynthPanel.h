@@ -434,29 +434,17 @@ private:
     }
 
     // Logarithmic frequency scale round the CUTOFF knob: 10 Hz … 11 kHz over 270°, a tick at m × 10^n Hz.
-    void logCutoffScale (float cx, float cy, float d, juce::Colour c)
+    // The CUTOFF print of the hardware: evenly spaced ticks over the knob's travel, a long one every half decade,
+    // 20Hz / 200Hz / 2kHz / 20kHz at the start, a third, two thirds and the end. Like the hardware's, the print is the
+    // nominal 20 Hz ... 20 kHz range; the knob itself reaches about 11 kHz (CV goes further), its value shows on hover.
+    void cutoffScale (float cx, float cy, float d, juce::Colour c)
     {
-        auto angleFor = [] (double hz) { return -135.0 + 270.0 * std::log (hz / 10.0) / std::log (1100.0); };
-        op ([=] (juce::Graphics& g) {
-            for (int e = 1; e <= 4; ++e)
-                for (int m = 1; m <= 9; ++m)
-                {
-                    const double hz = std::pow (10.0, e) * m;
-                    if (hz > 11000.0) break;
-                    const float a = juce::degreesToRadians ((float) angleFor (hz) - 90.0f);
-                    const bool major = (m == 2) || (m == 1 && e == 1);
-                    const float r0 = d * 0.54f, r1 = d * (major ? 0.70f : 0.62f);
-                    g.setColour (c);
-                    g.drawLine (cx + r0 * std::cos (a), cy + r0 * std::sin (a), cx + r1 * std::cos (a), cy + r1 * std::sin (a), major ? 1.6f : 0.9f);
-                }
-            const float aEnd = juce::degreesToRadians (135.0f - 90.0f);
-            g.drawLine (cx + d * 0.54f * std::cos (aEnd), cy + d * 0.54f * std::sin (aEnd), cx + d * 0.70f * std::cos (aEnd), cy + d * 0.70f * std::sin (aEnd), 1.6f); });
-        auto at = [&] (double hz, const juce::String& t, float extra) {
-            const float a = juce::degreesToRadians ((float) angleFor (hz));
-            const float r = d * 0.5f + 25.0f + extra;
+        ticks (cx, cy, d, 31, c, 0.09f, 5);
+        auto at = [&] (float deg, const juce::String& t) {
+            const float a = juce::degreesToRadians (deg), r = d * 0.5f + 25.0f;
             textAt (t, cx + std::sin (a) * r, cy - std::cos (a) * r, c, type::mark, Weight::NarrowBold, 40.0f, 0.02f);
         };
-        at (20.0, "20Hz", 0.0f); at (200.0, "200Hz", -2.0f); at (2000.0, "2kHz", 0.0f); at (11000.0, "11kHz", 0.0f);
+        at (-135.0f, "20Hz"); at (-45.0f, "200Hz"); at (45.0f, "2kHz"); at (135.0f, "20kHz");
     }
 
     // ---- the layout ----------------------------------------------------------------------------------------------------------
@@ -582,7 +570,7 @@ private:
         jack (Jack::FilterIn, 896, 97, "INPUT", filInk); jack (Jack::FilterOut, 1055, 97, "OUTPUT", filInk);
         jack (Jack::FilterEnvAmtIn, 940, 128, "ENV AMT IN", filInk); jack (Jack::FilterCutoffIn, 1012, 128, "CUTOFF IN", filInk);
         knob ("cutoff", 976, 228, 80, [] (double v) { return fmt::cutoff (v); });
-        logCutoffScale (976.0f, 228.0f, 80.0f, filInk);
+        cutoffScale (976.0f, 228.0f, 80.0f, filInk);
         textAt ("CUTOFF", 976, 280, filInk, type::control, Weight::NarrowBold, 70.0f);
         lever ("kbdTrack", 976, 306, { 1, 0, 2 }, [] (int p) { static const char* n[] = { "1:2", "off", "1:1" }; return juce::String (n[p]); });
         leverLabels (976, 328, "1:2", "OFF", "1:1", filInk, 29.0f);
