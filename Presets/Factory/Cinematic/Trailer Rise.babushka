@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn"
           presetName="Trailer Rise" presetModified="0" presetRandom="0"
-          presetFile="" category="Cinematic" tags="EVOLVING BRIGHT" description="Brass that keeps rising in pitch and brightness while held: the last seconds before the title card. Cables: + ENV OUT -&gt; attenuator -&gt; both PITCH IN.">
+          presetFile="" cutoffLaw="2" category="Cinematic" tags="EVOLVING BRIGHT"
+          description="Brass that keeps rising in pitch and brightness while held: the last seconds before the title card. Cables: + ENV OUT -&gt; attenuator -&gt; both PITCH IN.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.296999990940094"/>
+  <PARAM id="cutoff" value="0.2008000016212463"/>
   <PARAM id="decay" value="0.8109999895095825"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.800000011920929"/>

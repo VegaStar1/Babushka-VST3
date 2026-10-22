@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="envPosOut:attIn attOut:filterCutoffIn"
           presetName="Inverted Envelope" presetModified="0" presetRandom="0"
-          presetFile="" category="Patch Bay" tags="EVOLVING DARK" description="The envelope through the attenuator turned negative closes the filter on every note instead of opening it: a reversed swell. Cables: + ENV OUT -&gt; attenuator -&gt; CUTOFF IN.">
+          presetFile="" cutoffLaw="2" category="Patch Bay" tags="EVOLVING DARK"
+          description="The envelope through the attenuator turned negative closes the filter on every note instead of opening it: a reversed swell. Cables: + ENV OUT -&gt; attenuator -&gt; CUTOFF IN.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.7699999809265137"/>
+  <PARAM id="cutoff" value="0.6802999973297119"/>
   <PARAM id="decay" value="0.7300000190734863"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

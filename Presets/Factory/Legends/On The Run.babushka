@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="52 55 57 55 62 60 62 64" seq2="52 57 55 62 57 64 60 62"
           seq3="52 52 55 57 52 52 59 57" patch="" presetName="On The Run"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="EVOLVING NOISY" description="In the style of the hypnotic 8-step EMS sequence on Pink Floyd's 'On the Run' (1973): fast 16ths, filter swept by the LFO, a hiss of noise. Plays by itself.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="EVOLVING NOISY" description="In the style of the hypnotic 8-step EMS sequence on Pink Floyd's 'On the Run' (1973): fast 16ths, filter swept by the LFO, a hiss of noise. Plays by itself.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.6069999933242798"/>
+  <PARAM id="cutoff" value="0.5149999856948853"/>
   <PARAM id="decay" value="0.4589999914169312"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.25"/>

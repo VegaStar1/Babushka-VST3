@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Spring Crash" presetModified="0"
-          presetRandom="0" presetFile="" category="FX" tags="NOISY AGGRESSIVE"
+          presetRandom="0" presetFile="" cutoffLaw="2" category="FX" tags="NOISY AGGRESSIVE"
           description="A short burst of noise slammed into 100 % wet spring: the sound of kicking the tank.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.8560000061988831"/>
+  <PARAM id="cutoff" value="0.7674999833106995"/>
   <PARAM id="decay" value="0.4329999983310699"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.2000000029802322"/>

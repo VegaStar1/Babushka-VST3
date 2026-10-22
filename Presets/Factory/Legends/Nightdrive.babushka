@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="34 46 34 46 34 46 34 46 30 42 30 42 32 44 32 44" seq2="34 46 34 46 37 49 37 49"
           seq3="34 34 46 34 34 46 34 46" patch="" presetName="Nightdrive"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="DARK FAT" description="In the style of Kavinsky's 'Nightcall' (2010) and the 'Drive' soundtrack: dark detuned octave bass pumping in 8ths. Plays by itself; a key transposes.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="DARK FAT" description="In the style of Kavinsky's 'Nightcall' (2010) and the 'Drive' soundtrack: dark detuned octave bass pumping in 8ths. Plays by itself; a key transposes.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4650000035762787"/>
+  <PARAM id="cutoff" value="0.3711000084877014"/>
   <PARAM id="decay" value="0.5669999718666077"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.3499999940395355"/>

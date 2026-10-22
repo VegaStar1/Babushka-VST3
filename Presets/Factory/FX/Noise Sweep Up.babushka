@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Noise Sweep Up"
-          presetModified="0" presetRandom="0" presetFile="" category="FX"
-          tags="NOISY RESONANT EVOLVING" description="White noise through the resonant filter, opening over three seconds while the key is held: the classic build-up.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="FX" tags="NOISY RESONANT EVOLVING" description="White noise through the resonant filter, opening over three seconds while the key is held: the classic build-up.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.3549999892711639"/>
+  <PARAM id="cutoff" value="0.2596000134944916"/>
   <PARAM id="decay" value="0.7300000190734863"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.949999988079071"/>

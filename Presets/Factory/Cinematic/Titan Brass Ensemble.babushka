@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Titan Brass Ensemble"
-          presetModified="0" presetRandom="0" presetFile="" category="Cinematic"
-          tags="WARM FAT" description="Titan Brass spread by the three-line ensemble chorus: a whole section instead of one player.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Cinematic" tags="WARM FAT" description="Titan Brass spread by the three-line ensemble chorus: a whole section instead of one player.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.2339999973773956"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4280000030994415"/>
+  <PARAM id="cutoff" value="0.3336000144481659"/>
   <PARAM id="decay" value="0.7689999938011169"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.6000000238418579"/>

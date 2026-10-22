@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Music Box Tape"
-          presetModified="0" presetRandom="0" presetFile="" category="Keys &amp; Plucks"
-          tags="PLUCKY EVOLVING" description="Music Box played back from an old cassette: wow, flutter, hiss and a worn chorus.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Keys &amp; Plucks" tags="PLUCKY EVOLVING" description="Music Box played back from an old cassette: wow, flutter, hiss and a worn chorus.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.453000009059906"/>
   <PARAM id="choWidth" value="0.800000011920929"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.8870000243186951"/>
+  <PARAM id="cutoff" value="0.7989000082015991"/>
   <PARAM id="decay" value="0.6700000166893005"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

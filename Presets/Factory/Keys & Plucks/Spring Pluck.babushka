@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Spring Pluck" presetModified="0"
-          presetRandom="0" presetFile="" category="Keys &amp; Plucks" tags="PLUCKY BRIGHT"
-          description="Narrow pulse pluck into the spring reverb, 50 % wet.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Keys &amp; Plucks"
+          tags="PLUCKY BRIGHT" description="Narrow pulse pluck into the spring reverb, 50 % wet.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5440000295639038"/>
+  <PARAM id="cutoff" value="0.451200008392334"/>
   <PARAM id="decay" value="0.6060000061988831"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.5"/>

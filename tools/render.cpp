@@ -161,7 +161,7 @@ static void renderAB (const std::string& dir, int fs)
 {
     {   // Bass with a fast filter envelope: two saws 16', low cutoff, short decay.
         Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 1; p.osc2Freq = 0.06f;
-        p.mixOsc1 = 0.75f; p.mixOsc2 = 0.65f; p.cutoff = 0.28f; p.resonance = 0.3f; p.envAmt = 0.55f;
+        p.mixOsc1 = 0.75f; p.mixOsc2 = 0.65f; p.cutoff = 0.1835f; p.resonance = 0.3f; p.envAmt = 0.55f;
         p.attack = 0.0f; p.decay = 0.3f; p.sustain = 0.35f; p.release = 0.18f; p.kbdTrack = 1;
         auto seq = notes ({ {0.0,0.2,33},{0.25,0.2,33},{0.5,0.2,45},{0.75,0.2,33},{1.0,0.2,36},{1.25,0.2,38},{1.5,0.4,40},
                             {2.0,0.2,33},{2.25,0.2,33},{2.5,0.2,45},{2.75,0.2,43},{3.0,0.7,40} });
@@ -169,34 +169,34 @@ static void renderAB (const std::string& dir, int fs)
     }
     {   // Lead with 60 % resonance, a little glide and reverb.
         Params p; p.osc1Octave = 2; p.osc1Wave = 1; p.osc2Octave = 1; p.osc2Wave = 2; p.osc2Freq = 0.1f;
-        p.mixOsc1 = 0.7f; p.mixOsc2 = 0.5f; p.cutoff = 0.55f; p.resonance = 0.6f; p.envAmt = 0.3f; p.kbdTrack = 1;
+        p.mixOsc1 = 0.7f; p.mixOsc2 = 0.5f; p.cutoff = 0.4572f; p.resonance = 0.6f; p.envAmt = 0.3f; p.kbdTrack = 1;
         p.attack = 0.05f; p.decay = 0.45f; p.sustain = 0.7f; p.release = 0.3f; p.glide = 0.25f; p.reverbMix = 0.15f;
         auto seq = notes ({ {0.0,0.45,60},{0.5,0.45,63},{1.0,0.45,67},{1.5,0.9,72},{2.5,0.45,70},{3.0,1.2,67} });
         auto x = renderSeq (p, seq, 5.0, fs); normaliseRms (x); writeWav (dir + "/ab_lead.wav", x, fs);
     }
     {   // Pad: two slightly detuned saws, slow attack, filter half open.
         Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 1; p.osc2Wave = 1; p.osc2Freq = 0.12f;
-        p.mixOsc1 = 0.6f; p.mixOsc2 = 0.6f; p.cutoff = 0.5f; p.resonance = 0.15f; p.envAmt = 0.15f;
+        p.mixOsc1 = 0.6f; p.mixOsc2 = 0.6f; p.cutoff = 0.4066f; p.resonance = 0.15f; p.envAmt = 0.15f;
         p.attack = 0.55f; p.decay = 0.6f; p.sustain = 0.8f; p.release = 0.55f; p.reverbMix = 0.3f;
         auto seq = notes ({ {0.0,2.2,48},{2.5,2.2,51},{5.0,2.5,44} });
         auto x = renderSeq (p, seq, 9.0, fs); normaliseRms (x); writeWav (dir + "/ab_pad.wav", x, fs);
     }
     {   // The same note sixteen times (bass, fast filter envelope): note-to-note spread.
         Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 3; p.osc2Freq = 0.05f;
-        p.mixOsc1 = 0.7f; p.mixOsc2 = 0.5f; p.cutoff = 0.3f; p.resonance = 0.35f; p.envAmt = 0.5f;
+        p.mixOsc1 = 0.7f; p.mixOsc2 = 0.5f; p.cutoff = 0.2038f; p.resonance = 0.35f; p.envAmt = 0.5f;
         p.attack = 0.0f; p.decay = 0.28f; p.sustain = 0.3f; p.release = 0.15f; p.kbdTrack = 1;
         std::vector<Ev> evs;
         for (int i = 0; i < 16; ++i) { evs.push_back ({ 0.2 * i, 0, 36, 0 }); evs.push_back ({ 0.2 * i + 0.12, 1, 36, 0 }); }
         auto x = renderSeq (p, evs, 3.6, fs); normaliseRms (x); writeWav (dir + "/ab_repeat.wav", x, fs);
     }
     {   // Not normalised: short plucks with pauses, the optional noise floor on (the pauses are not digital silence).
-        Params p; p.osc1Octave = 2; p.osc1Wave = 3; p.mixOsc1 = 0.6f; p.cutoff = 0.55f; p.envAmt = 0.5f; p.resonance = 0.2f;
+        Params p; p.osc1Octave = 2; p.osc1Wave = 3; p.mixOsc1 = 0.6f; p.cutoff = 0.4572f; p.envAmt = 0.5f; p.resonance = 0.2f;
         p.decay = 0.3f; p.sustain = 0.0f; p.release = 0.3f; p.kbdTrack = 1; p.noiseFloor = true;
         auto x = renderSeq (p, notes ({ { 0.0, 0.1, 60 }, { 1.2, 0.1, 67 }, { 2.4, 0.1, 64 } }), 4.0, fs);
         writeWav (dir + "/ab_noise_floor_on.wav", x, fs);
     }
     {   // The four waveforms of oscillator 1 in turn (triangle, saw, square, narrow pulse), filter open, A2.
-        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.4f; p.cutoff = 1.0f; p.sustain = 1.0f; p.release = 0.05f; p.drift = 0.0f;
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.4f; p.cutoff = 0.9135f; p.sustain = 1.0f; p.release = 0.05f; p.drift = 0.0f;
         auto x = renderSeq (p, notes ({ { 0.0, 1.1, 45 }, { 1.2, 1.1, 45 }, { 2.4, 1.1, 45 }, { 3.6, 1.1, 45 } }), 4.9, fs, 2,
                             [] (Params& q, double t) { q.osc1Wave = std::min (3, (int) (t / 1.2)); });
         writeWav (dir + "/ab_waves.wav", x, fs);
@@ -217,21 +217,21 @@ static void renderAB (const std::string& dir, int fs)
                 writeWav (dir + "/ab_" + name + (loop ? "_loop_on.wav" : "_loop_off.wav"), x, fs);
             } };
         Params a; a.osc1Octave = 1; a.osc1Wave = 1; a.osc2Octave = 0; a.osc2Wave = 2; a.osc2Freq = 0.06f; a.mixOsc1 = 0.6f; a.mixOsc2 = 0.5f;
-        a.mixNoise = 0.8f; a.cutoff = 0.36f; a.resonance = 0.3f; a.envAmt = 0.4f; a.kbdTrack = 1; a.attack = 0.0f; a.decay = 0.55f;
+        a.mixNoise = 0.8f; a.cutoff = 0.2646f; a.resonance = 0.3f; a.envAmt = 0.4f; a.kbdTrack = 1; a.attack = 0.0f; a.decay = 0.55f;
         a.sustain = 0.5f; a.release = 0.45f; a.volume = 0.75f;
         loopPair ("feedback_bass", a, "filterOut:mixNoiseIn", false, notes ({ {0.0,0.35,36},{0.5,0.35,36},{1.0,0.35,43},{1.5,0.35,39},{2.0,0.8,36} }), 3.0);
         Params b; b.osc1Octave = 2; b.osc1Wave = 1; b.osc2Octave = 1; b.osc2Wave = 1; b.osc2Freq = 0.1f; b.mixOsc1 = 0.55f; b.mixOsc2 = 0.45f;
-        b.mixNoise = 1.0f; b.cutoff = 0.75f; b.resonance = 0.25f; b.envAmt = 0.2f; b.kbdTrack = 1; b.attack = 0.0f; b.decay = 0.6f;
+        b.mixNoise = 1.0f; b.cutoff = 0.6600f; b.resonance = 0.25f; b.envAmt = 0.2f; b.kbdTrack = 1; b.attack = 0.0f; b.decay = 0.6f;
         b.sustain = 0.75f; b.release = 0.45f; b.reverbMix = 0.15f; b.glide = 0.3f; b.volume = 0.7f;
         loopPair ("feedback_lead", b, "filterOut:mixNoiseIn", false, notes ({ {0.0,0.45,60},{0.5,0.45,63},{1.0,0.45,67},{1.5,0.9,72},{2.5,1.0,67} }), 4.0);
         Params c; c.osc1Octave = 0; c.osc1Wave = 1; c.osc2Octave = 0; c.osc2Wave = 1; c.mixOsc1 = 0.7f; c.mixOsc2 = 0.8f; c.mixNoise = 0.8f;
-        c.cutoff = 0.42f; c.resonance = 0.45f; c.attack = 0.0f; c.decay = 0.5f; c.sustain = 1.0f; c.release = 0.5f; c.vcaMode = 2;
+        c.cutoff = 0.3255f; c.resonance = 0.45f; c.attack = 0.0f; c.decay = 0.5f; c.sustain = 1.0f; c.release = 0.5f; c.vcaMode = 2;
         c.reverbMix = 0.3f; c.lfoRate = 0.05f; c.lfoCutoffAmt = 0.2f; c.modWheel = 1.0f; c.volume = 0.78f;
         loopPair ("double_loop_drone", c, "filterOut:mult1 mult2:mixNoiseIn mult3:mixOsc2In", true, notes ({ {0.0,5.0,41} }), 6.0);
     }
     {   // Not normalised: a saw note (mixer 60 %) and then the self-oscillating filter (resonance 95 %), same Volume,
         // to hear the balance between the two.
-        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.6f; p.kbdTrack = 2; p.sustain = 1.0f; p.release = 0.2f;
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.5079f; p.kbdTrack = 2; p.sustain = 1.0f; p.release = 0.2f;
         auto x = renderSeq (p, notes ({ { 0.0, 1.5, 57 }, { 2.0, 1.5, 57 } }), 4.0, fs, 2, [] (Params& q, double t) {
             if (t > 1.9) { q.mixOsc1 = 0.0f; q.resonance = 0.95f; } });
         writeWav (dir + "/ab_note_then_selfosc.wav", x, fs);
@@ -285,9 +285,9 @@ int main (int argc, char** argv)
         // The saw has its own 2nd harmonic (−6 dB), so even-order distortion is read on the triangle (ideally none).
         std::printf ("Ladder drive, 110 Hz, Resonance 0, VCA DRONE (H1 relative to mixer gain; H2/H3 relative to H1):\n");
         for (int wave : { 1, 0 })
-        for (float cut : { 1.0f, 0.527f })   // 11 kHz (open) and ≈400 Hz
+        for (float cut : { 0.9135f, 0.4337f })   // 11 kHz (open) and 400 Hz
         {
-            std::printf ("  %s, cutoff %s:", wave == 1 ? "saw" : "tri", cut > 0.9f ? "open  " : "400 Hz");
+            std::printf ("  %s, cutoff %s:", wave == 1 ? "saw" : "tri", cut > 0.8f ? "open  " : "400 Hz");
             for (float lvl : { 0.25f, 0.5f, 0.75f, 1.0f })
             {
                 Params p; p.osc1Octave = 2; p.osc1Wave = wave; p.mixOsc1 = lvl; p.cutoff = cut; p.resonance = 0.0f;
@@ -317,7 +317,7 @@ int main (int argc, char** argv)
     // ---------------- 2c. CV feedthrough ("thump"): mixer at zero, fast filter envelope ---------------
     {
         // Bass-like patch with every mixer channel at zero: what is left is the leak of the control signals.
-        Params p; p.mixOsc1 = 0.0f; p.mixOsc2 = 0.0f; p.mixNoise = 0.0f; p.cutoff = 0.3f; p.resonance = 0.0f; p.envAmt = 1.0f;
+        Params p; p.mixOsc1 = 0.0f; p.mixOsc2 = 0.0f; p.mixNoise = 0.0f; p.cutoff = 0.2038f; p.resonance = 0.0f; p.envAmt = 1.0f;
         p.attack = 0.0f; p.decay = 0.3f; p.sustain = 0.4f; p.release = 0.2f; p.volume = 1.0f; p.drift = 0.0f;
         const double gateOff = 0.5;
         auto y = renderSeq (p, notes ({ { 0.1, gateOff - 0.1, 36 } }), 1.5);
@@ -351,7 +351,7 @@ int main (int argc, char** argv)
         double spread25 = 0;
         for (float drift : { 0.0f, 0.25f, 1.0f })
         {
-            Params p; p.osc1Octave = 2; p.osc1Wave = 1; p.mixOsc1 = 0.5f; p.cutoff = 1.0f; p.sustain = 1.0f; p.release = 0.0f;
+            Params p; p.osc1Octave = 2; p.osc1Wave = 1; p.mixOsc1 = 0.5f; p.cutoff = 0.9135f; p.sustain = 1.0f; p.release = 0.0f;
             p.vcaMode = 0; p.drift = drift;
             std::vector<std::tuple<double, double, int>> list;
             for (int i = 0; i < 8; ++i) list.emplace_back (0.5 * i, 0.45, 69);
@@ -378,7 +378,7 @@ int main (int argc, char** argv)
 
     // ---------------- 2e. Closed-VCA bleed and the optional noise floor ------------------------------------
     {
-        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.7f; p.sustain = 1.0f; p.release = 0.0f; p.volume = 0.8f; p.drift = 0.0f;
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.6093f; p.sustain = 1.0f; p.release = 0.0f; p.volume = 0.8f; p.drift = 0.0f;
         auto y = renderSeq (p, notes ({ { 0.0, 1.0, 57 } }), 2.5);
         auto rmsOf = [&y] (double a, double b) { double t = 0; size_t n = 0; for (size_t i = (size_t) (a * 48000); i < (size_t) (b * 48000); ++i, ++n) t += y[i] * y[i]; return std::sqrt (t / n); };
         const double bleed = 20 * std::log10 (rmsOf (2.0, 2.5) / rmsOf (0.5, 1.0));
@@ -429,7 +429,7 @@ int main (int argc, char** argv)
 
     // ---------------- 2g. VCA KB RLS: full level while the key is held, also at SUSTAIN 0 ----------------------
     {
-        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.8f; p.vcaMode = 1; p.sustain = 0.0f; p.decay = 0.3f; p.release = 0.5f; p.drift = 0.0f;
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.7107f; p.vcaMode = 1; p.sustain = 0.0f; p.decay = 0.3f; p.release = 0.5f; p.drift = 0.0f;
         auto y = renderSeq (p, notes ({ { 0.0, 1.0, 57 } }), 2.0);
         auto rmsAt = [&y] (double a, double b) { double t = 0; size_t n = 0; for (size_t i = (size_t) (a * 48000); i < (size_t) (b * 48000); ++i, ++n) t += y[i] * y[i]; return 10 * std::log10 (t / n + 1e-20); };
         const double early = rmsAt (0.05, 0.15), late = rmsAt (0.85, 0.95), after = rmsAt (1.6, 1.7);
@@ -514,7 +514,7 @@ int main (int argc, char** argv)
     }
     {
         // AC coupling: a recorded 66 Hz square wave sags ≈17 % over a half-period (≈5.5 Hz single-pole equivalent).
-        Params p; p.osc1Octave = 2; p.osc1Wave = 2; p.mixOsc1 = 0.35f; p.mixOsc2 = 0.0f; p.cutoff = 1.0f; p.resonance = 0.0f;
+        Params p; p.osc1Octave = 2; p.osc1Wave = 2; p.mixOsc1 = 0.35f; p.mixOsc2 = 0.0f; p.cutoff = 0.9135f; p.resonance = 0.0f;
         p.vcaMode = 2; p.volume = 1.0f; p.drift = 0.0f; p.reverbMix = 0.0f;
         auto y = renderSeq (p, notes ({ { 0.0, 3.0, 36 } }), 3.0);
         double hi0 = 0, hi1 = 0; int nc = 0;
@@ -535,7 +535,7 @@ int main (int argc, char** argv)
     // ---------------- 4. Musical demos ----------------------------------------------------------
     {   // Classic bass: two saws 16', slight detune, low cutoff, env sweep.
         Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 1; p.osc2Freq = 0.08f;
-        p.mixOsc1 = 0.6f; p.mixOsc2 = 0.6f; p.cutoff = 0.32f; p.resonance = 0.35f; p.envAmt = 0.45f;
+        p.mixOsc1 = 0.6f; p.mixOsc2 = 0.6f; p.cutoff = 0.2241f; p.resonance = 0.35f; p.envAmt = 0.45f;
         p.attack = 0.0f; p.decay = 0.35f; p.sustain = 0.45f; p.release = 0.2f; p.kbdTrack = 1;
         auto seq = notes ({ {0.0,0.2,36},{0.25,0.2,36},{0.5,0.2,48},{0.75,0.2,36},{1.0,0.2,39},{1.25,0.2,41},{1.5,0.4,43},
                             {2.0,0.2,36},{2.25,0.2,36},{2.5,0.2,48},{2.75,0.2,46},{3.0,0.6,43} });
@@ -543,7 +543,7 @@ int main (int argc, char** argv)
     }
     {   // Sync lead with glide, cutoff swept by hand, vibrato from the mod wheel, some reverb.
         Params p; p.osc1Octave = 2; p.osc1Wave = 1; p.osc2Octave = 1; p.osc2Wave = 1; p.osc2Sync = true; p.osc2Freq = 5.0f;
-        p.mixOsc1 = 0.25f; p.mixOsc2 = 0.75f; p.cutoff = 0.72f; p.resonance = 0.25f; p.envAmt = 0.2f;
+        p.mixOsc1 = 0.25f; p.mixOsc2 = 0.75f; p.cutoff = 0.6296f; p.resonance = 0.25f; p.envAmt = 0.2f;
         p.decay = 0.5f; p.sustain = 0.8f; p.release = 0.3f; p.glide = 0.35f; p.glideType = 2;
         p.lfoRate = 0.42f; p.lfoPitchAmt = 0.18f; p.modWheel = 0.0f; p.reverbMix = 0.22f;
         auto seq = notes ({ {0.0,0.45,60},{0.5,0.45,63},{1.0,0.45,67},{1.5,0.9,72},{2.5,0.45,70},{3.0,1.2,67} });
@@ -553,34 +553,34 @@ int main (int argc, char** argv)
         normalisePeak (x); writeWav (dir + "/demo_2_sync_lead.wav", x, fs);
     }
     {   // Self-oscillating filter played as a sine (key tracking 1:1), plus resonance sweep on a saw.
-        Params p; p.mixOsc1 = 0.0f; p.resonance = 1.0f; p.kbdTrack = 2; p.cutoff = 0.66f; p.sustain = 1.0f; p.release = 0.3f;
+        Params p; p.mixOsc1 = 0.0f; p.resonance = 1.0f; p.kbdTrack = 2; p.cutoff = 0.5688f; p.sustain = 1.0f; p.release = 0.3f;
         auto seq = notes ({ {0.0,0.4,48},{0.5,0.4,55},{1.0,0.4,60},{1.5,0.8,67} });
         auto x = renderSeq (p, seq, 2.6); normalisePeak (x); writeWav (dir + "/demo_3_self_osc.wav", x, fs);
 
         Params q; q.osc1Octave = 1; q.mixOsc1 = 0.6f; q.sustain = 1.0f; q.release = 0.2f;
         auto seq2 = notes ({ {0.0,5.5,36} });
         auto y = renderSeq (q, seq2, 6.0, fs, 2, [] (Params& r, double t) {
-            r.cutoff = 0.25f + 0.5f * (float) (0.5 - 0.5 * std::cos (t * 1.2));
+            r.cutoff = cutoffKnobFromLegacy (0.25f + 0.5f * (float) (0.5 - 0.5 * std::cos (t * 1.2)));
             r.resonance = (float) std::min (1.0, t / 5.0); });
         normalisePeak (y); writeWav (dir + "/demo_4_resonance_sweep.wav", y, fs);
     }
     {   // Mixer drive: same patch, mixer levels from clean to overdriven.
         Params p; p.osc1Octave = 1; p.osc2Octave = 0; p.osc2Freq = 7.0f; p.osc1Wave = 2; p.osc2Wave = 1;
-        p.cutoff = 0.62f; p.resonance = 0.3f; p.sustain = 1.0f;
+        p.cutoff = 0.5282f; p.resonance = 0.3f; p.sustain = 1.0f;
         auto seq = notes ({ {0.0,1.4,40},{1.5,1.4,40},{3.0,1.4,40} });
         auto x = renderSeq (p, seq, 4.6, fs, 2, [] (Params& q, double t) {
             const float lvl = t < 1.5 ? 0.4f : (t < 3.0 ? 0.7f : 1.0f); q.mixOsc1 = lvl; q.mixOsc2 = lvl; });
         normalisePeak (x); writeWav (dir + "/demo_5_mixer_drive.wav", x, fs);
     }
     {   // Spring reverb on plucks, 50 % mix.
-        Params p; p.osc1Octave = 2; p.osc1Wave = 3; p.mixOsc1 = 0.6f; p.cutoff = 0.55f; p.envAmt = 0.5f; p.resonance = 0.2f;
+        Params p; p.osc1Octave = 2; p.osc1Wave = 3; p.mixOsc1 = 0.6f; p.cutoff = 0.4572f; p.envAmt = 0.5f; p.resonance = 0.2f;
         p.decay = 0.3f; p.sustain = 0.0f; p.release = 0.3f; p.reverbMix = 0.5f; p.kbdTrack = 1;
         auto seq = notes ({ {0.0,0.1,60},{0.6,0.1,67},{1.2,0.1,64},{1.8,0.1,72},{2.4,0.1,48} });
         auto x = renderSeq (p, seq, 5.5); normalisePeak (x); writeWav (dir + "/demo_6_spring.wav", x, fs);
     }
     {   // S/H-ish wobble: LFO square on cutoff with noise mixed in, KB RLS VCA mode.
         Params p; p.osc1Octave = 1; p.osc1Wave = 2; p.osc2Octave = 0; p.osc2Freq = -0.1f; p.osc2Wave = 1;
-        p.mixOsc1 = 0.55f; p.mixOsc2 = 0.55f; p.mixNoise = 0.15f; p.cutoff = 0.42f; p.resonance = 0.55f;
+        p.mixOsc1 = 0.55f; p.mixOsc2 = 0.55f; p.mixNoise = 0.15f; p.cutoff = 0.3255f; p.resonance = 0.55f;
         p.lfoRate = 0.38f; p.lfoWave = 0; p.lfoCutoffAmt = 0.45f; p.modWheel = 1.0f; p.vcaMode = 1; p.sustain = 0.9f;
         p.release = 0.35f; p.reverbMix = 0.15f;
         auto seq = notes ({ {0.0,1.8,36},{2.0,1.8,31} });
@@ -589,7 +589,7 @@ int main (int argc, char** argv)
 
     // ---------------- 5. Oscillator aliasing check: saw sweep, filter wide open ---------------
     {
-        Params p; p.osc1Octave = 3; p.mixOsc1 = 0.3f; p.cutoff = 1.0f; p.envAmt = 0.4f; p.sustain = 1.0f; p.drift = 0.0f;
+        Params p; p.osc1Octave = 3; p.mixOsc1 = 0.3f; p.cutoff = 0.9135f; p.envAmt = 0.4f; p.sustain = 1.0f; p.drift = 0.0f;
         p.glide = 0.95f; p.glideType = 1;
         auto seq = notes ({ {0.0,0.05,48},{0.1,3.9,96} });
         auto x = renderSeq (p, seq, 4.0); writeWav (dir + "/test_saw_sweep.wav", x, fs);
@@ -606,14 +606,14 @@ int main (int argc, char** argv)
         double ref = 0;
         for (int note : { 48, 60, 72, 84 })
         {
-            Params p; p.mixOsc1 = 0; p.resonance = 1.0f; p.kbdTrack = 2; p.cutoff = 0.6f; p.drift = 0;
+            Params p; p.mixOsc1 = 0; p.resonance = 1.0f; p.kbdTrack = 2; p.cutoff = 0.5079f; p.drift = 0;
             auto y = renderSeq (p, notes ({ { 0.0, 2.0, note } }), 2.0);
             const double f = pitchOf (y, fs); if (note == 48) ref = f;
             float pk = 0; for (size_t i = y.size() / 2; i < y.size(); ++i) pk = std::max (pk, std::abs (y[i]));
             std::printf ("  note %d: %.2f Hz, interval from note 48 = %+.1f cents vs ideal %d00, level %.3f\n",
                          note, f, 1200.0 * std::log2 (f / ref), note - 48, pk);
         }
-        Params p; p.mixOsc1 = 0.6f; p.cutoff = 0.7f; p.sustain = 1.0f;
+        Params p; p.mixOsc1 = 0.6f; p.cutoff = 0.6093f; p.sustain = 1.0f;
         auto rms = [] (const std::vector<float>& y) { double a = 0; for (size_t i = y.size() / 4; i < y.size(); ++i) a += y[i] * y[i]; return std::sqrt (a / (y.size() * 0.75)); };
         // The spring is a long, resonant tank, so a single held note can land on a peak or in a dip of its
         // response; the level is judged on the average over several notes (and must not depend on the rate).
@@ -631,7 +631,7 @@ int main (int argc, char** argv)
         {
             // Held notes at MIX 50 %: the level must not jump from key to key (comb peaks / dry-wet cancellation of the tank).
             Params h; h.osc1Octave = 2; h.osc1Wave = 2; h.osc2Octave = 1; h.osc2Wave = 3; h.osc2Freq = 0.12f; h.mixOsc1 = 0.55f;
-            h.mixOsc2 = 0.45f; h.cutoff = 0.742f; h.resonance = 0.25f; h.kbdTrack = 2; h.sustain = 0.85f; h.reverbMix = 0.5f; h.volume = 0.544f;
+            h.mixOsc2 = 0.45f; h.cutoff = 0.6519f; h.resonance = 0.25f; h.kbdTrack = 2; h.sustain = 0.85f; h.reverbMix = 0.5f; h.volume = 0.544f;
             std::vector<double> db;
             for (int note = 36; note <= 72; ++note)
             {
@@ -697,7 +697,7 @@ int main (int argc, char** argv)
             check ("save / load of cables", a.toString() == b.toString() && b.count == 4, a.toString().c_str());
         }
 
-        Params base; base.osc1Octave = 2; base.osc1Wave = 1; base.mixOsc1 = 0.5f; base.cutoff = 0.7f; base.drift = 0.0f; base.sustain = 1.0f;
+        Params base; base.osc1Octave = 2; base.osc1Wave = 1; base.mixOsc1 = 0.5f; base.cutoff = 0.6093f; base.drift = 0.0f; base.sustain = 1.0f;
         const auto ref = run (base, PatchState(), { { 60, 0 } }, 1.0);
 
         // normalled connections re-made with cables must (almost) reproduce the hard-wired path
@@ -720,14 +720,14 @@ int main (int argc, char** argv)
             check ("GATE OUT -> TRIGGER IN equals normalled", d < 0.03, buf);
         }
         {   // 1 V/oct: KB OUT (note 72 = +1 V) into OSC 1 PITCH IN through the mult doubles the pitch
-            Params q = base; q.cutoff = 1.0f; q.mixOsc1 = 0.3f; q.osc1Wave = 0;
+            Params q = base; q.cutoff = 0.9135f; q.mixOsc1 = 0.3f; q.osc1Wave = 0;
             const double f0 = pitchHz (run (q, PatchState(), { { 72, 0 } }, 1.5));
             const double f1 = pitchHz (run (q, cables ({ { Jack::KbOut, Jack::Mult1 }, { Jack::Mult2, Jack::Osc1PitchIn } }), { { 72, 0 } }, 1.5));
             std::snprintf (buf, sizeof buf, "%.1f Hz -> %.1f Hz (x%.3f)", f0, f1, f1 / f0);
             check ("KB OUT -> mult -> OSC 1 PITCH IN (1 V/oct)", std::abs (f1 / f0 - 2.0) < 0.01, buf);
         }
         {   // High pass patched into the mixer removes bass
-            Params q = base; q.mixOsc1 = 0.0f; q.mixOsc2 = 0.5f; q.osc2Octave = 0; q.cutoff = 1.0f;
+            Params q = base; q.mixOsc1 = 0.0f; q.mixOsc2 = 0.5f; q.osc2Octave = 0; q.cutoff = 0.9135f;
             const auto cab = cables ({ { Jack::Osc2WaveOut, Jack::HpfIn }, { Jack::HpfOut, Jack::MixOsc2In } });
             q.hpCutoff = 0.0f; const double lo = rmsOf (run (q, cab, { { 36, 0 } }, 1.0), fs / 2);
             q.hpCutoff = 0.8f; const double hi = rmsOf (run (q, cab, { { 36, 0 } }, 1.0), fs / 2);
@@ -746,7 +746,7 @@ int main (int argc, char** argv)
             check ("MOD WAVE OUT -> VCA AMT IN (tremolo)", spread (trem) > 4.0 && spread (plain) < 1.3, buf);
         }
         {   // Velocity -> cutoff
-            Params q = base; q.cutoff = 0.35f; q.mixOsc1 = 0.5f;
+            Params q = base; q.cutoff = 0.2545f; q.mixOsc1 = 0.5f;
             const auto cab = cables ({ { Jack::KbVelOut, Jack::FilterCutoffIn } });
             const double soft = brightness (run (q, cab, { { 48, 20 } }, 1.0), fs / 2), hard = brightness (run (q, cab, { { 48, 127 } }, 1.0), fs / 2);
             const double none = brightness (run (q, PatchState(), { { 48, 20 } }, 1.0), fs / 2);
@@ -986,7 +986,7 @@ int main (int argc, char** argv)
         // Audio demo: arpeggio through the full engine
         Engine e; e.prepare (fs, 2);
         Params pp; pp.osc1Octave = 2; pp.osc1Wave = 1; pp.osc2Octave = 1; pp.osc2Freq = 7.02f; pp.mixOsc1 = 0.6f; pp.mixOsc2 = 0.4f;
-        pp.cutoff = 0.5f; pp.resonance = 0.55f; pp.envAmt = 0.45f; pp.decay = 0.25f; pp.sustain = 0.2f; pp.release = 0.2f;
+        pp.cutoff = 0.4066f; pp.resonance = 0.55f; pp.envAmt = 0.45f; pp.decay = 0.25f; pp.sustain = 0.2f; pp.release = 0.2f;
         pp.reverbMix = 0.3f; pp.kbdTrack = 1;
         e.setParams (pp);
         ArpSeqParams ap; ap.play = true; ap.mode = 0; ap.octSeq = 2; ap.direction = 1; ap.rate = ArpSeq::knobForBpm (132.0f); ap.freeStep = 2;
@@ -997,7 +997,7 @@ int main (int argc, char** argv)
         {
             if (pos == fs * 3) { e.noteOff (51); e.noteOn (53); }
             if (pos == fs * 5) { e.noteOff (48); e.noteOff (53); e.noteOff (55); }
-            pp.cutoff = 0.42f + 0.2f * (float) std::sin (pos / (double) fs * 1.3); e.setParams (pp);
+            pp.cutoff = cutoffKnobFromLegacy (0.42f + 0.2f * (float) std::sin (pos / (double) fs * 1.3)); e.setParams (pp);
             e.process (x.data() + pos, std::min (64, (int) x.size() - pos));
         }
         normalisePeak (x); writeWav (dir + "/demo_8_arpeggio.wav", x, fs);

@@ -2,7 +2,7 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="envPosOut:attIn attOut:osc2PitchIn"
           presetName="Laser Riser" presetModified="0" presetRandom="0"
-          presetFile="" category="FX" tags="BRIGHT AGGRESSIVE EVOLVING"
+          presetFile="" cutoffLaw="2" category="FX" tags="BRIGHT AGGRESSIVE EVOLVING"
           description="Synced oscillator whose pitch rises with a slow envelope: a screaming sweep. Cables: + ENV OUT -&gt; attenuator -&gt; OSC 2 PITCH IN.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.8560000061988831"/>
+  <PARAM id="cutoff" value="0.7674999833106995"/>
   <PARAM id="decay" value="0.7300000190734863"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

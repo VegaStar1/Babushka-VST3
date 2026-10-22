@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="filterOut:mult1 mult2:mixNoiseIn mult3:mixOsc2In"
           presetName="Double Loop Drone" presetModified="0" presetRandom="0"
-          presetFile="" category="Patch Bay" tags="FAT DARK" description="A 32' saw with the filter fed back into two mixer inputs at once: a huge, round drone that slowly breathes. Less resonance means more feedback; with Resonance near zero the loop runs away into a slow, heavy throb. Cables: FILTER OUT -&gt; mult -&gt; MIXER NOISE IN and MIXER OSC 2 IN.">
+          presetFile="" cutoffLaw="2" category="Patch Bay" tags="FAT DARK"
+          description="A 32' saw with the filter fed back into two mixer inputs at once: a huge, round drone that slowly breathes. Less resonance means more feedback; with Resonance near zero the loop runs away into a slow, heavy throb. Cables: FILTER OUT -&gt; mult -&gt; MIXER NOISE IN and MIXER OSC 2 IN.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4199999868869781"/>
+  <PARAM id="cutoff" value="0.3255000114440918"/>
   <PARAM id="decay" value="0.5"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

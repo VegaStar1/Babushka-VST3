@@ -89,6 +89,7 @@ std::unique_ptr<juce::XmlElement> BabushkaProcessor::factoryPresetXml (int index
     state.setProperty ("presetModified", false, nullptr);
     state.setProperty ("presetRandom", false, nullptr);
     state.setProperty ("presetFile", "", nullptr);
+    state.setProperty ("cutoffLaw", kCutoffLaw, nullptr);
     state.setProperty ("category", pr.category, nullptr);
     state.setProperty ("tags", babushka::factoryPresetTags (pr.name), nullptr);
     state.setProperty ("description", pr.description, nullptr);

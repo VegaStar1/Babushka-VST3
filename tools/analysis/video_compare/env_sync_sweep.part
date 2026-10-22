@@ -3,7 +3,7 @@
 # Part transcribed from the bass pitch of the recording (hardware ~18 cents sharp), played detached: each new key
 # restarts the envelope attack from its current level, as the recording shows. Times in seconds from the excerpt start.
 # Envelope knobs fitted to the sweep of the recording with a model of the plugin envelope (method in README.md):
-# attack tau ~0.8 s, release tau ~0.24 s. CUTOFF 1.0 matches the brightness of the recording (see the README).
+# attack tau ~0.8 s, release tau ~0.24 s. CUTOFF wide open (11 kHz) matches the brightness of the recording (README).
 set osc1Octave 1   # 16'
 set osc1Wave 1
 set osc2Octave 2   # 4': oscillator 2 two octaves above 1, as the start of every sweep
@@ -11,7 +11,7 @@ set osc2Wave 1
 set osc2Sync 1
 set mixOsc1 0.5
 set mixOsc2 0.5
-set cutoff 1.0
+set cutoff 0.9135   # 11 kHz
 set vcaMode 1      # KB RLS
 set attack 0.84
 set decay 0.30

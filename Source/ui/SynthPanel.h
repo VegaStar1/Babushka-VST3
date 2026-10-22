@@ -116,7 +116,7 @@ namespace fmt
     inline juce::String seconds (double v) { return v < 1.0 ? juce::String (v * 1000.0, v < 0.01 ? 1 : 0) + " ms" : juce::String (v, v < 10.0 ? 2 : 1) + " s"; }
     inline juce::String percent (double v) { return juce::String (v * 100.0, 0) + " %"; }
     inline juce::String bipolar (double v) { return (v >= 0 ? "+" : "") + juce::String (v * 100.0, 0) + " %"; }
-    inline juce::String cutoff (double k) { return hz (10.0 * std::pow (1100.0, juce::jlimit (0.0, 1.0, k))); }
+    inline juce::String cutoff (double k) { return hz (babushka::dsp::cutoffKnobToHz ((float) juce::jlimit (0.0, 1.0, k))); }
     inline juce::String lfoRate (double k) { return hz (0.07 * std::pow (1300.0 / 0.07, juce::jlimit (0.0, 1.0, k))); }
     inline juce::String envTime (double k, double minS) { return seconds (minS * std::pow (10.0 / minS, juce::jlimit (0.0, 1.0, k))); }
     inline juce::String highPass (double k) { return hz (16.0 * std::pow (500.0, juce::jlimit (0.0, 1.0, k))); }

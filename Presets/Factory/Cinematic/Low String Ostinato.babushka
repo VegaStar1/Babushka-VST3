@@ -3,7 +3,8 @@
 <BABUSHKA seq1="38A 38 38 38 38A 38 41 38 38A 38 38 38 36A 36 34 36" seq2="38A 38 38A 38 41A 41 41A 41"
           seq3="38 R 38 38 R 38 38 R" patch="kbVelOut:attIn attOut:filterCutoffIn"
           presetName="Low String Ostinato" presetModified="0" presetRandom="0"
-          presetFile="" category="Cinematic" tags="DARK PLUCKY" description="Driving cinematic string-bass ostinato, 8ths at 120 BPM, accents pushing the filter. Plays by itself; a key transposes.">
+          presetFile="" cutoffLaw="2" category="Cinematic" tags="DARK PLUCKY"
+          description="Driving cinematic string-bass ostinato, 8ths at 120 BPM, accents pushing the filter. Plays by itself; a key transposes.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +25,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4410000145435333"/>
+  <PARAM id="cutoff" value="0.3467000126838684"/>
   <PARAM id="decay" value="0.5669999718666077"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.449999988079071"/>

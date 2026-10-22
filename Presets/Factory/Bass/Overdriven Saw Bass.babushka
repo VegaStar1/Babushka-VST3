@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Overdriven Saw Bass"
-          presetModified="0" presetRandom="0" presetFile="" category="Bass"
-          tags="AGGRESSIVE FAT" description="Mixer driven into saturation, filter half open: raw and aggressive.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Bass" tags="AGGRESSIVE FAT" description="Mixer driven into saturation, filter half open: raw and aggressive.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5080000162124634"/>
+  <PARAM id="cutoff" value="0.4147000014781952"/>
   <PARAM id="decay" value="0.5879999995231628"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.3499999940395355"/>

@@ -106,7 +106,7 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     knob (ids::modWheel, "Mod Wheel", 0.0f);
 
     // Filter
-    knob (ids::cutoff, "Cutoff", 0.6f);
+    knob (ids::cutoff, "Cutoff", babushka::dsp::kCutoffDefault);
     knob (ids::resonance, "Resonance", 0.0f);
     choice (ids::kbdTrack, "Kbd Track", { "Off", "1:2", "1:1" }, 0);
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ids::envAmt, 1 }, "Envelope Amt",
@@ -606,6 +606,7 @@ std::unique_ptr<juce::XmlElement> BabushkaProcessor::createStateXml()
     state.setProperty ("presetModified", soundModified, nullptr);
     state.setProperty ("presetRandom", randomSound, nullptr);
     state.setProperty ("presetFile", currentPresetFile.getFullPathName(), nullptr);
+    state.setProperty ("cutoffLaw", kCutoffLaw, nullptr);
     return state.createXml();
 }
 
@@ -613,6 +614,13 @@ void BabushkaProcessor::restoreFromXml (const juce::XmlElement& xml)
 {
     if (! xml.hasTagName (apvts.state.getType())) return;
     auto tree = juce::ValueTree::fromXml (xml);
+    // Projects and preset files saved before the CUTOFF law followed the panel print: the same frequency, new knob.
+    if ((int) tree.getProperty ("cutoffLaw", 1) < kCutoffLaw)
+    {
+        auto child = tree.getChildWithProperty ("id", "cutoff");
+        if (child.isValid()) child.setProperty ("value", babushka::dsp::cutoffKnobFromLegacy ((float) child.getProperty ("value")), nullptr);
+    }
+    tree.setProperty ("cutoffLaw", kCutoffLaw, nullptr);
     std::array<babushka::dsp::Sequence, 3> loaded;
     for (int i = 0; i < 3; ++i)
         loaded[(size_t) i] = sequenceFromString (tree.getProperty ("seq" + juce::String (i + 1)).toString());

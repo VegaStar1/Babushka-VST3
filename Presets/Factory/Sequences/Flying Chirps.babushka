@@ -3,7 +3,7 @@
 <BABUSHKA seq1="R 92 R R 97 R R 88 R R 100 R 95 R 104 R" seq2="R 92 R 97 R R 100 R R 88 R R 104 R 97 R"
           seq3="92 R 97 R 88 104 R 92 R 100 R 97 R 109 95 R" patch="gateOut:modSyncIn modWaveOut:attIn attOut:filterCutoffIn"
           presetName="Flying Chirps" presetModified="0" presetRandom="0"
-          presetFile="" category="Sequences" tags="RESONANT BRIGHT PLUCKY"
+          presetFile="" cutoffLaw="2" category="Sequences" tags="RESONANT BRIGHT PLUCKY"
           description="Plays by itself: the oscillators are off, the self-oscillating filter sings a high chirping line (Kbd Track 1:1). GATE OUT restarts the LFO saw, which flicks the cutoff through the attenuator. Three variations on OCT/SEQ.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
@@ -25,7 +25,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4668999910354614"/>
+  <PARAM id="cutoff" value="0.3729999959468842"/>
   <PARAM id="decay" value="0.5600000023841858"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.01999999955296516"/>

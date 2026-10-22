@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Glide Solo Delay"
-          presetModified="0" presetRandom="0" presetFile="" category="Lead"
-          tags="WARM EVOLVING" description="Glide Solo with chorus and a long tape echo: the portamento trails off in darkening repeats.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Lead" tags="WARM EVOLVING" description="Glide Solo with chorus and a long tape echo: the portamento trails off in darkening repeats.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.4235999882221222"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.7149999737739563"/>
+  <PARAM id="cutoff" value="0.6244999766349792"/>
   <PARAM id="decay" value="0.6700000166893005"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.2000000029802322"/>

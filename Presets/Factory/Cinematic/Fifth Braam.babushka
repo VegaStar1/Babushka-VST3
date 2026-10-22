@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Fifth Braam" presetModified="0"
-          presetRandom="0" presetFile="" category="Cinematic" tags="FAT BRIGHT"
-          description="Open fifths (oscillator 2 seven semitones up) for a heroic, hollow BRAAM.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Cinematic"
+          tags="FAT BRIGHT" description="Open fifths (oscillator 2 seven semitones up) for a heroic, hollow BRAAM.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.3289999961853027"/>
+  <PARAM id="cutoff" value="0.2331999987363815"/>
   <PARAM id="decay" value="0.8370000123977661"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.6499999761581421"/>

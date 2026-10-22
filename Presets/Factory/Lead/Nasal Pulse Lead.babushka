@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Nasal Pulse Lead"
-          presetModified="0" presetRandom="0" presetFile="" category="Lead"
-          tags="BRIGHT RESONANT" description="Narrow pulse with a bit of resonance: reedy, oboe-like.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Lead" tags="BRIGHT RESONANT" description="Narrow pulse with a bit of resonance: reedy, oboe-like.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.6949999928474426"/>
+  <PARAM id="cutoff" value="0.604200005531311"/>
   <PARAM id="decay" value="0.6480000019073486"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.1500000059604645"/>

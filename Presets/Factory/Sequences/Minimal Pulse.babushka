@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="48 48A 48 48T 48 R 48A 48" seq2="48 R 48 R 51 R 48 R" seq3="48 55 48 58 48 55 48 60"
           patch="" presetName="Minimal Pulse" presetModified="0" presetRandom="0"
-          presetFile="" category="Sequences" tags="DARK EVOLVING" description="Plays by itself: one-note minimal pulse with ties and accents, 126 BPM; the filter LFO evolves it.">
+          presetFile="" cutoffLaw="2" category="Sequences" tags="DARK EVOLVING"
+          description="Plays by itself: one-note minimal pulse with ties and accents, 126 BPM; the filter LFO evolves it.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4650000035762787"/>
+  <PARAM id="cutoff" value="0.3711000084877014"/>
   <PARAM id="decay" value="0.4589999914169312"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.3499999940395355"/>

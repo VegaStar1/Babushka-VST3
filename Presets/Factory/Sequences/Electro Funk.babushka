@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="36 R R 36 R R 48 R 36 R 39 R 41 R 43T 43" seq2="36 36 R 46 R 48 R 36 R 36 R 43 R 41 R 39"
           seq3="36 R 36 R 36 R 36 R" patch="" presetName="Electro Funk"
-          presetModified="0" presetRandom="0" presetFile="" category="Sequences"
-          tags="PLUCKY RESONANT" description="Plays by itself: syncopated electro bass with rests and accents, 112 BPM.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Sequences" tags="PLUCKY RESONANT" description="Plays by itself: syncopated electro bass with rests and accents, 112 BPM.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4280000030994415"/>
+  <PARAM id="cutoff" value="0.3336000144481659"/>
   <PARAM id="decay" value="0.5070000290870667"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.5"/>

@@ -212,6 +212,7 @@ private:
 
     std::unique_ptr<juce::XmlElement> createStateXml();
     void restoreFromXml (const juce::XmlElement&);
+    static constexpr int kCutoffLaw = 2;     // states carry it; 1 (or none): CUTOFF knob of the old 10 Hz ... 11 kHz law
     static babushka::dsp::Params paramsFromState (const std::function<float (const char*)>& value);
     static babushka::dsp::ArpSeqParams arpParamsFromState (const std::function<float (const char*)>& value);
     void setSequences (const std::array<babushka::dsp::Sequence, 3>&);

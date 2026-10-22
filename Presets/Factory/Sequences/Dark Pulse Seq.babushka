@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="38 41 45 41 38 41 46 41" seq2="38 38 38 38 36 36 36 36"
           seq3="38 45 50 45 38 46 50 46" patch="" presetName="Dark Pulse Seq"
-          presetModified="0" presetRandom="0" presetFile="" category="Sequences"
-          tags="DARK" description="Plays by itself: minor eighth-note ostinato for thriller scores, 96 BPM.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Sequences" tags="DARK" description="Plays by itself: minor eighth-note ostinato for thriller scores, 96 BPM.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5080000162124634"/>
+  <PARAM id="cutoff" value="0.4147000014781952"/>
   <PARAM id="decay" value="0.5410000085830688"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.300000011920929"/>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Tape Memory Echo"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="DARK EVOLVING" description="Tape Memory with a tired BBD chorus and a stretched cassette echo: hazier, more worn, more wandering.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="DARK EVOLVING" description="Tape Memory with a tired BBD chorus and a stretched cassette echo: hazier, more worn, more wandering.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.453000009059906"/>
   <PARAM id="choWidth" value="0.800000011920929"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.6430000066757202"/>
+  <PARAM id="cutoff" value="0.5515000224113464"/>
   <PARAM id="decay" value="0.703000009059906"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

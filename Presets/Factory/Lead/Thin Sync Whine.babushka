@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Thin Sync Whine"
-          presetModified="0" presetRandom="0" presetFile="" category="Lead"
-          tags="BRIGHT" description="High sync whine with vibrato; sits on top of a busy track.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Lead" tags="BRIGHT" description="High sync whine with vibrato; sits on top of a busy track.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.8140000104904175"/>
+  <PARAM id="cutoff" value="0.7249000072479248"/>
   <PARAM id="decay" value="0.621999979019165"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

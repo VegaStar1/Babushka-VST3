@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="48 52 55 59 60 59 55 52" seq2="45 48 52 55 57 55 52 48"
           seq3="41 45 48 52 53 52 48 45" patch="" presetName="Upside Down Arp"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="EVOLVING WARM" description="In the style of Kyle Dixon &amp; Michael Stein's 'Stranger Things' main title (2016; Prophet-5 and Roland SH-2 on the original): a C major 7 arpeggio at 84 BPM whose filter slowly opens, long spring. Plays by itself; a key transposes.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="EVOLVING WARM" description="In the style of Kyle Dixon &amp; Michael Stein's 'Stranger Things' main title (2016; Prophet-5 and Roland SH-2 on the original): a C major 7 arpeggio at 84 BPM whose filter slowly opens, long spring. Plays by itself; a key transposes.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5590000152587891"/>
+  <PARAM id="cutoff" value="0.4663999974727631"/>
   <PARAM id="decay" value="0.5279999971389771"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.300000011920929"/>

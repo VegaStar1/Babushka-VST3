@@ -32,6 +32,16 @@
 
 namespace babushka::dsp
 {
+// CUTOFF law, as printed on the panel: 20 Hz at the start, 200 Hz / 2 kHz at a third / two thirds, 20 kHz at the end.
+// (Before: 10 Hz … 11 kHz. States saved with that law are converted when they load, see cutoffKnobFromLegacy.)
+inline float cutoffKnobToHz (float knob) noexcept { return 20.0f * std::pow (1000.0f, knob); }
+// The knob position that gives the frequency the old law (10 Hz · 1100^k) gave; linear, clamped at 20 Hz.
+inline float cutoffKnobFromLegacy (float k) noexcept
+{
+    return clampf ((std::log (0.5f) + k * std::log (1100.0f)) / std::log (1000.0f), 0.0f, 1.0f);
+}
+constexpr float kCutoffDefault = 0.5079f;   // 663 Hz, the old default (0.6)
+
 // Panel state. Knobs are normalised 0..1 unless noted; mapping to physical units lives in the engine.
 struct Params
 {
@@ -55,7 +65,7 @@ struct Params
     float modWheel = 0.0f;
 
     // Filter
-    float cutoff = 0.6f;             // knob → 10 Hz … ~11 kHz (CV can push it beyond)
+    float cutoff = kCutoffDefault;   // knob → 20 Hz … 20 kHz, a decade per third of the travel (CV can push it beyond)
     float resonance = 0.0f;
     int   kbdTrack = 0;              // 0 = off, 1 = 1:2, 2 = 1:1
     float envAmt = 0.0f;             // −1 … +1
@@ -650,7 +660,7 @@ private:
         if (patched (Jack::HpfIn) || isUsed (Jack::HpfOut))
             setOut (Jack::HpfOut, hpf.process (patched (Jack::HpfIn) ? readIn (Jack::HpfIn) * 0.2f : 0.0f) * 5.0f);
 
-        // Filter cutoff: knob 10 Hz … 11 kHz; envelope amount bipolar ±6 oct (ASSUMPTION);
+        // Filter cutoff: knob 20 Hz … 20 kHz (the panel print); envelope amount bipolar ±6 oct (ASSUMPTION);
         // key tracking 0 / ½ / 1 oct per oct around middle C. CUTOFF IN: 1 V/oct; ENV AMT IN: ±5 V = ±1 on the knob.
         const float e = env.process();
         const float kb = kbRls.process();
@@ -660,13 +670,13 @@ private:
         float envAmt = sEnvAmt.v;
         if (patched (Jack::FilterEnvAmtIn)) envAmt += 0.2f * readIn (Jack::FilterEnvAmtIn);
         const float envOctaves = envAmt * 6.0f * e;
-        float octaves = sCutoff.v * std::log2 (11000.0f / 10.0f)
+        float octaves = sCutoff.v * std::log2 (1000.0f)
                         + envOctaves
                         + track * (kbCv - 60.0f) * (1.0f / 12.0f)
                         + cutMod
                         + spreadScale * kSpreadCutoffOct * spread.cutoff;
         if (patched (Jack::FilterCutoffIn)) octaves += readIn (Jack::FilterCutoffIn);
-        const float cutoffHz = std::min (10.0f * std::exp2 (octaves), 24000.0f);
+        const float cutoffHz = std::min (20.0f * std::exp2 (octaves), 24000.0f);
         // Resonance: self-oscillation starts near 89 % of the knob (k = 4).
         const float k = 4.5f * sRes.v;
         const float fcTuned = std::min (cutoffHz * LadderFilter::tuningCompensation (k), 24000.0f);

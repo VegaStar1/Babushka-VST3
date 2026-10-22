@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Sync Lead" presetModified="0"
-          presetRandom="0" presetFile="" category="Lead" tags="BRIGHT AGGRESSIVE"
-          description="Hard-synced oscillator 2 with glide; the mod wheel adds vibrato and OSC 2 FREQUENCY sweeps the sync tone.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Lead"
+          tags="BRIGHT AGGRESSIVE" description="Hard-synced oscillator 2 with glide; the mod wheel adds vibrato and OSC 2 FREQUENCY sweeps the sync tone.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.7570000290870667"/>
+  <PARAM id="cutoff" value="0.6671000123023987"/>
   <PARAM id="decay" value="0.6480000019073486"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.2000000029802322"/>

@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="R 37 37 R 37 R 49 37 R 37 40 R 37 R 44 R" seq2="R 37 49 R 37 R 37 52 R 37 R 49 37 R 47 R"
           seq3="R 37 37 R 37 R 49 37 R 37 40 R 37 R 44 R" patch="" presetName="Flying Bass"
-          presetModified="0" presetRandom="0" presetFile="" category="Sequences"
-          tags="FAT PLUCKY" description="Plays by itself: a bouncing 16-step bass in C# with octave jumps, saw and square a few cents apart, a short filter envelope. Three variations on OCT/SEQ.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Sequences" tags="FAT PLUCKY" description="Plays by itself: a bouncing 16-step bass in C# with octave jumps, saw and square a few cents apart, a short filter envelope. Three variations on OCT/SEQ.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="1.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4000000059604645"/>
+  <PARAM id="cutoff" value="0.3052000105381012"/>
   <PARAM id="decay" value="0.4699999988079071"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.4199999868869781"/>

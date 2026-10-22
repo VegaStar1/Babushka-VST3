@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="French Horn" presetModified="0"
-          presetRandom="0" presetFile="" category="Brass &amp; Strings"
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Brass &amp; Strings"
           tags="WARM DARK" description="Mellow: triangle + saw, low cutoff, slow filter rise and gentle vibrato.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5080000162124634"/>
+  <PARAM id="cutoff" value="0.4147000014781952"/>
   <PARAM id="decay" value="0.6700000166893005"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.3499999940395355"/>

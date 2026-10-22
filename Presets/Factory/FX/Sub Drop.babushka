@@ -2,7 +2,7 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="envPosOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn"
           presetName="Sub Drop" presetModified="0" presetRandom="0" presetFile=""
-          category="FX" tags="DARK CLEAN" description="A deep triangle that falls two octaves over a second and a half: hit it on the downbeat. Cables: + ENV OUT -&gt; attenuator -&gt; both PITCH IN.">
+          cutoffLaw="2" category="FX" tags="DARK CLEAN" description="A deep triangle that falls two octaves over a second and a half: hit it on the downbeat. Cables: + ENV OUT -&gt; attenuator -&gt; both PITCH IN.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5849999785423279"/>
+  <PARAM id="cutoff" value="0.4927000105381012"/>
   <PARAM id="decay" value="0.7850000262260437"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

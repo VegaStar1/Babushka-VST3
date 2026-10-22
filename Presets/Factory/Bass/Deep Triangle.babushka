@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Deep Triangle" presetModified="0"
-          presetRandom="0" presetFile="" category="Bass" tags="DARK CLEAN"
-          description="Triangle at 32' and 16': almost a sine, clean low end for minimal styles.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Bass"
+          tags="DARK CLEAN" description="Triangle at 32' and 16': almost a sine, clean low end for minimal styles.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.6259999871253967"/>
+  <PARAM id="cutoff" value="0.5343000292778015"/>
   <PARAM id="decay" value="0.621999979019165"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>

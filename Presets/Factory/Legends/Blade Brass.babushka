@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Blade Brass" presetModified="0"
-          presetRandom="0" presetFile="" category="Legends" tags="WARM FAT EVOLVING"
-          description="In the style of Vangelis' Yamaha CS-80 brass in 'Blade Runner' (1982), done mono: saws with a slow filter swell, wheel vibrato and a big spring tail.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Legends"
+          tags="WARM FAT EVOLVING" description="In the style of Vangelis' Yamaha CS-80 brass in 'Blade Runner' (1982), done mono: saws with a slow filter swell, wheel vibrato and a big spring tail.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4650000035762787"/>
+  <PARAM id="cutoff" value="0.3711000084877014"/>
   <PARAM id="decay" value="0.7509999871253967"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.550000011920929"/>
