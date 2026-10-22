@@ -307,12 +307,23 @@ private:
         else { g.setColour (fill); g.fillRoundedRectangle (r, 2.5f); }
         label (g, t, r.reduced (6.0f, 0.0f), outlined ? plateInk : inkOn (fill), type::control, Weight::NarrowBold, juce::Justification::centred, 0.08f);
     }
+    // A label printed on a module never runs past its frame: centred where it is, it is at most as wide as the room to
+    // the nearer edge allows (the text is then squeezed; on small windows the print is enlarged, see label()).
+    float fitOnPlate (float x, float y, float width) const
+    {
+        if (! currentPlate.contains (x, y)) return width;
+        const auto inner = currentPlate.reduced (kPlateMargin, 0.0f);
+        return juce::jmax (10.0f, juce::jmin (width, 2.0f * juce::jmin (x - inner.getX(), inner.getRight() - x)));
+    }
+    static constexpr float kPlateMargin = 6.0f;
     void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = type::control, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
     {
+        width = fitOnPlate (x, y, width);
         op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, size, w, width, kern); });
     }
     void pill (const juce::String& t, float x, float y, float w, juce::Colour fill, juce::Colour plateInk)
     {
+        w = fitOnPlate (x, y, w);
         op ([=] (juce::Graphics& g) { drawPill (g, t, x, y, w, fill, plateInk); });
     }
     void module (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title, bool outlined = true)
@@ -502,10 +513,10 @@ private:
         ticks (348, 309, 46, 11, ink); knob ("lfoCutoffAmt", 348, 309, 46, [] (double v) { return fmt::percent (v); });
         pill ("CUTOFF AMT", 348, 344, 84, S.pillFilter, ink);
         ticks (252, 405, 46, 11, ink); knob ("lfoPwAmt", 252, 405, 46, [] (double v) { return fmt::percent (v); });
-        pill ("PULSE WIDTH AMT", 252, 440, 114, juce::Colours::transparentBlack, ink);
+        pill ("PULSE WIDTH AMT", 255, 440, 106, juce::Colours::transparentBlack, ink);
         knob ("lfoWave", 350, 402, 46, fmt::names ({ "Sine", "Sawtooth", "Ramp", "Square" }), true);
         selectorGlyphs (350, 402, 46, { Glyph::Sine, Glyph::Saw, Glyph::Ramp, Glyph::Square }, ink);
-        textAt ("WAVEFORM", 350, 440, ink, type::control, Weight::NarrowBold, 80.0f);
+        textAt ("WAVEFORM", 352, 440, ink, type::control, Weight::NarrowBold, 72.0f);
 
         // ---------------- OSCILLATORS ----------------
         module ({ 415, 56, 212, 400 }, S.osc, "OSCILLATORS");
@@ -578,7 +589,7 @@ private:
         textAt ("KBD TRACK", 976, 342, filInk, type::control, Weight::NarrowBold, 90.0f);
         bipolarMarks (922, 404, 50, filInk);
         knob ("envAmt", 922, 404, 50, [] (double v) { return fmt::bipolar (v); });
-        textAt ("ENVELOPE AMT", 922, 441, filInk, type::control, Weight::NarrowBold, 100.0f);
+        textAt ("ENVELOPE AMT", 924, 441, filInk, type::control, Weight::NarrowBold, 100.0f);
         ticks (1027, 404, 50, 11, filInk); knob ("resonance", 1027, 404, 50, [] (double v) { return fmt::percent (v); });
         textAt ("RESONANCE", 1027, 441, filInk, type::control, Weight::NarrowBold, 90.0f);
 
