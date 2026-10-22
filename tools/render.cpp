@@ -110,6 +110,14 @@ static void renderAB (const std::string& dir, int fs)
         auto seq = notes ({ {0.0,2.2,48},{2.5,2.2,51},{5.0,2.5,44} });
         auto x = renderSeq (p, seq, 9.0, fs); normaliseRms (x); writeWav (dir + "/ab_pad.wav", x, fs);
     }
+    {   // The same note sixteen times (bass, fast filter envelope): note-to-note spread.
+        Params p; p.osc1Octave = 1; p.osc1Wave = 1; p.osc2Octave = 0; p.osc2Wave = 3; p.osc2Freq = 0.05f;
+        p.mixOsc1 = 0.7f; p.mixOsc2 = 0.5f; p.cutoff = 0.3f; p.resonance = 0.35f; p.envAmt = 0.5f;
+        p.attack = 0.0f; p.decay = 0.28f; p.sustain = 0.3f; p.release = 0.15f; p.kbdTrack = 1;
+        std::vector<Ev> evs;
+        for (int i = 0; i < 16; ++i) { evs.push_back ({ 0.2 * i, 0, 36, 0 }); evs.push_back ({ 0.2 * i + 0.12, 1, 36, 0 }); }
+        auto x = renderSeq (p, evs, 3.6, fs); normaliseRms (x); writeWav (dir + "/ab_repeat.wav", x, fs);
+    }
     {   // Not normalised: a saw note (mixer 60 %) and then the self-oscillating filter (resonance 95 %), same Volume,
         // to hear the balance between the two.
         Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.6f; p.kbdTrack = 2; p.sustain = 1.0f; p.release = 0.2f;
@@ -222,6 +230,38 @@ int main (int argc, char** argv)
                      "slow envelope %.1f dB below a full note  %s\n", -rel, flips ? "yes" : "no", settleMs, -relS,
                      rel > -40.0 && rel < -30.0 && flips && settleMs > 60.0 && settleMs < 500.0 && relS < rel - 6.0 ? "OK" : "FAIL");
         writeWav (dir + "/test_cv_thump.wav", y, fs);
+    }
+
+    // ---------------- 2d. Note-to-note spread (Analog Drift) -----------------------------------------
+    {
+        // Eight identical notes of a saw, filter open: the pitch of each note (rising zero crossings of the middle part).
+        std::printf ("Note-to-note spread, 8 identical notes (A4 saw, filter open):\n");
+        double spread25 = 0;
+        for (float drift : { 0.0f, 0.25f, 1.0f })
+        {
+            Params p; p.osc1Octave = 2; p.osc1Wave = 1; p.mixOsc1 = 0.5f; p.cutoff = 1.0f; p.sustain = 1.0f; p.release = 0.0f;
+            p.vcaMode = 0; p.drift = drift;
+            std::vector<std::tuple<double, double, int>> list;
+            for (int i = 0; i < 8; ++i) list.emplace_back (0.5 * i, 0.45, 69);
+            std::vector<Ev> evs;
+            for (auto& [on, len, n] : list) { evs.push_back ({ on, 0, n, 0 }); evs.push_back ({ on + len, 1, n, 0 }); }
+            std::sort (evs.begin(), evs.end(), [] (const Ev& a, const Ev& b) { return a.t < b.t; });
+            auto y = renderSeq (p, evs, 4.0);
+            double lo = 1e9, hi = -1e9;
+            for (int i = 0; i < 8; ++i)
+            {
+                const size_t a = (size_t) ((0.5 * i + 0.1) * fs), b = (size_t) ((0.5 * i + 0.4) * fs);
+                int c = 0; double t0 = 0, t1 = 0;
+                for (size_t k = a + 1; k < b; ++k)
+                    if (y[k - 1] < 0 && y[k] >= 0) { const double t = k - 1 + y[k - 1] / (y[k - 1] - y[k]); if (! c) t0 = t; t1 = t; ++c; }
+                const double f = (c - 1) / ((t1 - t0) / fs), cents = 1200.0 * std::log2 (f / 440.0);
+                lo = std::min (lo, cents); hi = std::max (hi, cents);
+            }
+            if (drift == 0.25f) spread25 = hi - lo;
+            std::printf ("  drift %.2f: pitch %+.2f ... %+.2f cents (spread %.2f)\n", drift, lo, hi, hi - lo);
+            if (drift == 0.0f) std::printf ("  drift 0, notes identical: %s\n", hi - lo < 0.02 ? "OK" : "FAIL");
+        }
+        std::printf ("  drift 0.25, notes differ by 0.5 ... 4 cents: %s\n", spread25 > 0.5 && spread25 < 4.0 ? "OK" : "FAIL");
     }
 
     // ---------------- 3. Spring reverb impulse response ---------------------------------------

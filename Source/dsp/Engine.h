@@ -115,6 +115,7 @@ public:
         revOutDc.setCutoff (2.0f, fsBase);
         accentDecay = std::exp (-1.0f / (0.06f * fsOs));    // ASSUMPTION: accent envelope release ≈ 60 ms
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
+        spreadRng.seed (0x5EEDu);
         noise.seed (0xBAB05CAu);
 
         for (auto* s : { &sCutoff, &sRes, &sMix1, &sMix2, &sMixN, &sEnvAmt, &sOsc2Freq,
@@ -134,7 +135,7 @@ public:
         filterDc.reset(); outDc.reset(); outDcR.reset(); revOutDc.reset(); board.reset();
         for (auto& b : acOut) b.reset();
         hpf.reset(); cutoffFeedHp.reset();
-        heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f;
+        heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f; spread = {};
         for (auto& h : held) h = { -1, false };
         std::fill (std::begin (outV), std::end (outV), 0.0f);
         trigHigh = syncHigh = clockHigh = resetHigh = false;
@@ -179,6 +180,7 @@ public:
 
     void voiceOn (int note)
     {
+        drawNoteSpread();
         velHeld = 5.0f * (float) noteVel[(size_t) (note & 127)] / 127.0f;   // KB VEL OUT: 0 … +5 V
         removeHeld (note);
         if (heldCount < (int) held.size()) held[(size_t) heldCount++] = { note, false };
@@ -314,6 +316,11 @@ private:
     OnePoleHP hpf;                      // Utilities: static 6 dB/oct high-pass
     OnePoleHP cutoffFeedHp;             // CV feedthrough of the ladder (envelope sweep leaking into the audio)
     Drift drift1, drift2;
+    // Note-to-note spread: drawn on every note, scaled by Analog Drift (0 = every note identical).
+    struct NoteSpread { float pitch1 = 0, pitch2 = 0, cutoff = 0, pw = 0, attack = 0, decay = 0, release = 0; };
+    NoteSpread spread;
+    Rng spreadRng;
+    float spreadScale = 0.0f;
     Rng noise;
     std::vector<float> osBuf;
 
@@ -397,6 +404,26 @@ private:
         }
     }
 
+    // Each component (the two VCO cores, the ladder, the 911's timing capacitors) lands a little differently on
+    // every note: the panel and the keyboard CV are the same, the analogue parts are not. Ranges at the default
+    // Analog Drift (0.25); a full knob gives about three times as much, 0 gives identical notes.
+    // ASSUMPTION: the ranges are not measured on hardware (the recordings only bound the slow pitch drift).
+    static constexpr float kSpreadCents = 1.5f;           // each VCO, ± cents
+    // Ladder cutoff, ± octaves. Kept small: with the filter self-oscillating (KBD TRACK 1:1) this is a pitch error,
+    // ±0.05 oct would put a whistle lead ±60 cents off the key. ±0.005 oct = ±6 cents at the default drift.
+    static constexpr float kSpreadCutoffOct = 0.005f;
+    static constexpr float kSpreadPw = 0.01f;             // pulse width, ±
+    static constexpr float kSpreadEnvTime = 0.03f;        // attack / decay / release times, ± relative
+    static float noteSpreadScale (float drift) noexcept   // 0 → 0, 0.25 → 1, 1 → 3
+    {
+        return drift <= 0.0f ? 0.0f : 3.0f * std::pow (drift, 0.7925f);
+    }
+    void drawNoteSpread() noexcept
+    {
+        spread = { spreadRng.bipolar(), spreadRng.bipolar(), spreadRng.bipolar(), spreadRng.bipolar(),
+                   spreadRng.bipolar(), spreadRng.bipolar(), spreadRng.bipolar() };
+    }
+
     // ---- Mappings (ASSUMPTION where noted) ---------------------------------------------------
     static float lfoRateHz (float knob) noexcept { return 0.07f * std::pow (1300.0f / 0.07f, clampf (knob, 0.0f, 1.0f)); }
     static float envTime (float knob, float minS) noexcept { return minS * std::pow (10.0f / minS, clampf (knob, 0.0f, 1.0f)); } // ASSUMPTION: min..10 s
@@ -452,9 +479,13 @@ private:
     {
         const auto& p = params;
         hpf.setCutoff (16.0f * std::pow (500.0f, clampf (p.hpCutoff, 0.0f, 1.0f)), fsOs);
-        env.setParameters (envTime (p.attack, 0.001f), envTime (p.decay, 0.002f), p.sustain, envTime (p.release, 0.002f));
+        spreadScale = noteSpreadScale (p.drift);
+        const float sp = spreadScale * kSpreadEnvTime;
+        const float relS = envTime (p.release, 0.002f) * (1.0f + sp * spread.release);
+        env.setParameters (envTime (p.attack, 0.001f) * (1.0f + sp * spread.attack),
+                           envTime (p.decay, 0.002f) * (1.0f + sp * spread.decay), p.sustain, relS);
         // KB RLS: instant (1 ms anti-click) attack to the sustain level, envelope release time.
-        kbRls.setParameters (0.001f, 0.001f, p.sustain, envTime (p.release, 0.002f));
+        kbRls.setParameters (0.001f, 0.001f, p.sustain, relS);
         lfo.setWave ((Lfo::Wave) p.lfoWave);
         osc1.setWave ((Oscillator::Wave) p.osc1Wave);
         osc2.setWave ((Oscillator::Wave) p.osc2Wave);
@@ -576,16 +607,18 @@ private:
         const float kbCv = p.localOn ? currentPitch : 60.0f;
         const float basePitch = kbCv + (p.localOn ? bend * (float) p.bendRange : 0.0f) + p.fineTune + pitchMod;
         const float d = p.drift * 0.03f;  // up to ±3 cents at drift = 1
-        float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process();
-        float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process();
+        const float spreadSemis = spreadScale * kSpreadCents * 0.01f;
+        float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process() + spreadSemis * spread.pitch1;
+        float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process() + spreadSemis * spread.pitch2;
         if (patched (Jack::Osc1PitchIn)) pitch1 += 12.0f * readIn (Jack::Osc1PitchIn);
         if (patched (Jack::Osc2PitchIn)) pitch2 += 12.0f * readIn (Jack::Osc2PitchIn);
 
         // Narrow pulse widths measured on hardware ≈16 % (osc 1) and ≈18 % (osc 2) (SOS review).
-        float pw1 = (p.osc1Wave == 3 ? 0.16f : 0.5f) + pwMod;
+        const float pwSpread = spreadScale * kSpreadPw * spread.pw;
+        float pw1 = (p.osc1Wave == 3 ? 0.16f : 0.5f) + pwMod + pwSpread;
         if (patched (Jack::Osc1PwmIn)) pw1 += kPwmPerVolt * readIn (Jack::Osc1PwmIn);
         osc1.setPulseWidth (pw1);
-        osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : 0.5f) + pwMod);
+        osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : 0.5f) + pwMod + pwSpread);
 
         bool wrapped = false; float wrapFrac = 0.0f;
         const float o1 = osc1.process (midiToHz (pitch1) / fsOs, wrapped, wrapFrac);
@@ -624,7 +657,8 @@ private:
         float octaves = sCutoff.v * std::log2 (11000.0f / 10.0f)
                         + envOctaves
                         + track * (kbCv - 60.0f) * (1.0f / 12.0f)
-                        + cutMod;
+                        + cutMod
+                        + spreadScale * kSpreadCutoffOct * spread.cutoff;
         if (patched (Jack::FilterCutoffIn)) octaves += readIn (Jack::FilterCutoffIn);
         const float cutoffHz = std::min (10.0f * std::exp2 (octaves), 24000.0f);
         // Resonance: self-oscillation starts near 89 % of the knob (k = 4).

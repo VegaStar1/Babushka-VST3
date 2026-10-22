@@ -288,7 +288,8 @@ bool BabushkaProcessor::randomize (uint32_t seed)
         if (! au.finite || au.loud < 1.0e-4) continue;
         const double scale = std::min (kTargetLoud / au.loud, 4.0);  // gain factor; volume 1 is 4x volume 0.5
         const double volume = 0.5 * std::sqrt (scale);
-        if (au.loud * scale < 0.08) continue;                          // too quiet even at full volume
+        if (au.loud * scale < 0.1) continue;                           // too quiet even at full volume (margin: the
+                                                                       // audition runs at 1x, so noisy FX differ a little)
         if (au.peak * scale > 0.9) continue;                           // would clip
         const bool heldSound = ! (v["arpPlay"] > 0.5f) && kind != Kind::Pluck && kind != Kind::Fx && v["sustain"] > 0.15f;
         if (heldSound && au.held < 0.2 * au.loud) continue;           // a held note must keep sounding
