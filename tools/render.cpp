@@ -85,6 +85,24 @@ static double harmonic (const std::vector<float>& y, size_t from, double f, int 
     return 2.0 * std::sqrt (re * re + im * im) / (double) (y.size() - from);
 }
 
+// In-place radix-2 FFT (n a power of two); re/im.
+static void fft (std::vector<double>& re, std::vector<double>& im)
+{
+    const size_t n = re.size();
+    for (size_t i = 1, j = 0; i < n; ++i) { size_t b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b; if (i < j) { std::swap (re[i], re[j]); std::swap (im[i], im[j]); } }
+    for (size_t len = 2; len <= n; len <<= 1)
+    {
+        const double a = -6.283185307179586 / (double) len;
+        for (size_t i = 0; i < n; i += len)
+            for (size_t k = 0; k < len / 2; ++k)
+            {
+                const double c = std::cos (a * k), sn = std::sin (a * k);
+                const double xr = re[i + k + len / 2] * c - im[i + k + len / 2] * sn, xi = re[i + k + len / 2] * sn + im[i + k + len / 2] * c;
+                re[i + k + len / 2] = re[i + k] - xr; im[i + k + len / 2] = im[i + k] - xi; re[i + k] += xr; im[i + k] += xi;
+            }
+    }
+}
+
 // A/B material for listening tests (same three patches before / after every change in the sound).
 static void renderAB (const std::string& dir, int fs)
 {
@@ -123,6 +141,12 @@ static void renderAB (const std::string& dir, int fs)
         p.decay = 0.3f; p.sustain = 0.0f; p.release = 0.3f; p.kbdTrack = 1; p.noiseFloor = true;
         auto x = renderSeq (p, notes ({ { 0.0, 0.1, 60 }, { 1.2, 0.1, 67 }, { 2.4, 0.1, 64 } }), 4.0, fs);
         writeWav (dir + "/ab_noise_floor_on.wav", x, fs);
+    }
+    {   // The four waveforms of oscillator 1 in turn (triangle, saw, square, narrow pulse), filter open, A2.
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.4f; p.cutoff = 1.0f; p.sustain = 1.0f; p.release = 0.05f; p.drift = 0.0f;
+        auto x = renderSeq (p, notes ({ { 0.0, 1.1, 45 }, { 1.2, 1.1, 45 }, { 2.4, 1.1, 45 }, { 3.6, 1.1, 45 } }), 4.9, fs, 2,
+                            [] (Params& q, double t) { q.osc1Wave = std::min (3, (int) (t / 1.2)); });
+        writeWav (dir + "/ab_waves.wav", x, fs);
     }
     {   // Not normalised: the three feedback-loop presets without and with their cables (the channels the cables
         // replace are off in the "off" render).
@@ -313,6 +337,40 @@ int main (int argc, char** argv)
         float wp = 0; for (float v : w) wp = std::max (wp, std::abs (v));
         std::printf ("Closed VCA bleed %.1f dB below the note (hardware −60 … −77)  %s; noise floor on: %.1f dBFS rms (hardware −65 … −70)  %s, off: peak %.1e\n",
                      -bleed, bleed < -60.0 && bleed > -77.0 ? "OK" : "FAIL", floorDb, floorDb < -65.0 && floorDb > -71.0 ? "OK" : "FAIL", wp);
+    }
+
+    // ---------------- 2f. Oscillator shapes: harmonics at 110 Hz, aliasing at 3520 Hz -----------------------
+    {
+        std::printf ("Oscillator shapes (96 kHz; H2..H4 relative to H1; alias = energy off the harmonics below 20 kHz):\n");
+        const char* names[] = { "triangle", "saw", "square", "pulse" };
+        for (int w = 0; w < 4; ++w)
+        {
+            auto render = [w] (float f, int n, float pw) {
+                Oscillator o; o.reset (0.13f); o.setWave ((Oscillator::Wave) w); o.setPulseWidth (pw);
+                std::vector<float> y ((size_t) n); bool wr; float wf;
+                for (int i = 0; i < 9600; ++i) o.process (f / 96000.0f, wr, wf);
+                for (auto& v : y) v = o.process (f / 96000.0f, wr, wf);
+                return y; };
+            const float pw = w == 3 ? 0.16f : (w == 2 ? Oscillator::kSquareDuty1 : 0.5f);   // as the engine sets them for oscillator 1
+            const auto y = render (110.0f, 96000, pw);
+            const double h1 = harmonic (y, 0, 110.0, 96000, 1);
+            std::printf ("  %-8s H1 %+5.2f dB, H2 %6.1f, H3 %6.1f, H4 %6.1f", names[w], 20 * std::log10 (h1),
+                         20 * std::log10 (harmonic (y, 0, 110.0, 96000, 2) / h1), 20 * std::log10 (harmonic (y, 0, 110.0, 96000, 3) / h1),
+                         20 * std::log10 (harmonic (y, 0, 110.0, 96000, 4) / h1));
+            // Aliasing: 3520 Hz is 1/27.27 of the rate; a Hann-windowed 32768-point FFT, harmonic bins ±4 excluded.
+            const size_t n = 32768; const auto z = render (3520.0f, (int) n, pw);
+            std::vector<double> re (n), im (n, 0.0);
+            for (size_t i = 0; i < n; ++i) re[i] = z[i] * (0.5 - 0.5 * std::cos (6.283185307179586 * i / n));
+            fft (re, im);
+            double on = 0, off = 0;
+            for (size_t k = 1; k < n / 2; ++k)
+            {
+                const double fk = 96000.0 * k / n; if (fk > 20000.0) break;
+                const double e = re[k] * re[k] + im[k] * im[k], hk = fk / 3520.0;
+                if (std::abs (hk - std::round (hk)) * 3520.0 < 4.0 * 96000.0 / n) on += e; else off += e;
+            }
+            std::printf (" | alias %6.1f dB\n", 10 * std::log10 (off / on));
+        }
     }
 
     // ---------------- 3. Spring reverb impulse response ---------------------------------------

@@ -620,10 +620,10 @@ private:
 
         // Narrow pulse widths measured on hardware ≈16 % (osc 1) and ≈18 % (osc 2) (SOS review).
         const float pwSpread = spreadScale * kSpreadPw * spread.pw;
-        float pw1 = (p.osc1Wave == 3 ? 0.16f : 0.5f) + pwMod + pwSpread;
+        float pw1 = (p.osc1Wave == 3 ? 0.16f : Oscillator::kSquareDuty1) + pwMod + pwSpread;
         if (patched (Jack::Osc1PwmIn)) pw1 += kPwmPerVolt * readIn (Jack::Osc1PwmIn);
         osc1.setPulseWidth (pw1);
-        osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : 0.5f) + pwMod + pwSpread);
+        osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : Oscillator::kSquareDuty2) + pwMod + pwSpread);
 
         bool wrapped = false; float wrapFrac = 0.0f;
         const float o1 = osc1.process (midiToHz (pitch1) / fsOs, wrapped, wrapFrac);
