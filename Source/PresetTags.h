@@ -157,6 +157,9 @@ inline const char* factoryPresetTags (std::string_view name)
         { "Random Chorus", "WARM EVOLVING" },
         { "Keyed Phaser", "WARM EVOLVING" },
         { "Gated Echo Drive", "AGGRESSIVE EVOLVING" },
+        { "Feedback Loop Bass", "FAT DARK" },
+        { "Feedback Loop Lead", "FAT WARM" },
+        { "Double Loop Drone", "FAT DARK" },
     };
     for (const auto& e : table) if (name == e.name) return e.tags;
     return "";

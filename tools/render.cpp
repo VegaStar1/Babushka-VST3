@@ -124,6 +124,34 @@ static void renderAB (const std::string& dir, int fs)
         auto x = renderSeq (p, notes ({ { 0.0, 0.1, 60 }, { 1.2, 0.1, 67 }, { 2.4, 0.1, 64 } }), 4.0, fs);
         writeWav (dir + "/ab_noise_floor_on.wav", x, fs);
     }
+    {   // Not normalised: the three feedback-loop presets without and with their cables (the channels the cables
+        // replace are off in the "off" render).
+        auto loopPair = [&] (const char* name, Params p, const char* patch, bool osc2Replaced, std::vector<Ev> seq, double seconds) {
+            for (int loop = 0; loop < 2; ++loop)
+            {
+                Params q = p; if (! loop) { q.mixNoise = 0.0f; if (osc2Replaced) q.mixOsc2 = 0.0f; }
+                Engine e; e.prepare (fs, 2); e.setParams (q); if (loop) e.setPatch (PatchState::fromString (patch));
+                std::vector<float> x ((size_t) (seconds * fs), 0.0f); size_t ei = 0;
+                for (int pos = 0; pos < (int) x.size(); pos += 64)
+                {
+                    while (ei < seq.size() && seq[ei].t <= (double) pos / fs) { if (seq[ei].type == 0) e.noteOn (seq[ei].note); else e.noteOff (seq[ei].note); ++ei; }
+                    e.process (x.data() + pos, std::min (64, (int) x.size() - pos));
+                }
+                writeWav (dir + "/ab_" + name + (loop ? "_loop_on.wav" : "_loop_off.wav"), x, fs);
+            } };
+        Params a; a.osc1Octave = 1; a.osc1Wave = 1; a.osc2Octave = 0; a.osc2Wave = 2; a.osc2Freq = 0.06f; a.mixOsc1 = 0.6f; a.mixOsc2 = 0.5f;
+        a.mixNoise = 0.8f; a.cutoff = 0.36f; a.resonance = 0.3f; a.envAmt = 0.4f; a.kbdTrack = 1; a.attack = 0.0f; a.decay = 0.55f;
+        a.sustain = 0.5f; a.release = 0.45f; a.volume = 0.75f;
+        loopPair ("feedback_bass", a, "filterOut:mixNoiseIn", false, notes ({ {0.0,0.35,36},{0.5,0.35,36},{1.0,0.35,43},{1.5,0.35,39},{2.0,0.8,36} }), 3.0);
+        Params b; b.osc1Octave = 2; b.osc1Wave = 1; b.osc2Octave = 1; b.osc2Wave = 1; b.osc2Freq = 0.1f; b.mixOsc1 = 0.55f; b.mixOsc2 = 0.45f;
+        b.mixNoise = 1.0f; b.cutoff = 0.75f; b.resonance = 0.25f; b.envAmt = 0.2f; b.kbdTrack = 1; b.attack = 0.0f; b.decay = 0.6f;
+        b.sustain = 0.75f; b.release = 0.45f; b.reverbMix = 0.15f; b.glide = 0.3f; b.volume = 0.7f;
+        loopPair ("feedback_lead", b, "filterOut:mixNoiseIn", false, notes ({ {0.0,0.45,60},{0.5,0.45,63},{1.0,0.45,67},{1.5,0.9,72},{2.5,1.0,67} }), 4.0);
+        Params c; c.osc1Octave = 0; c.osc1Wave = 1; c.osc2Octave = 0; c.osc2Wave = 1; c.mixOsc1 = 0.7f; c.mixOsc2 = 0.8f; c.mixNoise = 0.8f;
+        c.cutoff = 0.42f; c.resonance = 0.45f; c.attack = 0.0f; c.decay = 0.5f; c.sustain = 1.0f; c.release = 0.5f; c.vcaMode = 2;
+        c.reverbMix = 0.3f; c.lfoRate = 0.05f; c.lfoCutoffAmt = 0.2f; c.modWheel = 1.0f; c.volume = 0.78f;
+        loopPair ("double_loop_drone", c, "filterOut:mult1 mult2:mixNoiseIn mult3:mixOsc2In", true, notes ({ {0.0,5.0,41} }), 6.0);
+    }
     {   // Not normalised: a saw note (mixer 60 %) and then the self-oscillating filter (resonance 95 %), same Volume,
         // to hear the balance between the two.
         Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.6f; p.kbdTrack = 2; p.sustain = 1.0f; p.release = 0.2f;

@@ -967,6 +967,22 @@ inline const std::vector<FactoryPreset>& factoryPresets()
         { "Patch Bay", "Gated Echo Drive", "Gated Drone saturated by tape, the chopped notes thrown into a dotted-eighth echo; the gate also drives harder. Cables: MOD WAVE OUT -> VCA AMT IN, MOD WAVE OUT -> SATURATOR DRIVE CV.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.5f }, { "cutoff", 0.607f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.25f }, { "lfoRate", 0.453f }, { "lfoWave", 3 }, { "volume", 0.661f }, { "satOn", 1 }, { "satMode", 1 }, { "satDrive", 0.5f }, { "satBias", 0.0f }, { "satBody", 0.45f }, { "satTone", 0.42f }, { "satMix", 1.0f }, { "satOutput", 0.5f }, { "tapOn", 1 }, { "tapSync", 3 }, { "tapTime", 0.5f }, { "tapFeedback", 0.4f }, { "tapMix", 0.35f }, { "tapFlutter", 0.15f }, { "tapAge", 0.2f }, { "tapHeads", 0 }, { "tapWow", 0.15f }, { "tapBass", 0.5f }, { "tapTreble", 0.55f } },
           "modWaveOut:vcaAmtIn modWaveOut:satCv" },
+
+        // The Minimoog trick of feeding the output back into the mixer ("depth and welly"): the loop pushes the
+        // fundamental up and rounds off the top. Grandmother has no VCA OUT jack, so the loop starts at FILTER OUT; the
+        // mixer knob of that input sets the amount. (EURORACK OUT is not used: it comes after the decimator, and its
+        // delay turns the loop into a comb filter.)
+        { "Patch Bay", "Feedback Loop Bass", "The filter fed back into its own mixer, as on a Minimoog: a deeper, rounder bass. Cable: FILTER OUT -> MIXER NOISE IN (the Noise knob sets the feedback).",
+          { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.8f }, { "cutoff", 0.36f }, { "resonance", 0.3f }, { "envAmt", 0.4f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.55f }, { "sustain", 0.5f }, { "release", 0.45f }, { "volume", 0.75f } },
+          "filterOut:mixNoiseIn" },
+
+        { "Patch Bay", "Feedback Loop Lead", "Two saws with the filter fed back into the mixer: the fundamental swells, the top gets rounder, as the Minimoog loop. Cable: FILTER OUT -> MIXER NOISE IN (the Noise knob sets the feedback).",
+          { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "mixNoise", 1.0f }, { "cutoff", 0.75f }, { "resonance", 0.25f }, { "envAmt", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.6f }, { "sustain", 0.75f }, { "release", 0.45f }, { "reverbMix", 0.15f }, { "glide", 0.3f }, { "volume", 0.7f } },
+          "filterOut:mixNoiseIn" },
+
+        { "Patch Bay", "Double Loop Drone", "A 32' saw with the filter fed back into two mixer inputs at once: a huge, round drone that slowly breathes. Less resonance means more feedback; with Resonance near zero the loop runs away into a slow, heavy throb. Cables: FILTER OUT -> mult -> MIXER NOISE IN and MIXER OSC 2 IN.",
+          { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.8f }, { "mixNoise", 0.8f }, { "cutoff", 0.42f }, { "resonance", 0.45f }, { "attack", 0.0f }, { "decay", 0.5f }, { "sustain", 1.0f }, { "release", 0.5f }, { "vcaMode", 2 }, { "reverbMix", 0.3f }, { "lfoRate", 0.05f }, { "lfoCutoffAmt", 0.2f }, { "modWheel", 1.0f }, { "volume", 0.78f } },
+          "filterOut:mult1 mult2:mixNoiseIn mult3:mixOsc2In" },
     };
     return presets;
 }
