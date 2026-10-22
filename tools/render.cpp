@@ -373,6 +373,16 @@ int main (int argc, char** argv)
         }
     }
 
+    // ---------------- 2g. VCA KB RLS: full level while the key is held, also at SUSTAIN 0 ----------------------
+    {
+        Params p; p.osc1Octave = 2; p.mixOsc1 = 0.6f; p.cutoff = 0.8f; p.vcaMode = 1; p.sustain = 0.0f; p.decay = 0.3f; p.release = 0.5f; p.drift = 0.0f;
+        auto y = renderSeq (p, notes ({ { 0.0, 1.0, 57 } }), 2.0);
+        auto rmsAt = [&y] (double a, double b) { double t = 0; size_t n = 0; for (size_t i = (size_t) (a * 48000); i < (size_t) (b * 48000); ++i, ++n) t += y[i] * y[i]; return 10 * std::log10 (t / n + 1e-20); };
+        const double early = rmsAt (0.05, 0.15), late = rmsAt (0.85, 0.95), after = rmsAt (1.6, 1.7);
+        std::printf ("VCA KB RLS, SUSTAIN 0: level 0.1 s %.1f dB, 0.9 s %.1f dB, 0.6 s after release %.1f dB  %s\n", early, late, after,
+                     std::abs (late - early) < 1.0 && after < early - 20.0 ? "OK" : "FAIL");
+    }
+
     // ---------------- 3. Spring reverb impulse response ---------------------------------------
     {
         SpringReverb rv; rv.prepare ((float) fs);

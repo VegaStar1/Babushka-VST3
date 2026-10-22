@@ -489,8 +489,9 @@ private:
         const float relS = envTime (p.release, 0.002f) * (1.0f + sp * spread.release);
         env.setParameters (envTime (p.attack, 0.001f) * (1.0f + sp * spread.attack),
                            envTime (p.decay, 0.002f) * (1.0f + sp * spread.decay), p.sustain, relS);
-        // KB RLS: instant (1 ms anti-click) attack to the sustain level, envelope release time.
-        kbRls.setParameters (0.001f, 0.001f, p.sustain, relS);
+        // KB RLS: instant (1 ms anti-click) attack, full level while a key is held whatever SUSTAIN is, then the
+        // envelope's release time (hardware: the VCA is open while the key is down, then follows RELEASE).
+        kbRls.setParameters (0.001f, 0.001f, 1.0f, relS);
         lfo.setWave ((Lfo::Wave) p.lfoWave);
         osc1.setWave ((Oscillator::Wave) p.osc1Wave);
         osc2.setWave ((Oscillator::Wave) p.osc2Wave);
