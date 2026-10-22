@@ -1,9 +1,13 @@
 // Babushka — offline renderer and test harness for the DSP core (no JUCE needed).
 //   render <outdir>
+//   render --play <part.txt> <out.wav>     plays a part file (see playPart) through the engine
 // Writes demo WAVs, raw test signals for analysis, and prints stability/CPU results.
 #include "../Source/dsp/Engine.h"
 
 #include <chrono>
+#include <fstream>
+#include <map>
+#include <sstream>
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -63,6 +67,55 @@ static void normalisePeak (std::vector<float>& x, float peak = 0.89f)
 {
     float m = 0; for (float v : x) m = std::max (m, std::abs (v));
     if (m > 0) for (float& v : x) v *= peak / m;
+}
+
+// A part file, for comparisons with recordings of the hardware (tools/analysis/video_compare):
+//   set <param> <value>      a knob or switch of Params (the names of the struct below)
+//   patch <cables>           cables in the Patch.h text format ("envPosOut:osc2PitchIn ...")
+//   length <seconds>
+//   on <seconds> <key> / off <seconds> <key>
+// '#' starts a comment. Rendered at 48 kHz, 2x oversampling, mono float WAV.
+static int playPart (const std::string& partPath, const std::string& outPath)
+{
+    Params p; std::string patch; double length = 10.0;
+    std::vector<std::tuple<double, int, int>> ev;
+    std::map<std::string, float*> f { { "osc2Freq", &p.osc2Freq }, { "mixOsc1", &p.mixOsc1 }, { "mixOsc2", &p.mixOsc2 }, { "mixNoise", &p.mixNoise },
+        { "lfoRate", &p.lfoRate }, { "lfoPitchAmt", &p.lfoPitchAmt }, { "lfoCutoffAmt", &p.lfoCutoffAmt }, { "lfoPwAmt", &p.lfoPwAmt },
+        { "modWheel", &p.modWheel }, { "cutoff", &p.cutoff }, { "resonance", &p.resonance }, { "envAmt", &p.envAmt }, { "attack", &p.attack },
+        { "decay", &p.decay }, { "sustain", &p.sustain }, { "release", &p.release }, { "hpCutoff", &p.hpCutoff }, { "attenuator", &p.attenuator },
+        { "reverbMix", &p.reverbMix }, { "volume", &p.volume }, { "glide", &p.glide }, { "fineTune", &p.fineTune }, { "drift", &p.drift } };
+    std::map<std::string, int*> n { { "osc1Octave", &p.osc1Octave }, { "osc1Wave", &p.osc1Wave }, { "osc2Octave", &p.osc2Octave },
+        { "osc2Wave", &p.osc2Wave }, { "lfoWave", &p.lfoWave }, { "kbdTrack", &p.kbdTrack }, { "vcaMode", &p.vcaMode }, { "glideType", &p.glideType } };
+    std::map<std::string, bool*> b { { "osc2Sync", &p.osc2Sync }, { "legatoGlide", &p.legatoGlide }, { "noiseFloor", &p.noiseFloor } };
+    std::ifstream in (partPath);
+    if (! in) { std::printf ("cannot read %s\n", partPath.c_str()); return 1; }
+    for (std::string line; std::getline (in, line);)
+    {
+        line = line.substr (0, line.find ('#'));
+        std::istringstream ls (line); std::string cmd; if (! (ls >> cmd)) continue;
+        if (cmd == "set")
+        {
+            std::string k; double v; ls >> k >> v;
+            if (f.count (k)) *f[k] = (float) v; else if (n.count (k)) *n[k] = (int) std::lround (v); else if (b.count (k)) *b[k] = v > 0.5;
+            else { std::printf ("unknown parameter '%s'\n", k.c_str()); return 1; }
+        }
+        else if (cmd == "patch") { std::getline (ls, patch); }
+        else if (cmd == "length") ls >> length;
+        else if (cmd == "on" || cmd == "off") { double t; int k; ls >> t >> k; ev.emplace_back (t, cmd == "on" ? 0 : 1, k); }
+        else { std::printf ("unknown line '%s'\n", line.c_str()); return 1; }
+    }
+    std::sort (ev.begin(), ev.end());
+    Engine e; e.prepare (48000, 2); e.setParams (p); e.setPatch (PatchState::fromString (patch));
+    const int total = (int) (length * 48000), block = 16;
+    std::vector<float> y ((size_t) total, 0.0f); size_t j = 0;
+    for (int pos = 0; pos < total; pos += block)
+    {
+        while (j < ev.size() && std::get<0> (ev[j]) <= pos / 48000.0)
+        { if (std::get<1> (ev[j]) == 0) e.noteOn (std::get<2> (ev[j])); else e.noteOff (std::get<2> (ev[j])); ++j; }
+        e.process (y.data() + pos, std::min (block, total - pos));
+    }
+    writeWav (outPath, y, 48000);
+    return 0;
 }
 
 // Loudness-matched A/B: every file at the same RMS, so a change is not heard as "louder = better".
@@ -187,6 +240,7 @@ static void renderAB (const std::string& dir, int fs)
 
 int main (int argc, char** argv)
 {
+    if (argc > 3 && std::string (argv[1]) == "--play") return playPart (argv[2], argv[3]);
     const std::string dir = argc > 1 ? argv[1] : ".";
     const int fs = 48000;
     renderAB (dir, fs);
