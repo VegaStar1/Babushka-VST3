@@ -249,10 +249,12 @@ public:
         for (auto* lb : { &branchList, &presetList })
         {
             lb->setColour (juce::ListBox::backgroundColourId, juce::Colour (0xff0b0a09));
-            lb->setColour (juce::ListBox::outlineColourId, col::outline.withAlpha (0.3f));
             lb->setOutlineThickness (1);
+            lb->setWantsKeyboardFocus (false);       // the arrow keys are the browser's own (see keyPressed)
             addAndMakeVisible (*lb);
         }
+        setWantsKeyboardFocus (true);
+        showZone();
         branchList.setModel (&branchModel);
         branchList.setRowHeight (27);
         presetList.setModel (&presetModel);
@@ -279,12 +281,59 @@ public:
 
     std::function<void()> onClose;
 
+    // Opens on the preset that is playing (its branch, the list side); with nothing chosen yet (Init, or a RANDOMIZE
+    // sound) on the folders side, at "All".
     void visibilityChanged() override
     {
         if (! isVisible()) return;
+        saveDialog.setVisible (false);          // a SAVE AS left open when the browser was closed
         processor.ensurePresetLibrary();
+        processor.reloadFavorites();
         refresh();
-        showCurrentInList();
+        auto* cur = currentRef();
+        if (cur == nullptr || (cur->factory && cur->name == "Init"))
+        {
+            branch = "All"; initCursor = false; zone = Zone::Branches;
+            rebuildRows();
+            branchList.scrollToEnsureRowIsOnscreen (branchRow (branch));
+            presetList.scrollToEnsureRowIsOnscreen (0);
+        }
+        else
+        {
+            if (! inBranch (*cur)) { branch = cur->factory ? cur->category : (cur->folder.isEmpty() ? juce::String ("User") : "User/" + cur->folder); rebuildRows(); }
+            zone = Zone::Presets; initCursor = false;
+            branchList.scrollToEnsureRowIsOnscreen (branchRow (branch));
+            showCurrentInList();
+        }
+        showZone();
+        grabKeyboardFocus();
+    }
+
+    // Arrow keys: up / down move in the side that has the focus (on the list side every step loads the preset),
+    // right goes from the folders into the list, left back; Return on INIT loads it; Escape closes the browser.
+    bool keyPressed (const juce::KeyPress& key) override
+    {
+        if (saveDialog.isVisible()) return false;
+        const int code = key.getKeyCode();
+        if (key.getModifiers().isAnyModifierKeyDown() && ! key.getModifiers().isShiftDown()) return false;
+        if (code == juce::KeyPress::escapeKey) { if (onClose) onClose(); return true; }
+        if (code == juce::KeyPress::upKey || code == juce::KeyPress::downKey)
+        {
+            const int d = code == juce::KeyPress::downKey ? 1 : -1;
+            if (zone == Zone::Branches) moveBranchCursor (d); else movePresetCursor (d);
+            return true;
+        }
+        if (code == juce::KeyPress::rightKey || code == juce::KeyPress::returnKey)
+        {
+            if (zone == Zone::Branches)
+            {
+                if (initCursor) { loadInit(); return true; }
+                enterPresets();
+            }
+            return true;
+        }
+        if (code == juce::KeyPress::leftKey) { zone = Zone::Branches; showZone(); return true; }
+        return false;
     }
 
     // Reads the list of presets and folders again (after a save / import / delete, or when the browser opens).
@@ -293,6 +342,8 @@ public:
         presets = processor.listPresets();
         folders = processor.getUserFolders();
         branches.clear();
+        branches.push_back ({ kInitKey, "Init", false, false });
+        branches.push_back ({ kFavoritesKey, "Favorites", false, false });
         branches.push_back ({ "All", "All", false, false });
         juce::StringArray cats;
         for (auto& r : presets) if (r.factory) cats.addIfNotAlreadyThere (r.category);
@@ -364,6 +415,13 @@ private:
     static constexpr int kTagsY = 112, kBodyY = 156, kBodyH = 568, kDescY = 734, kButtonsY = 790;
 
     struct Branch { juce::String key, label; bool user, folder; };
+    // Two rows above the folders: INIT (loads the Init sound, not a folder) and FAVORITES (the presets with a heart).
+    static inline const juce::String kInitKey { "#init" }, kFavoritesKey { "#favorites" };
+    enum class Zone { Branches, Presets };
+    Zone zone = Zone::Branches;
+    bool initCursor = false;           // the folders-side cursor is on INIT (it is not a branch, the list stays)
+    int presetCursor = -1;             // list-side row when the playing sound is not in the list
+    static constexpr int kHeartW = 40; // the heart column at the right of a preset row
     struct Row { bool header; int preset; juce::String text; };
 
     // List models forward to the overlay.
@@ -373,7 +431,7 @@ private:
         explicit BranchModel (PresetOverlay& owner) : o (owner) {}
         int getNumRows() override { return (int) o.branches.size(); }
         void paintListBoxItem (int row, juce::Graphics& g, int w, int h, bool) override { o.paintBranch (row, g, w, h); }
-        void listBoxItemClicked (int row, const juce::MouseEvent&) override { o.selectBranch (row); }
+        void listBoxItemClicked (int row, const juce::MouseEvent&) override { o.zone = Zone::Branches; o.selectBranch (row); o.showZone(); o.grabKeyboardFocus(); }
     };
     struct PresetModel : public juce::ListBoxModel
     {
@@ -381,7 +439,12 @@ private:
         explicit PresetModel (PresetOverlay& owner) : o (owner) {}
         int getNumRows() override { return (int) o.rows.size(); }
         void paintListBoxItem (int row, juce::Graphics& g, int w, int h, bool) override { o.paintPreset (row, g, w, h); }
-        void listBoxItemClicked (int row, const juce::MouseEvent&) override { o.loadRow (row); }
+        void listBoxItemClicked (int row, const juce::MouseEvent& e) override
+        {
+            o.zone = Zone::Presets; o.showZone(); o.grabKeyboardFocus();
+            if (e.x >= o.presetList.getVisibleRowWidth() - kHeartW) o.toggleFavorite (row);
+            else o.loadRow (row);
+        }
         void deleteKeyPressed (int) override { o.deleteCurrent(); }
     };
 
@@ -406,6 +469,7 @@ private:
     bool inBranch (const BabushkaProcessor::PresetRef& r) const
     {
         if (branch == "All") return true;
+        if (branch == kFavoritesKey) return processor.isFavorite (r);
         if (branch == "User") return ! r.factory;
         if (branch.startsWith ("User/")) return ! r.factory && (r.folder == branch.substring (5) || r.folder.startsWith (branch.substring (5) + "/"));
         return r.factory && r.category == branch;
@@ -430,7 +494,7 @@ private:
             for (auto& t : wanted) tagsOk = tagsOk && r.tags.contains (t);
             if (! tagsOk) continue;
             const juce::String group = r.factory ? r.category : juce::String ("User presets");
-            if (branch == "All" && group != lastGroup) { lastGroup = group; rows.push_back ({ true, -1, group }); }
+            if ((branch == "All" || branch == kFavoritesKey) && group != lastGroup) { lastGroup = group; rows.push_back ({ true, -1, group }); }
             rows.push_back ({ false, i, r.name });
             ++shown;
         }
@@ -460,10 +524,22 @@ private:
     {
         if (row < 0 || row >= (int) branches.size()) return;
         const auto& b = branches[(size_t) row];
-        const bool on = b.key == branch;
-        if (b.key == "User") { g.setColour (col::outline.withAlpha (0.25f)); g.fillRect (12, 0, w - 24, 1); }
+        const bool isInit = b.key == kInitKey;
+        const bool on = isInit ? initCursor : (b.key == branch && ! initCursor);
+        if (b.key == "User" || b.key == "All") { g.setColour (col::outline.withAlpha (0.25f)); g.fillRect (12, 0, w - 24, 1); }
         if (on) { g.setColour (col::amber.withAlpha (0.22f)); g.fillRect (0, 0, w, h); g.setColour (col::amber); g.fillRect (0, 0, 3, h); }
         float x = b.folder ? 36.0f : 14.0f;
+        if (isInit)
+        {
+            const auto* cur = currentRef();
+            const bool playing = cur != nullptr && cur->factory && cur->name == "Init";
+            label (g, "INIT", juce::Rectangle<float> (x, 0.0f, (float) w - x - 12.0f, (float) h), on || playing ? col::ledAmber.brighter (0.2f) : col::ink,
+                   15.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.14f);
+            label (g, "all knobs at their defaults", juce::Rectangle<float> (x + 44.0f, 0.0f, (float) w - x - 56.0f, (float) h), col::ink.withAlpha (0.45f), 12.5f,
+                   Weight::Narrow, juce::Justification::centredRight, 0.0f);
+            return;
+        }
+        if (b.key == kFavoritesKey) { drawHeart (g, juce::Rectangle<float> (x, (float) h * 0.5f - 7.0f, 15.0f, 14.0f), true); x += 22.0f; }
         if (b.user)
         {   // folder icon
             juce::Path pth;
@@ -478,6 +554,7 @@ private:
         for (auto& r : presets)
         {
             if (b.key == "All") ++count;
+            else if (b.key == kFavoritesKey) count += processor.isFavorite (r) ? 1 : 0;
             else if (b.key == "User") count += r.factory ? 0 : 1;
             else if (b.folder) count += (! r.factory && (r.folder == b.label || r.folder.startsWith (b.label + "/"))) ? 1 : 0;
             else count += (r.factory && r.category == b.key) ? 1 : 0;
@@ -499,9 +576,10 @@ private:
             return;
         }
         const auto& r = presets[(size_t) e.preset];
-        const bool sel = isCurrentRow (row);
+        const bool sel = isCurrentRow (row) || (row == presetCursor && currentRef() == nullptr);
         if (sel) { g.setColour (col::amber.withAlpha (0.22f)); g.fillRect (0, 0, w, h); g.setColour (col::amber); g.fillRect (0, 0, 3, h); }
-        float right = (float) w - 12.0f;
+        drawHeart (g, juce::Rectangle<float> ((float) w - (float) kHeartW + 12.0f, (float) h * 0.5f - 7.0f, 16.0f, 14.0f), processor.isFavorite (r));
+        float right = (float) w - (float) kHeartW - 4.0f;
         if (! r.factory)
         {
             const juce::Rectangle<float> tag (right - 44.0f, (float) h * 0.5f - 9.0f, 44.0f, 18.0f);
@@ -523,9 +601,92 @@ private:
     void selectBranch (int row)
     {
         if (row < 0 || row >= (int) branches.size()) return;
+        if (branches[(size_t) row].key == kInitKey) { initCursor = true; loadInit(); return; }
+        initCursor = false;
         branch = branches[(size_t) row].key;
+        presetCursor = -1;
         rebuildRows();
         presetList.scrollToEnsureRowIsOnscreen (0);
+    }
+
+    int branchRow (const juce::String& key) const
+    {
+        for (int i = 0; i < (int) branches.size(); ++i) if (branches[(size_t) i].key == key) return i;
+        return 0;
+    }
+
+    void loadInit()
+    {
+        for (auto& r : presets)
+            if (r.factory && r.name == "Init") { processor.loadPreset (r); break; }
+        setStatus ({});
+        branchList.repaint(); presetList.repaint();
+    }
+
+    // The focused side has a bright frame.
+    void showZone()
+    {
+        branchList.setColour (juce::ListBox::outlineColourId, zone == Zone::Branches ? col::amber.withAlpha (0.9f) : col::outline.withAlpha (0.3f));
+        presetList.setColour (juce::ListBox::outlineColourId, zone == Zone::Presets ? col::amber.withAlpha (0.9f) : col::outline.withAlpha (0.3f));
+        branchList.repaint(); presetList.repaint();
+    }
+
+    void moveBranchCursor (int d)
+    {
+        const int cur = initCursor ? 0 : branchRow (branch);
+        const int next = juce::jlimit (0, (int) branches.size() - 1, cur + d);
+        if (next == cur) return;
+        if (next == 0) { initCursor = true; branchList.repaint(); }       // INIT: Return / right arrow loads it
+        else selectBranch (next);
+        branchList.scrollToEnsureRowIsOnscreen (next);
+    }
+
+    int currentRowIndex() const
+    {
+        for (int i = 0; i < (int) rows.size(); ++i) if (! rows[(size_t) i].header && isCurrentRow (i)) return i;
+        return -1;
+    }
+
+    // Into the list: on the playing preset if it is there, otherwise the first one is loaded.
+    void enterPresets()
+    {
+        zone = Zone::Presets;
+        showZone();
+        const int cur = currentRowIndex();
+        if (cur >= 0) { presetList.scrollToEnsureRowIsOnscreen (cur); return; }
+        for (int i = 0; i < (int) rows.size(); ++i) if (! rows[(size_t) i].header) { loadRow (i); return; }
+    }
+
+    void movePresetCursor (int d)
+    {
+        int from = currentRowIndex();
+        if (from < 0) from = presetCursor;
+        if (from < 0) { enterPresets(); return; }
+        for (int i = from + d; i >= 0 && i < (int) rows.size(); i += d)
+            if (! rows[(size_t) i].header) { loadRow (i); return; }
+    }
+
+    void toggleFavorite (int row)
+    {
+        if (row < 0 || row >= (int) rows.size() || rows[(size_t) row].header) return;
+        const auto& r = presets[(size_t) rows[(size_t) row].preset];
+        const bool on = ! processor.isFavorite (r);
+        processor.setFavorite (r, on);
+        setStatus (on ? "'" + r.name + "' added to Favorites." : "'" + r.name + "' removed from Favorites.");
+        if (branch == kFavoritesKey) rebuildRows();
+        presetList.repaint(); branchList.repaint();
+    }
+
+    static void drawHeart (juce::Graphics& g, juce::Rectangle<float> r, bool filled)
+    {
+        juce::Path p;
+        const float x = r.getX(), y = r.getY(), w = r.getWidth(), h = r.getHeight();
+        p.startNewSubPath (x + w * 0.5f, y + h);
+        p.cubicTo (x - w * 0.15f, y + h * 0.45f, x + w * 0.1f, y - h * 0.15f, x + w * 0.5f, y + h * 0.25f);
+        p.cubicTo (x + w * 0.9f, y - h * 0.15f, x + w * 1.15f, y + h * 0.45f, x + w * 0.5f, y + h);
+        p.closeSubPath();
+        if (filled) { g.setColour (col::ledAmber); g.fillPath (p); }
+        else { g.setColour (col::ink.withAlpha (0.35f)); g.strokePath (p, juce::PathStrokeType (1.3f)); }
     }
 
     void loadRow (int row)
@@ -533,8 +694,11 @@ private:
         if (row < 0 || row >= (int) rows.size() || rows[(size_t) row].header) return;
         const auto& r = presets[(size_t) rows[(size_t) row].preset];
         processor.loadPreset (r);
+        presetCursor = row;
+        initCursor = false;
         setStatus ({});
-        presetList.repaint();
+        presetList.scrollToEnsureRowIsOnscreen (row);
+        presetList.repaint(); branchList.repaint();
     }
 
     const BabushkaProcessor::PresetRef* currentRef() const

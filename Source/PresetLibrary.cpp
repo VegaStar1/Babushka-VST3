@@ -350,3 +350,36 @@ void BabushkaProcessor::stepPreset (int delta)
     const int next = cur < 0 ? (delta > 0 ? 0 : n - 1) : ((cur + delta) % n + n) % n;
     loadPreset (list[(size_t) next]);
 }
+
+// ---- favourites -----------------------------------------------------------------------------------------------------
+juce::String BabushkaProcessor::favoriteKey (const PresetRef& ref) const
+{
+    if (ref.factory) return "factory:" + ref.name;
+    return "user:" + ref.file.getRelativePathFrom (getUserPresetDirectory()).replaceCharacter ('\\', '/');
+}
+
+bool BabushkaProcessor::isFavorite (const PresetRef& ref) const
+{
+    if (! favoritesRead)
+    {
+        favoritesRead = true;
+        favorites.addLines (favoritesFile().loadFileAsString());
+        favorites.removeEmptyStrings();
+    }
+    return favorites.contains (favoriteKey (ref));
+}
+
+void BabushkaProcessor::setFavorite (const PresetRef& ref, bool on)
+{
+    if (isFavorite (ref) == on) return;
+    const auto key = favoriteKey (ref);
+    if (on) favorites.add (key); else favorites.removeString (key);
+    // Another instance may have changed the file: merge with what is there now.
+    juce::StringArray onDisk;
+    onDisk.addLines (favoritesFile().loadFileAsString());
+    onDisk.removeEmptyStrings();
+    if (on) onDisk.addIfNotAlreadyThere (key); else onDisk.removeString (key);
+    favorites = onDisk;
+    favoritesFile().getParentDirectory().createDirectory();
+    favoritesFile().replaceWithText (favorites.joinIntoString ("\n") + "\n");
+}
