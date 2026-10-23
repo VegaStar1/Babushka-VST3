@@ -512,7 +512,7 @@ public:
         if (pedal == 3)
             label (g, "CLEAR", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ kClearX, kNamesY }), look.ink, type::control, Weight::NarrowBold,
                    juce::Justification::centred, 0.03f);
-        label (g, info.name, juce::Rectangle<float> (r.getWidth() - 16.0f, 16.0f).withCentre ({ r.getCentreX(), 124.0f }), look.ink, type::title,
+        label (g, info.name, juce::Rectangle<float> (r.getWidth() - 60.0f, 12.0f).withCentre ({ r.getCentreX(), 121.5f }), look.ink, type::control,
                Weight::NarrowBold, juce::Justification::centred, 0.12f);
     }
 

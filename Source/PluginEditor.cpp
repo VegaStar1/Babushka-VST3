@@ -25,9 +25,9 @@ BabushkaEditor::BabushkaEditor (BabushkaProcessor& p) : AudioProcessorEditor (&p
 
     setWantsKeyboardFocus (true);      // undo / redo shortcuts; unused keys go back to the host
     setResizable (true, true);
-    setResizeLimits (kW * 3 / 5, kH * 3 / 5, kW * 5 / 4, kH * 5 / 4);
-    getConstrainer()->setFixedAspectRatio ((double) kW / (double) kH);
-    setSize ((int) (kW * 0.8), (int) (kH * 0.8));
+    setResizeLimits (kViewW * 3 / 5, kViewH * 3 / 5, kViewW * 5 / 4, kViewH * 5 / 4);
+    getConstrainer()->setFixedAspectRatio ((double) kViewW / (double) kViewH);
+    setSize ((int) (kViewW * 0.8), (int) (kViewH * 0.8));
 }
 
 BabushkaEditor::~BabushkaEditor() = default;
@@ -92,8 +92,8 @@ bool BabushkaEditor::keyPressed (const juce::KeyPress& key)
 
 void BabushkaEditor::resized()
 {
-    const float s = (float) getWidth() / (float) kW;
-    content.setTransform (juce::AffineTransform::scale (s));
+    const float s = (float) getWidth() / (float) kViewW;
+    content.setTransform (juce::AffineTransform::translation ((float) -kViewX, (float) -kViewY).scaled (s));
     content.setBounds (0, 0, kW, kH);
 }
 

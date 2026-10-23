@@ -392,8 +392,8 @@ private:
 // an oscilloscope, and the CLIP lamp comes up beside the window. All of it reads the rings of recent output samples
 // the processor keeps.
 //
-// L-R: 0 on the scale is -12 dBFS RMS, like the VU meter; the bars rise at once, fall 20 dB/s, the peak segment holds
-// for a second. VU: 0 VU = -12 dBFS RMS, ~300 ms to the reading with a slight overshoot; its backlight follows the
+// L-R: the peak level of each channel in dBFS (0 = full scale); the bars rise at once, fall 20 dB/s, the peak segment
+// holds for a second. VU: 0 VU = -12 dBFS RMS, ~300 ms to the reading with a slight overshoot; its backlight follows the
 // needle. The scope triggers on rising zero crossings and shows about two and a half periods of the note.
 class OutputMeters : public juce::Component, private juce::Timer
 {
@@ -426,7 +426,7 @@ public:
         if (zone == 3) hints->showHint (*this, vu ? "Show the L-R meter" : "Show the VU meter and the oscilloscope");
         else if (zone == 1) hints->showHint (*this, "CLIP: the output reached 0 dBFS - turn VOLUME (or the channel fader) down");
         else if (zone == 2) hints->showHint (*this, vu ? "VU: the average level (0 VU = -12 dBFS); the peaks light CLIP"
-                                                       : "L-R: the level of each channel (0 = -12 dBFS); the red segments are the headroom up to 0 dBFS");
+                                                       : "L-R: the peak level of each channel in dBFS; red from -3 dBFS, 0 is full scale");
         else hints->hideHint();
         setMouseCursor (zone == 3 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
     }
@@ -536,8 +536,9 @@ private:
     // L-R meter
     bool vu = false, pressed = false;
     float flip = 0.0f, flipVel = 0.0f;               // the drum: 0 = L-R facing the glass, 1 = VU + scope
-    float bar[2] { -60.0f, -60.0f }, peakDb[2] { -60.0f, -60.0f }, peakAge[2] { 0.0f, 0.0f }, lastChRms[2] { 0.0f, 0.0f };
-    static constexpr float kThresholds[13] = { -20.0f, -17.5f, -15.0f, -12.5f, -10.0f, -8.0f, -6.0f, -4.5f, -3.0f, 0.0f, 1.0f, 2.0f, 4.0f };
+    float bar[2] { -60.0f, -60.0f }, peakDb[2] { -60.0f, -60.0f }, peakAge[2] { 0.0f, 0.0f }, lastChPeak[2] { 0.0f, 0.0f };
+    // segments in dBFS: green up to -6, red from -3 to full scale
+    static constexpr float kThresholds[13] = { -48.0f, -40.0f, -32.0f, -26.0f, -20.0f, -16.0f, -12.0f, -9.0f, -6.0f, -3.0f, -2.0f, -1.0f, 0.0f };
 
     juce::Rectangle<float> window() const { return { 6.0f, 2.0f, 404.0f, 80.0f }; }
     juce::Rectangle<float> vuArea() const { return { 6.0f, 2.0f, 194.0f, 80.0f }; }
@@ -562,7 +563,7 @@ private:
             {
                 const float d = kThresholds[i], next = i + 1 < 13 ? kThresholds[i + 1] : 99.0f;
                 const bool on = bar[ch] >= d || (peakDb[ch] >= d && peakDb[ch] < next);
-                const bool hot = d >= 0.0f;
+                const bool hot = d >= -3.0f;
                 const juce::Rectangle<float> seg (segX (i), y, segW, 15.0f);
                 if (on)
                 {
@@ -581,9 +582,9 @@ private:
             label (g, ch == 0 ? "L" : "R", juce::Rectangle<float> (18.0f, 15.0f).withPosition (r.getX() + 6.0f, y), green, 16.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
         }
         label (g, "dB", juce::Rectangle<float> (22.0f, 12.0f).withPosition (r.getX() + 5.0f, r.getY() + 34.0f), green, 12.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
-        const std::pair<int, const char*> marks[] = { { 0, "-20" }, { 2, "-15" }, { 4, "-10" }, { 6, "-6" }, { 8, "-3" }, { 9, "0" }, { 11, "+2" }, { 12, "+4" } };
+        const std::pair<int, const char*> marks[] = { { 0, "-48" }, { 2, "-32" }, { 4, "-20" }, { 6, "-12" }, { 8, "-6" }, { 9, "-3" }, { 11, "-1" }, { 12, "0" } };
         for (auto [i, t] : marks)
-            label (g, t, juce::Rectangle<float> (30.0f, 12.0f).withCentre ({ segX (i) + segW * 0.5f, r.getY() + 40.0f }), i > 9 ? red : green, 13.5f, Weight::Narrow,
+            label (g, t, juce::Rectangle<float> (30.0f, 12.0f).withCentre ({ segX (i) + segW * 0.5f, r.getY() + 40.0f }), i >= 9 ? red : green, 13.5f, Weight::Narrow,
                    juce::Justification::centred, 0.0f);
     }
 
@@ -636,15 +637,15 @@ private:
             if (m < 0.002f) trace.clear();
             traceDirty = true;
         }
-        // L-R: RMS of each channel over the fresh samples (0 = -12 dBFS), up at once, down 20 dB/s, peak held a second
+        // L-R: the peak of each channel over the fresh samples in dBFS, up at once, down 20 dB/s, peak held a second
         bool lrChanged = false;
         for (int ch = 0; ch < 2; ++ch)
         {
-            float s2 = 0.0f;
-            for (int i = pos - fresh; i < pos; ++i) { const float x = processor.channelSample (ch, i); s2 += x * x; }
-            if (fresh > 0) lastChRms[ch] = std::sqrt (s2 / (float) fresh);
-            else if (sinceAudio > 0.15f) lastChRms[ch] = 0.0f;
-            const float level = 20.0f * std::log10 (juce::jmax (lastChRms[ch], 1.0e-6f)) + 12.0f;
+            float pk = 0.0f;
+            for (int i = pos - fresh; i < pos; ++i) pk = juce::jmax (pk, std::abs (processor.channelSample (ch, i)));
+            if (fresh > 0) lastChPeak[ch] = pk;
+            else if (sinceAudio > 0.15f) lastChPeak[ch] = 0.0f;
+            const float level = 20.0f * std::log10 (juce::jmax (lastChPeak[ch], 1.0e-6f));
             const float before = bar[ch], beforePeak = peakDb[ch];
             bar[ch] = juce::jmax (level, bar[ch] - 20.0f * dt);
             if (bar[ch] >= peakDb[ch] || (peakAge[ch] += dt) > 1.0f) { peakDb[ch] = bar[ch]; peakAge[ch] = 0.0f; }

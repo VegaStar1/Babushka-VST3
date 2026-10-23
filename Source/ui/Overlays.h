@@ -15,7 +15,7 @@ public:
         text = t;
         const float w = juce::GlyphArrangement::getStringWidth (font (Weight::NarrowSemi, 16.0f, 0.02f), t) + 26.0f;
         const juce::Rectangle<float> r (w, 28.0f);
-        setBounds (r.withCentre ({ at.x, at.y - 30.0f }).toNearestInt().constrainedWithin (juce::Rectangle<int> (0, 0, kW, kH)));
+        setBounds (r.withCentre ({ at.x, at.y - 30.0f }).toNearestInt().constrainedWithin (juce::Rectangle<int> (kViewX, kViewY, kViewW, kViewH)));
         setVisible (true);
         toFront (false);
         repaint();

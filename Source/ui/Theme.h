@@ -13,6 +13,8 @@
 namespace babushka::ui
 {
 constexpr int kW = 1500, kH = 1085;      // logical size of the whole instrument (front panel, keyboard, rear strip)
+// The part of it the window shows: the chassis and its shadow, without the empty margin round it.
+constexpr int kViewX = 25, kViewY = 22, kViewW = 1450, kViewH = 1052;
 
 namespace col
 {
@@ -243,7 +245,7 @@ inline const juce::Image& texture (Texture t, int pixelScale)
     const int key = (int) t * 10 + pixelScale;
     if (auto it = cache.find (key); it != cache.end()) return it->second;
     juce::Image im = t == Texture::Enamel ? detail::litTile (256, 160, 2, 3, 1.2f, 0.07f, pixelScale)
-                   : t == Texture::Powder ? detail::litTile (256, 200, 2, 5, 1.6f, 0.22f, pixelScale)
+                   : t == Texture::Powder ? detail::litTile (256, 256, 1, 5, 0.9f, 0.12f, pixelScale)
                                           : detail::mottleTile();
     return cache.emplace (key, im).first->second;
 }

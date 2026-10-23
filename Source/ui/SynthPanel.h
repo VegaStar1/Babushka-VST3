@@ -661,11 +661,7 @@ private:
         const auto lhInk = col::ink;
         {
             const juce::Rectangle<float> r (78.0f, kl.top + 4.0f, 216.0f, kl.height - 4.0f);
-            juce::ColourGradient bed (juce::Colour (0xff161616), 0.0f, r.getY(), juce::Colour (0xff0a0a0a), 0.0f, r.getBottom(), false);
-            g.setGradientFill (bed);
-            juce::Path p; p.addRoundedRectangle (r, 6.0f);
-            g.fillPath (p);
-            fillTiled (g, Texture::Powder, p, 0.8f);
+            drawPlate (g, r, S.panel, true);                                // a black plate like the modules above
             g.setColour (juce::Colours::white.withAlpha (0.10f));
             g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
         }
