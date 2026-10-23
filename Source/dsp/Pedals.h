@@ -51,7 +51,7 @@ struct PedalParams
     float choRate = 0.45f, choDepth = 0.5f, choMix = 0.5f, choWidth = 1.0f, choNoise = 0.2f, choAge = 0.25f;
     // TAPE ECHO
     int   tapHeads = 0;                                       // 0 1, 1 2, 2 3, 3 1+2, 4 2+3, 5 1+3, 6 1+2+3
-    int   tapSync = 0;                                        // 0 free, 1 1/4, 2 1/8, 3 dotted 1/8, 4 1/16
+    int   tapSync = 0;                                        // 0 free, 1 1/4, 2 1/8, 3 dotted 1/8, 4 1/16, 5 1/2 (added last: saved values keep their meaning)
     float tapTime = 0.45f, tapFeedback = 0.35f, tapMix = 0.35f, tapWow = 0.2f, tapFlutter = 0.2f, tapAge = 0.3f,
           tapBass = 0.5f, tapTreble = 0.5f;
     bool  tapHold = false;
@@ -65,9 +65,12 @@ namespace pedallaw
     inline float echoSeconds (float k) noexcept { return 0.04f * std::pow (0.6f / 0.04f, clampf (k, 0.0f, 1.0f)); }     // head 1: 40 … 600 ms
     inline float echoDivisionBeats (int sync) noexcept
     {
-        static const float beats[] = { 0.0f, 1.0f, 0.5f, 0.75f, 0.25f };
-        return beats[sync < 0 || sync > 4 ? 0 : sync];
+        static const float beats[] = { 0.0f, 1.0f, 0.5f, 0.75f, 0.25f, 2.0f };
+        return beats[sync < 0 || sync > 5 ? 0 : sync];
     }
+    constexpr float kEchoMaxSyncedSeconds = 1.25f;              // head 1 when synced (a half note down to 96 BPM)
+    // The TIME knob position for a head-1 time (the knob covers 40 … 600 ms; longer synced times put it at the end).
+    inline float echoKnobFor (float seconds) noexcept { return clampf (std::log (seconds / 0.04f) / std::log (0.6f / 0.04f), 0.0f, 1.0f); }
 }
 
 // ---- building blocks ---------------------------------------------------------------------------------------------
@@ -363,7 +366,7 @@ public:
     void prepare (float sampleRate)
     {
         fs = sampleRate;
-        tape.assign ((size_t) (3.0f * 0.62f * fs * 1.06f) + 64, 0.0f);
+        tape.assign ((size_t) (3.0f * pedallaw::kEchoMaxSyncedSeconds * fs * 1.06f) + 64, 0.0f);
         fbLow.setCutoff (90.0f, fs);
         bassSplit.setCutoff (250.0f, fs); trebleSplit.setCutoff (3000.0f, fs);
         rng.seed (0x7A9Eu);
@@ -376,7 +379,7 @@ public:
         heads = p.tapHeads; feedback = p.tapFeedback; mix = p.tapMix; wow = p.tapWow; flutter = p.tapFlutter; age = p.tapAge;
         bass = p.tapBass; treble = p.tapTreble; hold = p.tapHold;
         const float beats = pedallaw::echoDivisionBeats (p.tapSync);
-        head1 = beats > 0.0f ? clampf ((float) (60.0 / std::max (bpm, 20.0)) * beats, 0.03f, 0.62f) : pedallaw::echoSeconds (p.tapTime);
+        head1 = beats > 0.0f ? clampf ((float) (60.0 / std::max (bpm, 20.0)) * beats, 0.03f, pedallaw::kEchoMaxSyncedSeconds) : pedallaw::echoSeconds (p.tapTime);
         lp.lowPass (7500.0f - 4500.0f * age, 0.6f, fs);
         if (first) { speedSmooth.snap (head1); first = false; }
     }

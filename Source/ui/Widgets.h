@@ -238,6 +238,13 @@ public:
 
     HintSink* hints = nullptr;
     const juce::String paramId;
+    // Optional: where the knob points when something else sets the value (< 0: its own value), what its hint says
+    // then, and a call when the hand takes the knob (before the drag starts). A knob that has `shown` looks again
+    // ten times a second.
+    std::function<float()> shown;
+    std::function<juce::String()> shownText;
+    std::function<void()> onTouch;
+    void followShown() { shownTimer.knob = this; shownTimer.startTimerHz (10); }
 
     void paint (juce::Graphics& g) override
     {
@@ -245,7 +252,9 @@ public:
         const float scale = pixelScale (g);
         const int px = juce::jmax (8, (int) std::ceil (b.getWidth() * scale));
         g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-        const float prop = (float) valueToProportionOfLength (getValue());
+        const float other = shown ? shown() : -1.0f;
+        drawnShown = other;
+        const float prop = other >= 0.0f ? other : (float) valueToProportionOfLength (getValue());
         const float angle = juce::degreesToRadians (-135.0f + 270.0f * prop);
         if (isSelector)
         {
@@ -272,10 +281,10 @@ public:
 
     juce::String getTextFromValue (double v) override { return format ? format (v) : juce::Slider::getTextFromValue (v); }
 
-    void mouseDown (const juce::MouseEvent& e) override { juce::Slider::mouseDown (e); hint(); }
+    void mouseDown (const juce::MouseEvent& e) override { if (onTouch) onTouch(); juce::Slider::mouseDown (e); hint(); }
     void mouseDrag (const juce::MouseEvent& e) override { juce::Slider::mouseDrag (e); hint(); }
     void mouseUp (const juce::MouseEvent& e) override { juce::Slider::mouseUp (e); if (hints) hints->hideHint(); }
-    void mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override { juce::Slider::mouseWheelMove (e, w); hint(); }
+    void mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override { if (onTouch) onTouch(); juce::Slider::mouseWheelMove (e, w); hint(); }
     void mouseDoubleClick (const juce::MouseEvent& e) override { juce::Slider::mouseDoubleClick (e); hint(); }
     void mouseEnter (const juce::MouseEvent&) override { hint(); }
     void mouseExit (const juce::MouseEvent&) override { if (hints) hints->hideHint(); }
@@ -289,7 +298,19 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
     juce::String name;
 
-    void hint() { if (hints) hints->showHint (*this, name + "   " + getTextFromValue (getValue())); }
+    struct ShownTimer : public juce::Timer
+    {
+        Knob* knob = nullptr;
+        void timerCallback() override { if (knob->shown && std::abs (knob->shown() - knob->drawnShown) > 0.0005f) knob->repaint(); }
+    } shownTimer;
+    float drawnShown = -1.0f;
+
+    void hint()
+    {
+        if (! hints) return;
+        const auto t = shownText ? shownText() : juce::String();
+        hints->showHint (*this, name + "   " + (t.isNotEmpty() ? t : getTextFromValue (getValue())));
+    }
 };
 
 // Tick marks around a knob, drawn into the panel background.

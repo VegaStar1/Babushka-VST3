@@ -190,7 +190,9 @@ private:
         head (loop.getX() + loop.getWidth() * 0.2f, true, "REC");
         for (int i = 0; i < 3; ++i) head (loop.getX() + loop.getWidth() * (0.42f + 0.18f * (float) i), heads[mode][i] != 0, juce::String (i + 1));
         // the repeats: one bar per echo over two seconds, each lower than the one before
-        const float h1 = sync > 0 ? 0.0f : babushka::dsp::pedallaw::echoSeconds (v ("tapTime"));
+        namespace law = babushka::dsp::pedallaw;
+        const float h1 = sync > 0 ? juce::jlimit (0.03f, law::kEchoMaxSyncedSeconds, (float) (60.0 / juce::jmax (20.0, processor.getHostBpm())) * law::echoDivisionBeats (sync))
+                                  : law::echoSeconds (v ("tapTime"));
         const auto bars = a.reduced (6.0f, 4.0f);
         g.setColour (grid);
         g.drawHorizontalLine ((int) bars.getBottom(), bars.getX(), bars.getRight());
@@ -213,7 +215,7 @@ private:
             }
             juce::StringArray taps;
             for (int i = 0; i < 3; ++i) if (heads[mode][i]) taps.add (juce::String (juce::roundToInt (1000.0f * h1 * (float) (i + 1))) + " ms");
-            return "repeats: " + taps.joinIntoString ("  ");
+            return (sync > 0 ? "locked to the tempo (" + pedalText (processor, "tapSync") + "), repeats: " : juce::String ("repeats: ")) + taps.joinIntoString ("  ");
         }
         return "head 1 locked to the tempo: " + pedalText (processor, "tapSync");
     }
@@ -256,8 +258,9 @@ public:
             if (auto* rp = pedalParam (processor, id))
             {
                 const auto items = rp->getAllValueStrings();
-                for (int i = 0; i < items.size(); ++i)
+                for (int k = 0; k < items.size(); ++k)
                 {
+                    const int i = id == "tapSync" ? kSyncOrder[k] : k;              // the sync chips shortest note last
                     auto chip = std::make_unique<ChipButton> (items[i] == "1/8 D" ? juce::String ("1/8 DOT") : items[i]);
                     chip->onClick = [this, id, i] { setPedalParam (processor, id, (float) i); refresh(); };
                     addAndMakeVisible (*chip);
@@ -269,6 +272,7 @@ public:
         for (auto& k : info.knobs)
         {
             auto knob = std::make_unique<Knob> (p.apvts, k.id, 46.0f);
+            bindEchoTime (*knob, p);
             addAndMakeVisible (*knob);
             knobs.push_back (std::move (knob));
         }
@@ -305,7 +309,8 @@ public:
             const auto b = knobs[i]->getBounds().toFloat();
             label (g, info.knobs[i].name, { b.getCentreX() - 50.0f, b.getBottom() + 1.0f, 100.0f, 18.0f }, col::ink, 13.5f, Weight::NarrowBold,
                    juce::Justification::centred, 0.08f);
-            label (g, pedalText (processor, info.knobs[i].id), { b.getCentreX() - 50.0f, b.getBottom() + 18.0f, 100.0f, 18.0f }, col::ledAmber, 13.5f,
+            const auto synced = knobs[i]->shownText ? knobs[i]->shownText() : juce::String();
+            label (g, synced.isNotEmpty() ? synced : pedalText (processor, info.knobs[i].id), { b.getCentreX() - 50.0f, b.getBottom() + 18.0f, 100.0f, 18.0f }, col::ledAmber, 13.5f,
                    Weight::NarrowSemi, juce::Justification::centred, 0.02f);
         }
         // what the selected preset is about, or what the controls do
@@ -364,6 +369,7 @@ private:
     HoldKey holdKey { "HOLD" };
     ChipButton clearChip { "CLEAR" };
     std::vector<std::unique_ptr<ChipButton>> modeChips, syncChips;
+    static constexpr int kSyncOrder[6] = { 0, 5, 1, 2, 3, 4 };     // FREE, 1/2, 1/4, 1/8, 1/8 DOT, 1/16 (1/2 was added as the last choice)
     std::vector<std::unique_ptr<Knob>> knobs;
     PedalPicture picture;
     std::vector<PedalPresetEntry> presets;
@@ -390,7 +396,7 @@ private:
         if (pedal == 3)
         {
             const int sync = (int) pedalValue (processor, "tapSync");
-            for (int i = 0; i < (int) syncChips.size(); ++i) syncChips[(size_t) i]->setLit (i == sync);
+            for (int i = 0; i < (int) syncChips.size(); ++i) syncChips[(size_t) i]->setLit (kSyncOrder[i] == sync);
         }
         int selected = -1;
         for (int i = 0; i < (int) presets.size(); ++i) if (presets[(size_t) i].name == matched) selected = i;
@@ -406,7 +412,8 @@ private:
         // knobs moved here, on the pedal, by MIDI or by the host: update the read-outs and the selection
         juce::String seen;
         for (auto& [id, val] : PedalPresets::current (processor, pedal)) seen << id << juce::String (val, 4);
-        seen << (int) (pedalValue (processor, info.onId) > 0.5f) << processor.getFxLocks() << (int) (pedalValue (processor, "tapHold") > 0.5f);
+        seen << (int) (pedalValue (processor, info.onId) > 0.5f) << processor.getFxLocks() << (int) (pedalValue (processor, "tapHold") > 0.5f)
+             << juce::String (processor.getHostBpm(), 2);                  // the synced echo time follows the tempo
         if (seen != valuesSeen) { valuesSeen = seen; refresh(); }
     }
 

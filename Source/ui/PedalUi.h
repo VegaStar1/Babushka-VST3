@@ -9,6 +9,33 @@
 
 namespace babushka::ui
 {
+// TAPE ECHO TIME while the echo is locked to the tempo: the knob points at the time of the division at the host's tempo
+// (at its end when that is longer than its 600 ms) and says so; taking the knob by hand goes back to FREE, from where
+// it points.
+inline void bindEchoTime (Knob& k, BabushkaProcessor& p)
+{
+    if (k.paramId != "tapTime") return;
+    namespace law = babushka::dsp::pedallaw;
+    auto seconds = [&p] {
+        const int sync = (int) std::lround (p.apvts.getRawParameterValue ("tapSync")->load());
+        return sync == 0 ? -1.0f : (float) (60.0 / juce::jmax (20.0, p.getHostBpm())) * law::echoDivisionBeats (sync); };
+    k.shown = [seconds] { const float s = seconds(); return s < 0.0f ? -1.0f : law::echoKnobFor (s); };
+    k.shownText = [seconds, &p] {
+        const float s = seconds();
+        if (s < 0.0f) return juce::String();
+        auto* sync = p.apvts.getParameter ("tapSync");
+        return sync->getCurrentValueAsText() + "  " + juce::String (juce::roundToInt (1000.0f * juce::jmin (s, law::kEchoMaxSyncedSeconds))) + " ms"; };
+    k.onTouch = [seconds, &p] {
+        const float s = seconds();
+        if (s < 0.0f) return;
+        if (auto* t = p.apvts.getParameter ("tapTime")) t->setValueNotifyingHost (law::echoKnobFor (s));
+        if (auto* sync = p.apvts.getParameter ("tapSync")) sync->setValueNotifyingHost (0.0f); };
+    k.followShown();
+}
+}
+
+namespace babushka::ui
+{
 // ---- looks -------------------------------------------------------------------------------------------------------
 struct PedalLook { juce::Colour top, bottom, ink, lcd; const char* folder; };
 inline const PedalLook& pedalLook (int pedal)
@@ -388,6 +415,7 @@ public:
         {
             knobs[(size_t) i] = std::make_unique<Knob> (p.apvts, info.knobs[(size_t) i].id, 24.0f);
             knobs[(size_t) i]->setCentrePosition ((int) kKnobX[i], (int) kRowY);
+            bindEchoTime (*knobs[(size_t) i], p);
             addAndMakeVisible (*knobs[(size_t) i]);
         }
         led.setCentrePosition ((int) kFootX, (int) kNamesY);

@@ -199,7 +199,7 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     fx ("choNoise", "Chorus Noise", 0.2f);     fx ("choAge", "Chorus Age", 0.25f);
     onOff ("tapOn", "Tape Echo On");
     choice ("tapHeads", "Tape Echo Heads", { "1", "2", "3", "1+2", "2+3", "1+3", "1+2+3" }, 0);
-    choice ("tapSync", "Tape Echo Sync", { "FREE", "1/4", "1/8", "1/8 D", "1/16" }, 0);
+    choice ("tapSync", "Tape Echo Sync", { "FREE", "1/4", "1/8", "1/8 D", "1/16", "1/2" }, 0);      // 1/2 last: saved indices keep their meaning
     fxKnob ("tapTime", "Tape Echo Time", 0.45f, [] (float v) { return String (juce::roundToInt (1000.0f * babushka::dsp::pedallaw::echoSeconds (v))) + " ms"; });
     fx ("tapFeedback", "Tape Echo Feedback", 0.35f);
     pct ("tapMix", "Tape Echo Mix", 0.35f);      fx ("tapWow", "Tape Echo Wow", 0.2f);
@@ -521,6 +521,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         {
             playing = pos->getIsPlaying();
             if (auto b = pos->getBpm()) bpm = *b;
+            hostBpm.store (bpm);
             if (auto q = pos->getPpqPosition()) ppq = *q;
         }
 

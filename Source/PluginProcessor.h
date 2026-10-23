@@ -45,6 +45,7 @@ public:
     void requestRecTie()    { ++recTieRequests; }
     void requestRecAccent() { ++recAccentRequests; }
     void setArpTempoFromTap (double bpm);
+    double getHostBpm() const noexcept { return hostBpm.load(); }   // the host's tempo (120 when it gives none)
 
     // Patch cables (message thread). The audio thread picks up changes at the start of the next block.
     babushka::dsp::PatchState getPatchCopy() const;
@@ -174,6 +175,7 @@ private:
     std::array<std::atomic<float>, kScopeSize> scope {}, scopeL {}, scopeR {};
     std::atomic<int> scopePos { 0 };
     std::atomic<uint32_t> clipCount { 0 };
+    std::atomic<double> hostBpm { 120.0 };
     std::atomic<int> patchVersion { 0 };
     juce::Array<double> tapTimes;
     void setHeld (int note, bool on) noexcept

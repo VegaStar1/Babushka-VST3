@@ -256,7 +256,12 @@ struct Runner : private juce::Timer
         if (tick == 251) save (ed, out.getChildFile ("ui_meter_turning.png"));
         if (tick > 251 && tick <= 256) play (48);
         if (tick == 256) { save (ed, out.getChildFile ("ui_meter_vu.png")); ed.synthPanel().outputMeters().setShowsVu (false, false); }
-        if (tick == 258) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        // TAPE ECHO locked to the tempo at 1/2: the TIME knobs point at the synced time
+        if (tick == 257) { ed.synthPanel().setRearOpen (true, false); ed.showPedal (3);
+                           auto* sync = proc.apvts.getParameter ("tapSync"); sync->setValueNotifyingHost (sync->convertTo0to1 (5.0f)); }
+        if (tick == 260) { save (ed, out.getChildFile ("ui_pedal_echo_sync.png"));
+                           std::printf ("echo sync: %s\n", proc.apvts.getParameter ("tapSync")->getCurrentValueAsText().toRawUTF8()); }
+        if (tick == 262) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };
