@@ -217,6 +217,8 @@ public:
     struct LearnSite { juce::Component* control; juce::String paramId; };
     const std::vector<LearnSite>& learnSites() const { return learnables; }
 
+    OutputMeters& outputMeters() { return *meters; }
+
     bool isRearOpen() const { return rearTarget > 0.5f; }
     // Opens or closes the rear panel, with the slide animation or at once.
     void setRearOpen (bool open, bool animate = true)

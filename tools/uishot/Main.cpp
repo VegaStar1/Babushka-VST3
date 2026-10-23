@@ -249,7 +249,14 @@ struct Runner : private juce::Timer
         // the window most people use (about 78 %), rear panel out: the print in its four sizes
         if (tick == 239) { ed.setSize (1172, 848); load ("Two Saws"); ed.synthPanel().setRearOpen (true, false); }
         if (tick == 241) { save (ed, out.getChildFile ("ui_mid_rear.png")); ed.setSize (1500, 1085); ed.synthPanel().setRearOpen (false, false); }
-        if (tick == 243) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        // the output meters: L-R with a sound, then the drum turning to VU + scope, and back
+        if (tick == 242) load ("Two Saws");
+        if (tick > 242 && tick <= 250) play (48);
+        if (tick == 250) { save (ed, out.getChildFile ("ui_meter_lr.png")); ed.synthPanel().outputMeters().setShowsVu (true); }
+        if (tick == 251) save (ed, out.getChildFile ("ui_meter_turning.png"));
+        if (tick > 251 && tick <= 256) play (48);
+        if (tick == 256) { save (ed, out.getChildFile ("ui_meter_vu.png")); ed.synthPanel().outputMeters().setShowsVu (false, false); }
+        if (tick == 258) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };

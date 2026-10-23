@@ -68,6 +68,8 @@ public:
     int scopeWritePosition() const noexcept { return scopePos.load (std::memory_order_acquire); }
     uint32_t getClipCount() const noexcept { return clipCount.load(); }     // grows with every output sample at or over 0 dBFS
     float scopeSample (int index) const noexcept { return scope[(size_t) (index & (kScopeSize - 1))].load (std::memory_order_relaxed); }
+    // The same ring for the left and right channels of the main output (the L-R meter); same write position.
+    float channelSample (int channel, int index) const noexcept { return (channel == 0 ? scopeL : scopeR)[(size_t) (index & (kScopeSize - 1))].load (std::memory_order_relaxed); }
     double getSampleRateForDisplay() const noexcept { return currentSampleRate; }
     void tapTempo();                                       // TAP button: three taps in a row set the free tempo
 
@@ -159,7 +161,7 @@ public:
 
 private:
     babushka::dsp::Engine engine;
-    std::vector<float> mono, right, ext, euro, reverbOut;
+    std::vector<float> mono, right, ext, euro, reverbOut, meterSide;
     std::atomic<int> fxLocks { 0 }, echoClearRequests { 0 };
     juce::SpinLock seqLock;
     struct UiNote { int note = 0; int velocity = 0; };      // velocity 0 = note off
@@ -169,7 +171,7 @@ private:
     std::atomic<bool> uiBendDirty { false };
     std::atomic<uint64_t> heldBits[2] { 0, 0 };
     std::atomic<float> bendPosition { 0.0f }, modWheelCC { 0.0f };
-    std::array<std::atomic<float>, kScopeSize> scope {};
+    std::array<std::atomic<float>, kScopeSize> scope {}, scopeL {}, scopeR {};
     std::atomic<int> scopePos { 0 };
     std::atomic<uint32_t> clipCount { 0 };
     std::atomic<int> patchVersion { 0 };
@@ -217,7 +219,7 @@ private:
     static babushka::dsp::ArpSeqParams arpParamsFromState (const std::function<float (const char*)>& value);
     void setSequences (const std::array<babushka::dsp::Sequence, 3>&);
     void handleMidi (const juce::MidiMessage& m);
-    void meterBlock (const float* x, int n) noexcept;
+    void meterBlock (const float* x, const float* l, const float* r, int n) noexcept;
     babushka::dsp::Params readParams() const;
     babushka::dsp::ArpSeqParams readArpParams() const;
     static juce::String sequenceToString (const babushka::dsp::Sequence&);

@@ -57,6 +57,9 @@ void BabushkaEditor::buildPanel()
     // the rear panel stays as the user left it (closed the very first time)
     panel->setRearOpen (uiSettings.getBoolValue ("rearOpen", false), false);
     panel->onRearToggled = [this] (bool open) { uiSettings.setValue ("rearOpen", open); uiSettings.saveIfNeeded(); };
+    // the output meters too: L-R (the default) or VU + scope
+    panel->outputMeters().setShowsVu (uiSettings.getBoolValue ("meterVu", false), false);
+    panel->outputMeters().onModeChanged = [this] (bool vu) { uiSettings.setValue ("meterVu", vu); uiSettings.saveIfNeeded(); };
     panel->onJacksMoved = [this] (std::vector<JackSite> sites) { cables->setJacks (std::move (sites)); };
     panel->onOpenMidi = [this] { showMidi (true); };
     panel->onOpenPedal = [this] (int index) { showPedal (index); };
