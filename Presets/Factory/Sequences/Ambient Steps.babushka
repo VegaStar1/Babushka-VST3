@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="60 62 67 69 72 69 67 64" seq2="60 R 67 R 64 R 72 R" seq3="60 64 67 71 72 71 67 64"
           patch="" presetName="Ambient Steps" presetModified="0" presetRandom="0"
-          presetFile="" category="Sequences" tags="CLEAN WARM" description="Plays by itself: slow major-pentatonic steps with long release into the spring.">
+          presetFile="" cutoffLaw="2" category="Sequences" tags="CLEAN WARM"
+          description="Plays by itself: slow major-pentatonic steps with long release into the spring.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.7250000238418579"/>
+  <PARAM id="cutoff" value="0.6347000002861023"/>
   <PARAM id="decay" value="0.7170000076293945"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.6499999761581421"/>
   <PARAM id="mixOsc2" value="0.300000011920929"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="2.0"/>
   <PARAM id="osc1Wave" value="0.0"/>

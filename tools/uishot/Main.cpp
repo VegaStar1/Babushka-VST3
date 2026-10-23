@@ -1,7 +1,7 @@
 // Renders the editor to PNG files so the look of the interface can be checked without a host.
 //   babushka_uishot <outdir>
 //   babushka_uishot --icons <dir>     renders the Standalone app icons (app_icon_big.png 1024 px, app_icon_small.png
-//                                     512 px with thicker strokes for 16-32 px use) from Source/ui/art/nuwmun_logo.svg
+//                                     512 px) from Source/ui/art/app_icon.svg
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../../Source/PluginProcessor.h"
 #include "../../Source/PluginEditor.h"
@@ -88,6 +88,32 @@ struct Runner : private juce::Timer
         if (tick == 146) { save (ed, out.getChildFile ("ui_presets_user.png")); ed.presetBrowser()->openSaveDialog(); }
         if (tick == 148) { save (ed, out.getChildFile ("ui_presets_save.png")); ed.showPresets (false); ed.showSettings (true); }
         if (tick == 150) { save (ed, out.getChildFile ("ui_settings.png")); ed.showSettings (false); }
+        // preset browser by keyboard: opens on the folders at "All" (Init playing); down = next folder, right = into the
+        // list (loads its first preset), down = next preset loaded; hearts and the FAVORITES folder; INIT from the top row
+        if (tick == 151)
+        {
+            using K = juce::KeyPress;
+            auto* pb = ed.presetBrowser();
+            for (auto& r : proc.listPresets()) if (r.name == "Classic Bass" || r.name == "Warm Pad" || r.name == "Bass Arp") proc.setFavorite (r, true);
+            ed.showPresets (true);
+            pb->keyPressed (K (K::downKey)); pb->keyPressed (K (K::rightKey));
+            const auto first = proc.getCurrentPresetName();
+            pb->keyPressed (K (K::downKey)); pb->keyPressed (K (K::downKey));
+            std::printf ("keys: right -> '%s', down down -> '%s' (expect the 1st and 3rd Arpeggios preset)\n", first.toRawUTF8(), proc.getCurrentPresetName().toRawUTF8());
+            save (ed, out.getChildFile ("ui_presets_keys.png"));
+            pb->keyPressed (K (K::leftKey)); pb->keyPressed (K (K::upKey)); pb->keyPressed (K (K::upKey));
+            pb->keyPressed (K (K::rightKey));
+            std::printf ("favorites: '%s' loaded from FAVORITES (expect 'Bass Arp', the first of them)\n", proc.getCurrentPresetName().toRawUTF8());
+            save (ed, out.getChildFile ("ui_presets_favorites.png"));
+            pb->keyPressed (K (K::leftKey)); pb->keyPressed (K (K::upKey)); pb->keyPressed (K (K::returnKey));
+            std::printf ("INIT row: '%s' (expect 'Init')\n", proc.getCurrentPresetName().toRawUTF8());
+            ed.showPresets (false);
+            load ("Warm Pad");
+            ed.showPresets (true);
+            save (ed, out.getChildFile ("ui_presets_reopen.png"));
+            ed.showPresets (false);
+            for (auto& r : proc.listPresets()) proc.setFavorite (r, false);
+        }
         // RANDOMIZE: the display shows the new, unsaved sound
         if (tick == 152) { const bool ok = proc.randomize (777); std::printf ("randomize: %s -> '%s'\n", ok ? "ok" : "FAILED", proc.getCurrentPresetName().toRawUTF8()); }
         if (tick == 156) save (ed, out.getChildFile ("ui_random.png"));
@@ -230,35 +256,16 @@ struct Runner : private juce::Timer
 }
 
 // App icon: the NUWMUN logo in amber-yellow with a soft glow on a dark tile, as wide as most of the tile.
-juce::Image renderIcon (int size, float thicken)
+// The app icon is the NUWMUN bat on a light disc (Source/ui/art/app_icon.svg), drawn as it is; transparent around the disc.
+juce::Image renderIcon (int size)
 {
-    const juce::String svg (BinaryData::nuwmun_logo_svg, (size_t) BinaryData::nuwmun_logo_svgSize);
-    auto logo = juce::Drawable::parseSVGPath (svg.fromFirstOccurrenceOf (" d=\"", false, false).upToFirstOccurrenceOf ("\"", false, false));
-    logo.setUsingNonZeroWinding (false);
     juce::Image img (juce::Image::ARGB, size, size, true);
-    juce::Graphics g (img);
-    const float s = (float) size;
-    juce::ColourGradient bg (juce::Colour (0xff292826), s * 0.5f, s * 0.42f, juce::Colour (0xff0d0d0c), 0.0f, 0.0f, true);
-    g.setGradientFill (bg);
-    g.fillAll();
-    juce::Random rnd (7);
-    for (int i = 0; i < size * size / 40; ++i)               // faint grain, as on the panel
-    {
-        g.setColour (juce::Colours::white.withAlpha (0.012f + 0.02f * rnd.nextFloat()));
-        g.fillRect ((float) rnd.nextInt (size), (float) rnd.nextInt (size), 1.0f, 1.0f);
-    }
-    const auto lb = logo.getBounds();
-    const float w = s * 0.84f, h = w * lb.getHeight() / lb.getWidth();
-    logo.applyTransform (juce::RectanglePlacement (juce::RectanglePlacement::centred).getTransformToFit (lb, { (s - w) * 0.5f, (s - h) * 0.5f, w, h }));
-    const juce::Colour yellow (0xffffe614);
-    for (int i = 12; i >= 1; --i)                             // glow: wide, faint strokes under the letters
-    {
-        g.setColour (yellow.withAlpha (0.018f));
-        g.strokePath (logo, juce::PathStrokeType (s * 0.0035f * (float) i, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-    }
-    g.setColour (yellow);
-    g.fillPath (logo);
-    if (thicken > 0.0f) g.strokePath (logo, juce::PathStrokeType (s * thicken, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    if (auto xml = juce::XmlDocument::parse (juce::String (BinaryData::app_icon_svg, (size_t) BinaryData::app_icon_svgSize)))
+        if (auto d = juce::Drawable::createFromSVG (*xml))
+        {
+            juce::Graphics g (img);
+            d->drawWithin (g, { 0.0f, 0.0f, (float) size, (float) size }, juce::RectanglePlacement::centred, 1.0f);
+        }
     return img;
 }
 
@@ -268,12 +275,12 @@ int main (int argc, char** argv)
     if (argc > 2 && juce::String (argv[1]) == "--icons")
     {
         const juce::File dir (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
-        for (auto [name, size, thicken] : { std::make_tuple ("app_icon_big.png", 1024, 0.0f), std::make_tuple ("app_icon_small.png", 512, 0.012f) })
+        for (auto [name, size] : { std::make_pair ("app_icon_big.png", 1024), std::make_pair ("app_icon_small.png", 512) })
         {
             const auto f = dir.getChildFile (name);
             f.deleteFile();
             juce::FileOutputStream os (f);
-            juce::PNGImageFormat().writeImageToStream (renderIcon (size, thicken), os);
+            juce::PNGImageFormat().writeImageToStream (renderIcon (size), os);
             std::printf ("wrote %s\n", f.getFullPathName().toRawUTF8());
         }
         return 0;

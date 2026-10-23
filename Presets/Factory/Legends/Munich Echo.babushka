@@ -3,7 +3,8 @@
 <BABUSHKA seq1="36 36 48 48 43 43 46 46 36 36 48 48 43 43 46 46" seq2="41 41 53 53 48 48 51 51 41 41 53 53 48 48 51 51"
           seq3="43 43 55 55 50 50 53 53 43 43 55 55 50 50 53 53" patch=""
           presetName="Munich Echo" presetModified="0" presetRandom="0"
-          presetFile="" category="Legends" tags="PLUCKY WARM" description="Munich '77 with a tempo-locked tape echo answering every note: the pulsing bass gets its ghost.">
+          presetFile="" cutoffLaw="2" category="Legends" tags="PLUCKY WARM"
+          description="Munich '77 with a tempo-locked tape echo answering every note: the pulsing bass gets its ghost.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +25,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5339999794960022"/>
+  <PARAM id="cutoff" value="0.4410000145435333"/>
   <PARAM id="decay" value="0.4810000061988831"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.3499999940395355"/>
@@ -49,6 +50,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.5"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

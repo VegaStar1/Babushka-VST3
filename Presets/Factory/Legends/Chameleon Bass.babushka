@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Chameleon Bass"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="RESONANT FAT" description="In the style of Herbie Hancock's 'Chameleon' (1973): a rubbery saw bass with a resonant 'wah' envelope on each note. Play the riff legato.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="RESONANT FAT" description="In the style of Herbie Hancock's 'Chameleon' (1973): a rubbery saw bass with a resonant 'wah' envelope on each note. Play the riff legato.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.3549999892711639"/>
+  <PARAM id="cutoff" value="0.2596000134944916"/>
   <PARAM id="decay" value="0.5879999995231628"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.5199999809265137"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.6499999761581421"/>
   <PARAM id="mixOsc2" value="0.550000011920929"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

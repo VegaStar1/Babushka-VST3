@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Dark Pursuit" presetModified="0"
-          presetRandom="0" presetFile="" category="Legends" tags="DARK AGGRESSIVE FAT"
-          description="In the style of Gesaffelstein's dark techno basses ('Pursuit', 2013; his rigs feature Roland SH-101 / MC-202 class monosynths): two saws slammed into the mixer, low resonant filter, short hard envelope, a little glide. Play low, staccato.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Legends"
+          tags="DARK AGGRESSIVE FAT" description="In the style of Gesaffelstein's dark techno basses ('Pursuit', 2013; his rigs feature Roland SH-101 / MC-202 class monosynths): two saws slammed into the mixer, low resonant filter, short hard envelope, a little glide. Play low, staccato.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.3770000040531158"/>
+  <PARAM id="cutoff" value="0.2818999886512756"/>
   <PARAM id="decay" value="0.5139999985694885"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.4199999868869781"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="1.0"/>
   <PARAM id="mixOsc2" value="1.0"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

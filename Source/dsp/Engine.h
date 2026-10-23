@@ -32,6 +32,16 @@
 
 namespace babushka::dsp
 {
+// CUTOFF law, as printed on the panel: 20 Hz at the start, 200 Hz / 2 kHz at a third / two thirds, 20 kHz at the end.
+// (Before: 10 Hz … 11 kHz. States saved with that law are converted when they load, see cutoffKnobFromLegacy.)
+inline float cutoffKnobToHz (float knob) noexcept { return 20.0f * std::pow (1000.0f, knob); }
+// The knob position that gives the frequency the old law (10 Hz · 1100^k) gave; linear, clamped at 20 Hz.
+inline float cutoffKnobFromLegacy (float k) noexcept
+{
+    return clampf ((std::log (0.5f) + k * std::log (1100.0f)) / std::log (1000.0f), 0.0f, 1.0f);
+}
+constexpr float kCutoffDefault = 0.5079f;   // 663 Hz, the old default (0.6)
+
 // Panel state. Knobs are normalised 0..1 unless noted; mapping to physical units lives in the engine.
 struct Params
 {
@@ -55,7 +65,7 @@ struct Params
     float modWheel = 0.0f;
 
     // Filter
-    float cutoff = 0.6f;             // knob → 10 Hz … ~11 kHz (CV can push it beyond)
+    float cutoff = kCutoffDefault;   // knob → 20 Hz … 20 kHz, a decade per third of the travel (CV can push it beyond)
     float resonance = 0.0f;
     int   kbdTrack = 0;              // 0 = off, 1 = 1:2, 2 = 1:1
     float envAmt = 0.0f;             // −1 … +1
@@ -84,6 +94,7 @@ struct Params
     // Global settings of the hardware (manual p. 38)
     bool  localOn = true;            // off: keyboard, pitch wheel and ARP/SEQ only drive KB OUT / GATE OUT / KB VEL OUT
     int   kbOutRange = 0;            // KB OUT voltage range: 0 = −5…+5 V, 1 = 0…+10 V
+    bool  noiseFloor = false;        // plugin-only, host parameter without a control: the hardware's hiss in the pauses
     // Plugin-only: the pedals on the rear panel
     PedalParams pedals;
 };
@@ -111,10 +122,13 @@ public:
         outDc.setCutoff (4.0f, fsBase); outDcR.setCutoff (4.0f, fsBase);
         // Patch outputs marked "AC coupled" in the manual (oscillator, filter, high-pass and reverb outputs).
         for (auto& b : acOut) b.setCutoff (2.0f, fsOs);
+        cutoffFeedHp.setCutoff (kCutoffFeedHz, fsOs);
         revOutDc.setCutoff (2.0f, fsBase);
         accentDecay = std::exp (-1.0f / (0.06f * fsOs));    // ASSUMPTION: accent envelope release ≈ 60 ms
         drift1.prepare (fsOs, 0xD1F7u); drift2.prepare (fsOs, 0xD2F7u);
+        spreadRng.seed (0x5EEDu);
         noise.seed (0xBAB05CAu);
+        floorNoise.seed (0xF100Du);
 
         for (auto* s : { &sCutoff, &sRes, &sMix1, &sMix2, &sMixN, &sEnvAmt, &sOsc2Freq,
                          &sLfoPitch, &sLfoCut, &sLfoPw, &sWheel, &sRevMix, &sVolume, &sLfoRate })
@@ -132,8 +146,8 @@ public:
         filter.reset(); env.reset(); kbRls.reset(); lfo.reset(); reverb.reset(); decimator.reset();
         filterDc.reset(); outDc.reset(); outDcR.reset(); revOutDc.reset(); board.reset();
         for (auto& b : acOut) b.reset();
-        hpf.reset();
-        heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f;
+        hpf.reset(); cutoffFeedHp.reset();
+        heldCount = 0; sustainPedal = false; gate = false; extPrev = 0.0f; spread = {};
         for (auto& h : held) h = { -1, false };
         std::fill (std::begin (outV), std::end (outV), 0.0f);
         trigHigh = syncHigh = clockHigh = resetHigh = false;
@@ -178,6 +192,7 @@ public:
 
     void voiceOn (int note)
     {
+        drawNoteSpread();
         velHeld = 5.0f * (float) noteVel[(size_t) (note & 127)] / 127.0f;   // KB VEL OUT: 0 … +5 V
         removeHeld (note);
         if (heldCount < (int) held.size()) held[(size_t) heldCount++] = { note, false };
@@ -282,6 +297,7 @@ public:
             if (isUsed (Jack::EuroOut)) setOut (Jack::EuroOut, mono * 5.0f);
             const float gain = volumeGain (sVolume.v) * 1.6f;
             y *= gain; yR *= gain;
+            if (params.noiseFloor) { const float h = kNoiseFloorRms * floorNoise.gaussianish(); y += h; yR += h; }
             if (std::abs (y) >= 1.0f || std::abs (yR) >= 1.0f) ++overs;     // 0 dBFS reached: CLIP
             if (outR != nullptr) { out[n] = outputGuard (y); outR[n] = outputGuard (yR); }
             else out[n] = outputGuard (0.5f * (y + yR));
@@ -311,8 +327,14 @@ private:
     double hostBpm = 120.0;
     DcBlocker acOut[3];                 // AC-coupled patch outputs: Osc 1, Osc 2, Filter
     OnePoleHP hpf;                      // Utilities: static 6 dB/oct high-pass
+    OnePoleHP cutoffFeedHp;             // CV feedthrough of the ladder (envelope sweep leaking into the audio)
     Drift drift1, drift2;
-    Rng noise;
+    // Note-to-note spread: drawn on every note, scaled by Analog Drift (0 = every note identical).
+    struct NoteSpread { float pitch1 = 0, pitch2 = 0, cutoff = 0, pw = 0, attack = 0, decay = 0, release = 0; };
+    NoteSpread spread;
+    Rng spreadRng;
+    float spreadScale = 0.0f;
+    Rng noise, floorNoise;
     std::vector<float> osBuf;
 
     Smoother sCutoff, sRes, sMix1, sMix2, sMixN, sEnvAmt, sOsc2Freq, sLfoPitch, sLfoCut, sLfoPw,
@@ -395,12 +417,34 @@ private:
         }
     }
 
+    // Each component (the two VCO cores, the ladder, the 911's timing capacitors) lands a little differently on
+    // every note: the panel and the keyboard CV are the same, the analogue parts are not. Ranges at the default
+    // Analog Drift (0.25); a full knob gives about three times as much, 0 gives identical notes.
+    // ASSUMPTION: the ranges are not measured on hardware (the recordings only bound the slow pitch drift).
+    static constexpr float kSpreadCents = 1.5f;           // each VCO, ± cents
+    // Ladder cutoff, ± octaves. Kept small: with the filter self-oscillating (KBD TRACK 1:1) this is a pitch error,
+    // ±0.05 oct would put a whistle lead ±60 cents off the key. ±0.005 oct = ±6 cents at the default drift.
+    static constexpr float kSpreadCutoffOct = 0.005f;
+    static constexpr float kSpreadPw = 0.01f;             // pulse width, ±
+    static constexpr float kSpreadEnvTime = 0.03f;        // attack / decay / release times, ± relative
+    static float noteSpreadScale (float drift) noexcept   // 0 → 0, 0.25 → 1, 1 → 3
+    {
+        return drift <= 0.0f ? 0.0f : 3.0f * std::pow (drift, 0.7925f);
+    }
+    void drawNoteSpread() noexcept
+    {
+        spread = { spreadRng.bipolar(), spreadRng.bipolar(), spreadRng.bipolar(), spreadRng.bipolar(),
+                   spreadRng.bipolar(), spreadRng.bipolar(), spreadRng.bipolar() };
+    }
+
     // ---- Mappings (ASSUMPTION where noted) ---------------------------------------------------
     static float lfoRateHz (float knob) noexcept { return 0.07f * std::pow (1300.0f / 0.07f, clampf (knob, 0.0f, 1.0f)); }
     static float envTime (float knob, float minS) noexcept { return minS * std::pow (10.0f / minS, clampf (knob, 0.0f, 1.0f)); } // ASSUMPTION: min..10 s
     static float glideTime (float knob) noexcept { return knob <= 0.001f ? 0.0f : 0.002f * std::pow (2500.0f, knob); }         // ASSUMPTION: 2 ms..5 s
     static float mixerGain (float knob) noexcept { return 1.3f * std::pow (clampf (knob, 0.0f, 1.0f), 1.3f); }
     static float volumeGain (float knob) noexcept { return knob * knob; }
+    // Noise floor of the recordings of the hardware: ≈ −65 … −70 dBFS. ASSUMPTION: white, after VOLUME, −68 dBFS rms.
+    static constexpr float kNoiseFloorRms = 3.98e-4f;
     // Plugin-only: 0.5 ≈ a full-scale host signal hits the mixer like an oscillator at ~2 o'clock;
     // 1.0 drives the mixer into overdrive (the hardware preamp brings guitars to 10 Vpp).
     static float extGain (float knob) noexcept { return 2.0f * knob * knob * 2.0f; }
@@ -450,9 +494,14 @@ private:
     {
         const auto& p = params;
         hpf.setCutoff (16.0f * std::pow (500.0f, clampf (p.hpCutoff, 0.0f, 1.0f)), fsOs);
-        env.setParameters (envTime (p.attack, 0.001f), envTime (p.decay, 0.002f), p.sustain, envTime (p.release, 0.002f));
-        // KB RLS: instant (1 ms anti-click) attack to the sustain level, envelope release time.
-        kbRls.setParameters (0.001f, 0.001f, p.sustain, envTime (p.release, 0.002f));
+        spreadScale = noteSpreadScale (p.drift);
+        const float sp = spreadScale * kSpreadEnvTime;
+        const float relS = envTime (p.release, 0.002f) * (1.0f + sp * spread.release);
+        env.setParameters (envTime (p.attack, 0.001f) * (1.0f + sp * spread.attack),
+                           envTime (p.decay, 0.002f) * (1.0f + sp * spread.decay), p.sustain, relS);
+        // KB RLS: instant (1 ms anti-click) attack, full level while a key is held whatever SUSTAIN is, then the
+        // envelope's release time (hardware: the VCA is open while the key is down, then follows RELEASE).
+        kbRls.setParameters (0.001f, 0.001f, 1.0f, relS);
         lfo.setWave ((Lfo::Wave) p.lfoWave);
         osc1.setWave ((Oscillator::Wave) p.osc1Wave);
         osc2.setWave ((Oscillator::Wave) p.osc2Wave);
@@ -491,6 +540,21 @@ private:
 
     // ASSUMPTION: linear FM depth is not given in the manual; 100 Hz per volt (±5 V audio → ±500 Hz).
     static constexpr float kLinFmHzPerVolt = 100.0f;
+    // ASSUMPTION: ladder input level for a full-scale mixer (was 0.6). At 2.0 the fundamental of a 110 Hz saw at
+    // mixer max through a 400 Hz cutoff is compressed ≈1.8 dB more than at 0.6 (≈0.5 dB at 12 o'clock); to calibrate
+    // with a recording of one oscillator at mixer 25/50/75/100 %. The self-oscillation level does not depend on the
+    // input, so against notes it is ≈10 dB quieter than at 0.6 (the self-oscillating presets were re-levelled).
+    static constexpr float kLadderDrive = 2.0f;
+    // CV feedthrough ("thump"): the hardware is not perfectly balanced, so its control signals leak into the audio.
+    // Ladder: a fast envelope sweep of the cutoff unbalances the ladder's bias currents; modelled as the envelope's
+    // share of the cutoff (in octaves) through a high-pass, added to the filter output. VCA (902): the control current
+    // leaves a small offset at the output, proportional to the gain. Both pass the AC coupling after them, so a fast
+    // attack gives a short low "thump" and the end of a note a slow return to zero with an undershoot (as seen in the
+    // recordings of the hardware after the gate closes). Slow envelopes leak only a slow, inaudible DC shift.
+    // ASSUMPTION: levels chosen for a thump ≈ −34 dB below a full note (no recording with the mixer at zero yet).
+    static constexpr float kCutoffFeedPerOct = 0.0006f;    // ladder output per octave of envelope sweep
+    static constexpr float kCutoffFeedHz = 20.0f;         // ASSUMPTION: feedthrough coupling corner
+    static constexpr float kVcaOffset = 0.004f;           // VCA output offset at full gain
     // ASSUMPTION: PWM IN 0 … +5 V moves the duty cycle by up to +0.45 (matches the internal LFO path).
     static constexpr float kPwmPerVolt = 0.09f;
 
@@ -559,16 +623,18 @@ private:
         const float kbCv = p.localOn ? currentPitch : 60.0f;
         const float basePitch = kbCv + (p.localOn ? bend * (float) p.bendRange : 0.0f) + p.fineTune + pitchMod;
         const float d = p.drift * 0.03f;  // up to ±3 cents at drift = 1
-        float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process();
-        float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process();
+        const float spreadSemis = spreadScale * kSpreadCents * 0.01f;
+        float pitch1 = basePitch + (float) (p.osc1Octave - 2) * 12.0f + d * drift1.process() + spreadSemis * spread.pitch1;
+        float pitch2 = basePitch + (float) (p.osc2Octave - 1) * 12.0f + sOsc2Freq.v + d * drift2.process() + spreadSemis * spread.pitch2;
         if (patched (Jack::Osc1PitchIn)) pitch1 += 12.0f * readIn (Jack::Osc1PitchIn);
         if (patched (Jack::Osc2PitchIn)) pitch2 += 12.0f * readIn (Jack::Osc2PitchIn);
 
         // Narrow pulse widths measured on hardware ≈16 % (osc 1) and ≈18 % (osc 2) (SOS review).
-        float pw1 = (p.osc1Wave == 3 ? 0.16f : 0.5f) + pwMod;
+        const float pwSpread = spreadScale * kSpreadPw * spread.pw;
+        float pw1 = (p.osc1Wave == 3 ? 0.16f : Oscillator::kSquareDuty1) + pwMod + pwSpread;
         if (patched (Jack::Osc1PwmIn)) pw1 += kPwmPerVolt * readIn (Jack::Osc1PwmIn);
         osc1.setPulseWidth (pw1);
-        osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : 0.5f) + pwMod);
+        osc2.setPulseWidth ((p.osc2Wave == 3 ? 0.18f : Oscillator::kSquareDuty2) + pwMod + pwSpread);
 
         bool wrapped = false; float wrapFrac = 0.0f;
         const float o1 = osc1.process (midiToHz (pitch1) / fsOs, wrapped, wrapFrac);
@@ -594,7 +660,7 @@ private:
         if (patched (Jack::HpfIn) || isUsed (Jack::HpfOut))
             setOut (Jack::HpfOut, hpf.process (patched (Jack::HpfIn) ? readIn (Jack::HpfIn) * 0.2f : 0.0f) * 5.0f);
 
-        // Filter cutoff: knob 10 Hz … 11 kHz; envelope amount bipolar ±6 oct (ASSUMPTION);
+        // Filter cutoff: knob 20 Hz … 20 kHz (the panel print); envelope amount bipolar ±6 oct (ASSUMPTION);
         // key tracking 0 / ½ / 1 oct per oct around middle C. CUTOFF IN: 1 V/oct; ENV AMT IN: ±5 V = ±1 on the knob.
         const float e = env.process();
         const float kb = kbRls.process();
@@ -603,23 +669,29 @@ private:
         const float track = p.kbdTrack == 0 ? 0.0f : (p.kbdTrack == 1 ? 0.5f : 1.0f);
         float envAmt = sEnvAmt.v;
         if (patched (Jack::FilterEnvAmtIn)) envAmt += 0.2f * readIn (Jack::FilterEnvAmtIn);
-        float octaves = sCutoff.v * std::log2 (11000.0f / 10.0f)
-                        + envAmt * 6.0f * e
+        const float envOctaves = envAmt * 6.0f * e;
+        float octaves = sCutoff.v * std::log2 (1000.0f)
+                        + envOctaves
                         + track * (kbCv - 60.0f) * (1.0f / 12.0f)
-                        + cutMod;
+                        + cutMod
+                        + spreadScale * kSpreadCutoffOct * spread.cutoff;
         if (patched (Jack::FilterCutoffIn)) octaves += readIn (Jack::FilterCutoffIn);
-        const float cutoffHz = std::min (10.0f * std::exp2 (octaves), 24000.0f);
+        const float cutoffHz = std::min (20.0f * std::exp2 (octaves), 24000.0f);
         // Resonance: self-oscillation starts near 89 % of the knob (k = 4).
         const float k = 4.5f * sRes.v;
         const float fcTuned = std::min (cutoffHz * LadderFilter::tuningCompensation (k), 24000.0f);
 
-        // Drive scaling: mixer level ±1 ≈ 0.6 in ladder units (clean-ish when moderate, saturates when hot).
+        // Drive scaling: mixer level ±1 ≈ kLadderDrive in ladder units (2·Vt). Hot enough that a mixer above
+        // 12 o'clock also drives the ladder itself (the harmonics near and above the cutoff are compressed);
+        // the output is scaled back, so the small-signal gain is unchanged.
         const float fIn = patched (Jack::FilterIn) ? readIn (Jack::FilterIn) * 0.2f : mixed;
-        float y = filter.process (fIn * 0.6f, fcTuned, k) * (1.0f / 0.6f);
+        float y = filter.process (fIn * kLadderDrive, fcTuned, k) * (1.0f / kLadderDrive);
+        y += kCutoffFeedPerOct * cutoffFeedHp.process (envOctaves);
         y = filterDc.process (y);
         if (isUsed (Jack::FilterOut)) setOut (Jack::FilterOut, acOut[2].process (y) * 5.0f);
 
-        // VCA (902-style): gain from ENV / KB RLS / DRONE, mild output saturation and tiny bleed.
+        // VCA (902-style): gain from ENV / KB RLS / DRONE, mild output saturation and a small bleed when closed
+        // (−66 dB; recordings of the hardware: −60 … −77 dB below the sounding note).
         // VCA AMT IN: in DRONE it alone sets the level (0 … +8 V); in ENV / KB RLS it multiplies the envelope.
         float gain = p.vcaMode == 0 ? e : (p.vcaMode == 1 ? kb : 1.0f);
         if (patched (Jack::VcaAmtIn))
@@ -627,9 +699,10 @@ private:
             const float c = readIn (Jack::VcaAmtIn) * (1.0f / 8.0f);
             gain = p.vcaMode == 2 ? std::max (c, 0.0f) : gain * c;
         }
-        gain = gain + 1.0e-4f;
+        const float offset = kVcaOffset * gain;
+        gain = gain + 5.0e-4f;
         const float vIn = patched (Jack::VcaIn) ? readIn (Jack::VcaIn) * 0.2f : y;
-        const float v = vIn * gain * 1.25f;
+        const float v = vIn * gain * 1.25f + offset;
         if (patched (Jack::ReverbIn)) revAcc += readIn (Jack::ReverbIn) * 0.2f;
         return std::tanh (v * 0.8f) * (1.0f / 0.8f) * 0.8f;
     }

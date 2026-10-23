@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Sine Oscillator"
-          presetModified="0" presetRandom="0" presetFile="" category="Basic"
-          tags="CLEAN" description="The filter self-oscillates and is played from the keyboard (Kbd Track 1:1): a pure sine. Oscillators are off.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Basic" tags="CLEAN" description="The filter self-oscillates and is played from the keyboard (Kbd Track 1:1): a pure sine. Oscillators are off.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4659999907016754"/>
+  <PARAM id="cutoff" value="0.3720999956130981"/>
   <PARAM id="decay" value="0.5070000290870667"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.0"/>
   <PARAM id="mixOsc2" value="0.0"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>
@@ -65,7 +66,7 @@
   <PARAM id="phaRate" value="0.300000011920929"/>
   <PARAM id="phaStereo" value="0.4000000059604645"/>
   <PARAM id="release" value="0.5879999995231628"/>
-  <PARAM id="resonance" value="0.949999988079071"/>
+  <PARAM id="resonance" value="0.9800000190734863"/>
   <PARAM id="reverbDecay" value="1.0"/>
   <PARAM id="reverbMix" value="0.0"/>
   <PARAM id="satBias" value="0.3499999940395355"/>
@@ -90,5 +91,5 @@
   <PARAM id="tapTreble" value="0.5"/>
   <PARAM id="tapWow" value="0.2000000029802322"/>
   <PARAM id="vcaMode" value="0.0"/>
-  <PARAM id="volume" value="0.9139999747276306"/>
+  <PARAM id="volume" value="1.0"/>
 </BABUSHKA>

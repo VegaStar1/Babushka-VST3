@@ -26,19 +26,19 @@ struct Recipe
 
 const Recipe& recipe (Kind k)
 {
-    static const Recipe bass  { { 0, 1 }, { 0, 1 }, { 0.25f, 0.45f }, { 0.05f, 0.6f }, { 0.25f, 0.6f }, { 0.0f, 0.05f }, { 0.3f, 0.6f },
+    static const Recipe bass  { { 0, 1 }, { 0, 1 }, { 0.153f, 0.356f }, { 0.05f, 0.6f }, { 0.25f, 0.6f }, { 0.0f, 0.05f }, { 0.3f, 0.6f },
                                 { 0.15f, 0.6f }, { 0.15f, 0.35f }, { 0.0f, 0.12f }, { 0.2f, 0.35f }, { 1, 2 }, 0.15f, 0.2f, 0.12f, 0.08f, 0.3f, 0.0f, 48 };
-    static const Recipe lead  { { 2, 2, 3 }, { 1, 2 }, { 0.45f, 0.7f }, { 0.1f, 0.5f }, { 0.15f, 0.45f }, { 0.0f, 0.15f }, { 0.45f, 0.7f },
+    static const Recipe lead  { { 2, 2, 3 }, { 1, 2 }, { 0.356f, 0.609f }, { 0.1f, 0.5f }, { 0.15f, 0.45f }, { 0.0f, 0.15f }, { 0.45f, 0.7f },
                                 { 0.5f, 0.9f }, { 0.3f, 0.5f }, { 0.1f, 0.3f }, { 0.2f, 0.4f }, { 1, 2 }, 0.1f, 0.6f, 0.08f, 0.0f, 0.3f, 0.0f, 60 };
-    static const Recipe pad   { { 1, 2 }, { 1, 2 }, { 0.32f, 0.55f }, { 0.05f, 0.35f }, { 0.1f, 0.4f }, { 0.4f, 0.75f }, { 0.6f, 0.85f },
+    static const Recipe pad   { { 1, 2 }, { 1, 2 }, { 0.224f, 0.457f }, { 0.05f, 0.35f }, { 0.1f, 0.4f }, { 0.4f, 0.75f }, { 0.6f, 0.85f },
                                 { 0.6f, 0.9f }, { 0.55f, 0.8f }, { 0.25f, 0.45f }, { 0.0f, 0.2f }, { 1 }, 0.25f, 0.8f, 0.0f, 0.0f, 0.35f, 0.15f, 53 };
-    static const Recipe pluck { { 1, 2, 3 }, { 1, 2 }, { 0.3f, 0.5f }, { 0.1f, 0.5f }, { 0.4f, 0.7f }, { 0.0f, 0.02f }, { 0.3f, 0.55f },
+    static const Recipe pluck { { 1, 2, 3 }, { 1, 2 }, { 0.204f, 0.407f }, { 0.1f, 0.5f }, { 0.4f, 0.7f }, { 0.0f, 0.02f }, { 0.3f, 0.55f },
                                 { 0.0f, 0.1f }, { 0.3f, 0.5f }, { 0.15f, 0.45f }, { 0.0f, 0.1f }, { 2 }, 0.1f, 0.25f, 0.2f, 0.1f, 0.35f, 0.0f, 60 };
-    static const Recipe keys  { { 2 }, { 1, 2 }, { 0.4f, 0.6f }, { 0.05f, 0.3f }, { 0.2f, 0.45f }, { 0.0f, 0.03f }, { 0.45f, 0.65f },
+    static const Recipe keys  { { 2 }, { 1, 2 }, { 0.305f, 0.508f }, { 0.05f, 0.3f }, { 0.2f, 0.45f }, { 0.0f, 0.03f }, { 0.45f, 0.65f },
                                 { 0.3f, 0.7f }, { 0.35f, 0.55f }, { 0.1f, 0.3f }, { 0.0f, 0.0f }, { 2 }, 0.05f, 0.3f, 0.08f, 0.0f, 0.3f, 0.0f, 60 };
-    static const Recipe arp   { { 1, 2 }, { 1, 2 }, { 0.3f, 0.55f }, { 0.15f, 0.6f }, { 0.3f, 0.65f }, { 0.0f, 0.02f }, { 0.3f, 0.5f },
+    static const Recipe arp   { { 1, 2 }, { 1, 2 }, { 0.204f, 0.457f }, { 0.15f, 0.6f }, { 0.3f, 0.65f }, { 0.0f, 0.02f }, { 0.3f, 0.5f },
                                 { 0.0f, 0.3f }, { 0.25f, 0.45f }, { 0.1f, 0.4f }, { 0.0f, 0.15f }, { 2 }, 0.1f, 0.4f, 1.0f, 0.45f, 0.3f, 0.0f, 48 };
-    static const Recipe fx    { { 0, 1, 2, 3 }, { 0, 1, 2, 3 }, { 0.3f, 0.75f }, { 0.3f, 0.85f }, { -0.6f, 0.7f }, { 0.0f, 0.6f }, { 0.3f, 0.8f },
+    static const Recipe fx    { { 0, 1, 2, 3 }, { 0, 1, 2, 3 }, { 0.204f, 0.660f }, { 0.3f, 0.85f }, { -0.6f, 0.7f }, { 0.0f, 0.6f }, { 0.3f, 0.8f },
                                 { 0.0f, 0.8f }, { 0.3f, 0.8f }, { 0.2f, 0.6f }, { 0.0f, 0.6f }, { 0, 1, 2 }, 0.45f, 0.85f, 0.12f, 0.05f, 0.6f, 0.25f, 60 };
     switch (k)
     {
@@ -210,7 +210,7 @@ bool BabushkaProcessor::randomize (uint32_t seed)
         v["resonance"] = in (rc.resonance);
         v["kbdTrack"] = (float) pickI (rc.kbdTrack);
         v["envAmt"] = in (rc.envAmt);
-        if (v["cutoff"] < 0.38f) v["envAmt"] = std::max (v["envAmt"], 0.3f);
+        if (v["cutoff"] < 0.285f) v["envAmt"] = std::max (v["envAmt"], 0.3f);
         v["attack"] = in (rc.attack); v["decay"] = in (rc.decay); v["sustain"] = in (rc.sustain); v["release"] = in (rc.release);
         v["reverbMix"] = in (rc.reverb);
         v["vcaMode"] = chance (rc.droneChance) ? 2.0f : 0.0f;
@@ -280,6 +280,7 @@ bool BabushkaProcessor::randomize (uint32_t seed)
             else jassertfalse;
         }
         state.setProperty ("auditionNote", auditionNote, nullptr);
+        state.setProperty ("cutoffLaw", kCutoffLaw, nullptr);
         auto xml = state.createXml();
         if (xml == nullptr) continue;
 
@@ -288,7 +289,8 @@ bool BabushkaProcessor::randomize (uint32_t seed)
         if (! au.finite || au.loud < 1.0e-4) continue;
         const double scale = std::min (kTargetLoud / au.loud, 4.0);  // gain factor; volume 1 is 4x volume 0.5
         const double volume = 0.5 * std::sqrt (scale);
-        if (au.loud * scale < 0.08) continue;                          // too quiet even at full volume
+        if (au.loud * scale < 0.1) continue;                           // too quiet even at full volume (margin: the
+                                                                       // audition runs at 1x, so noisy FX differ a little)
         if (au.peak * scale > 0.9) continue;                           // would clip
         const bool heldSound = ! (v["arpPlay"] > 0.5f) && kind != Kind::Pluck && kind != Kind::Fx && v["sustain"] > 0.15f;
         if (heldSound && au.held < 0.2 * au.loud) continue;           // a held note must keep sounding

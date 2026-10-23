@@ -116,7 +116,7 @@ namespace fmt
     inline juce::String seconds (double v) { return v < 1.0 ? juce::String (v * 1000.0, v < 0.01 ? 1 : 0) + " ms" : juce::String (v, v < 10.0 ? 2 : 1) + " s"; }
     inline juce::String percent (double v) { return juce::String (v * 100.0, 0) + " %"; }
     inline juce::String bipolar (double v) { return (v >= 0 ? "+" : "") + juce::String (v * 100.0, 0) + " %"; }
-    inline juce::String cutoff (double k) { return hz (10.0 * std::pow (1100.0, juce::jlimit (0.0, 1.0, k))); }
+    inline juce::String cutoff (double k) { return hz (babushka::dsp::cutoffKnobToHz ((float) juce::jlimit (0.0, 1.0, k))); }
     inline juce::String lfoRate (double k) { return hz (0.07 * std::pow (1300.0 / 0.07, juce::jlimit (0.0, 1.0, k))); }
     inline juce::String envTime (double k, double minS) { return seconds (minS * std::pow (10.0 / minS, juce::jlimit (0.0, 1.0, k))); }
     inline juce::String highPass (double k) { return hz (16.0 * std::pow (500.0, juce::jlimit (0.0, 1.0, k))); }
@@ -307,12 +307,23 @@ private:
         else { g.setColour (fill); g.fillRoundedRectangle (r, 2.5f); }
         label (g, t, r.reduced (6.0f, 0.0f), outlined ? plateInk : inkOn (fill), type::control, Weight::NarrowBold, juce::Justification::centred, 0.08f);
     }
+    // A label printed on a module never runs past its frame: centred where it is, it is at most as wide as the room to
+    // the nearer edge allows (the text is then squeezed; on small windows the print is enlarged, see label()).
+    float fitOnPlate (float x, float y, float width) const
+    {
+        if (! currentPlate.contains (x, y)) return width;
+        const auto inner = currentPlate.reduced (kPlateMargin, 0.0f);
+        return juce::jmax (10.0f, juce::jmin (width, 2.0f * juce::jmin (x - inner.getX(), inner.getRight() - x)));
+    }
+    static constexpr float kPlateMargin = 6.0f;
     void textAt (const juce::String& t, float x, float y, juce::Colour c, float size = type::control, Weight w = Weight::NarrowBold, float width = 120.0f, float kern = 0.06f)
     {
+        width = fitOnPlate (x, y, width);
         op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, size, w, width, kern); });
     }
     void pill (const juce::String& t, float x, float y, float w, juce::Colour fill, juce::Colour plateInk)
     {
+        w = fitOnPlate (x, y, w);
         op ([=] (juce::Graphics& g) { drawPill (g, t, x, y, w, fill, plateInk); });
     }
     void module (juce::Rectangle<float> r, juce::Colour fill, const juce::String& title, bool outlined = true)
@@ -423,29 +434,17 @@ private:
     }
 
     // Logarithmic frequency scale round the CUTOFF knob: 10 Hz … 11 kHz over 270°, a tick at m × 10^n Hz.
-    void logCutoffScale (float cx, float cy, float d, juce::Colour c)
+    // The CUTOFF print of the hardware: evenly spaced ticks over the knob's travel, a long one every half decade,
+    // 20Hz / 200Hz / 2kHz / 20kHz at the start, a third, two thirds and the end. Like the hardware's, the print is the
+    // nominal 20 Hz ... 20 kHz range; the knob itself reaches about 11 kHz (CV goes further), its value shows on hover.
+    void cutoffScale (float cx, float cy, float d, juce::Colour c)
     {
-        auto angleFor = [] (double hz) { return -135.0 + 270.0 * std::log (hz / 10.0) / std::log (1100.0); };
-        op ([=] (juce::Graphics& g) {
-            for (int e = 1; e <= 4; ++e)
-                for (int m = 1; m <= 9; ++m)
-                {
-                    const double hz = std::pow (10.0, e) * m;
-                    if (hz > 11000.0) break;
-                    const float a = juce::degreesToRadians ((float) angleFor (hz) - 90.0f);
-                    const bool major = (m == 2) || (m == 1 && e == 1);
-                    const float r0 = d * 0.54f, r1 = d * (major ? 0.70f : 0.62f);
-                    g.setColour (c);
-                    g.drawLine (cx + r0 * std::cos (a), cy + r0 * std::sin (a), cx + r1 * std::cos (a), cy + r1 * std::sin (a), major ? 1.6f : 0.9f);
-                }
-            const float aEnd = juce::degreesToRadians (135.0f - 90.0f);
-            g.drawLine (cx + d * 0.54f * std::cos (aEnd), cy + d * 0.54f * std::sin (aEnd), cx + d * 0.70f * std::cos (aEnd), cy + d * 0.70f * std::sin (aEnd), 1.6f); });
-        auto at = [&] (double hz, const juce::String& t, float extra) {
-            const float a = juce::degreesToRadians ((float) angleFor (hz));
-            const float r = d * 0.5f + 25.0f + extra;
+        ticks (cx, cy, d, 31, c, 0.09f, 5);
+        auto at = [&] (float deg, const juce::String& t) {
+            const float a = juce::degreesToRadians (deg), r = d * 0.5f + 25.0f;
             textAt (t, cx + std::sin (a) * r, cy - std::cos (a) * r, c, type::mark, Weight::NarrowBold, 40.0f, 0.02f);
         };
-        at (20.0, "20Hz", 0.0f); at (200.0, "200Hz", -2.0f); at (2000.0, "2kHz", 0.0f); at (11000.0, "11kHz", 0.0f);
+        at (-135.0f, "20Hz"); at (-45.0f, "200Hz"); at (45.0f, "2kHz"); at (135.0f, "20kHz");
     }
 
     // ---- the layout ----------------------------------------------------------------------------------------------------------
@@ -502,10 +501,10 @@ private:
         ticks (348, 309, 46, 11, ink); knob ("lfoCutoffAmt", 348, 309, 46, [] (double v) { return fmt::percent (v); });
         pill ("CUTOFF AMT", 348, 344, 84, S.pillFilter, ink);
         ticks (252, 405, 46, 11, ink); knob ("lfoPwAmt", 252, 405, 46, [] (double v) { return fmt::percent (v); });
-        pill ("PULSE WIDTH AMT", 252, 440, 114, juce::Colours::transparentBlack, ink);
+        pill ("PULSE WIDTH AMT", 255, 440, 106, juce::Colours::transparentBlack, ink);
         knob ("lfoWave", 350, 402, 46, fmt::names ({ "Sine", "Sawtooth", "Ramp", "Square" }), true);
         selectorGlyphs (350, 402, 46, { Glyph::Sine, Glyph::Saw, Glyph::Ramp, Glyph::Square }, ink);
-        textAt ("WAVEFORM", 350, 440, ink, type::control, Weight::NarrowBold, 80.0f);
+        textAt ("WAVEFORM", 352, 440, ink, type::control, Weight::NarrowBold, 72.0f);
 
         // ---------------- OSCILLATORS ----------------
         module ({ 415, 56, 212, 400 }, S.osc, "OSCILLATORS");
@@ -571,14 +570,14 @@ private:
         jack (Jack::FilterIn, 896, 97, "INPUT", filInk); jack (Jack::FilterOut, 1055, 97, "OUTPUT", filInk);
         jack (Jack::FilterEnvAmtIn, 940, 128, "ENV AMT IN", filInk); jack (Jack::FilterCutoffIn, 1012, 128, "CUTOFF IN", filInk);
         knob ("cutoff", 976, 228, 80, [] (double v) { return fmt::cutoff (v); });
-        logCutoffScale (976.0f, 228.0f, 80.0f, filInk);
+        cutoffScale (976.0f, 228.0f, 80.0f, filInk);
         textAt ("CUTOFF", 976, 280, filInk, type::control, Weight::NarrowBold, 70.0f);
         lever ("kbdTrack", 976, 306, { 1, 0, 2 }, [] (int p) { static const char* n[] = { "1:2", "off", "1:1" }; return juce::String (n[p]); });
         leverLabels (976, 328, "1:2", "OFF", "1:1", filInk, 29.0f);
         textAt ("KBD TRACK", 976, 342, filInk, type::control, Weight::NarrowBold, 90.0f);
         bipolarMarks (922, 404, 50, filInk);
         knob ("envAmt", 922, 404, 50, [] (double v) { return fmt::bipolar (v); });
-        textAt ("ENVELOPE AMT", 922, 441, filInk, type::control, Weight::NarrowBold, 100.0f);
+        textAt ("ENVELOPE AMT", 924, 441, filInk, type::control, Weight::NarrowBold, 100.0f);
         ticks (1027, 404, 50, 11, filInk); knob ("resonance", 1027, 404, 50, [] (double v) { return fmt::percent (v); });
         textAt ("RESONANCE", 1027, 441, filInk, type::control, Weight::NarrowBold, 90.0f);
 

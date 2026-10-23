@@ -2,7 +2,7 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="modWaveOut:attIn attOut:osc2PitchIn"
           presetName="Sync Arp" presetModified="0" presetRandom="0" presetFile=""
-          category="Arpeggios" tags="BRIGHT EVOLVING" description="Hold a chord: synced oscillator 2 whose pitch is swept slowly by the LFO, 1/16 at 118 BPM.">
+          cutoffLaw="2" category="Arpeggios" tags="BRIGHT EVOLVING" description="Hold a chord: synced oscillator 2 whose pitch is swept slowly by the LFO, 1/16 at 118 BPM.">
   <PARAM id="arpDirection" value="1.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.7879999876022339"/>
+  <PARAM id="cutoff" value="0.6984999775886536"/>
   <PARAM id="decay" value="0.4810000061988831"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.2000000029802322"/>
   <PARAM id="mixOsc2" value="0.800000011920929"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="2.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

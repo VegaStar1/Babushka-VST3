@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Dark Drone" presetModified="0"
-          presetRandom="0" presetFile="" category="Pads &amp; Drones" tags="DARK EVOLVING FAT"
-          description="DRONE VCA: plays without a key. Two saws, a fifth apart, very slow filter LFO. Use the keys to change the pitch.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Pads &amp; Drones"
+          tags="DARK EVOLVING FAT" description="DRONE VCA: plays without a key. Two saws, a fifth apart, very slow filter LFO. Use the keys to change the pitch.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4860000014305115"/>
+  <PARAM id="cutoff" value="0.3923999965190887"/>
   <PARAM id="decay" value="0.5070000290870667"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.550000011920929"/>
   <PARAM id="modWheel" value="1.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

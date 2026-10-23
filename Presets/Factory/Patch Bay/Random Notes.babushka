@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="gateOut:modSyncIn modShOut:attIn attOut:mult1 mult2:osc1PitchIn mult3:osc2PitchIn"
           presetName="Random Notes" presetModified="0" presetRandom="0"
-          presetFile="" category="Patch Bay" tags="BRIGHT EVOLVING" description="Every key press picks a new random pitch: S/H sampled by GATE OUT -&gt; SYNC IN, attenuated and sent to both oscillators through the mult.">
+          presetFile="" cutoffLaw="2" category="Patch Bay" tags="BRIGHT EVOLVING"
+          description="Every key press picks a new random pitch: S/H sampled by GATE OUT -&gt; SYNC IN, attenuated and sent to both oscillators through the mult.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.6069999933242798"/>
+  <PARAM id="cutoff" value="0.5149999856948853"/>
   <PARAM id="decay" value="0.5879999995231628"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.300000011920929"/>
@@ -48,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.5"/>
   <PARAM id="mixOsc2" value="0.4000000059604645"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

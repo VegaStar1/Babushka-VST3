@@ -13,6 +13,9 @@
 //
 // Feedback is taken from the 4th stage to the input stage, so pass-band (bass) gain falls as
 // 1/(1+k) when resonance rises — this matches the hardware's well-known bass loss.
+//
+// The input pair is slightly unbalanced (offset kInputBias before its tanh, the resulting DC removed after),
+// so a hot input is clipped a little harder on one side: even harmonics, as from a real transistor pair.
 #pragma once
 
 #include "Common.h"
@@ -54,7 +57,7 @@ public:
 
         for (int pass = 0; pass < 2; ++pass)
         {
-            const float tIn = tanhRatio (inEst);
+            const float tIn = biasedRatio (inEst);
             const float t0 = tanhRatio (yEst[0]), t1 = tanhRatio (yEst[1]),
                         t2 = tanhRatio (yEst[2]), t3 = tanhRatio (yEst[3]);
 
@@ -91,6 +94,18 @@ public:
     }
 
 private:
+    // ASSUMPTION: offset of the input pair ≈0.03 · 2·Vt (≈1.5 mV of transistor mismatch); not measured.
+    static constexpr float kInputBias = 0.03f;
+    static constexpr float kTanhBias = 0.0299910f;        // tanh (kInputBias)
+
+    // (tanh(v + b) − tanh(b)) / v: the input stage as a ratio for the linearised solver.
+    static float biasedRatio (float v) noexcept
+    {
+        constexpr float tb = kTanhBias, slope0 = 1.0f - tb * tb;
+        if (std::abs (v) < 1.0e-4f) return slope0 - v * tb * slope0;
+        return (std::tanh (v + kInputBias) - tb) / v;
+    }
+
     float fs = 96000.0f;
     float s[4] {}, y[4] {};
     Rng noise;

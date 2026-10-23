@@ -5,6 +5,10 @@
 // Output is delayed by one sample so corrections can be applied on both sides of an event.
 //
 // Waveforms follow the Grandmother panel: Triangle, Sawtooth, Square, Narrow Pulse.
+//
+// The shapes are not ideal, as the waveshapers of an analogue VCO are not: the saw ramp is slightly S-shaped
+// (its ends unchanged, so the reset step stays 2 and no new corner appears), the triangle's peak sits a little
+// before the middle of the cycle and the square is not quite 50 % (both: even harmonics).
 #pragma once
 
 #include "Common.h"
@@ -15,6 +19,9 @@ class Oscillator
 {
 public:
     enum class Wave { Triangle = 0, Saw, Square, Pulse };
+    // ASSUMPTION: the squares are not exactly 50 % (the comparator threshold of each waveshaper is a little off):
+    // 49 % (oscillator 1) and 49.5 % (oscillator 2) give a 2nd harmonic of −30 and −36 dB. Not measured.
+    static constexpr float kSquareDuty1 = 0.49f, kSquareDuty2 = 0.495f;
 
     void reset (float startPhase = 0.0f) noexcept { phase = startPhase; delayed = naive (phase); }
     void setWave (Wave w) noexcept { wave = w; }
@@ -54,8 +61,13 @@ public:
         if (wave == Wave::Triangle)
         {
             // Slope at reset jumps to the rising slope.
-            const float slopeBefore = pA < 0.5f ? 4.0f : -4.0f;
-            addRamp ((4.0f - slopeBefore) * dt, syncFrac);
+            const float slopeBefore = pA < kTriPeak ? kTriUp : -kTriDown;
+            addRamp ((kTriUp - slopeBefore) * dt, syncFrac);
+        }
+        else if (wave == Wave::Saw)
+        {
+            // The S-shaped ramp has the same slope at both ends, so only a mid-cycle reset changes the slope.
+            addRamp ((sawSlope (0.0f) - sawSlope (pA)) * dt, syncFrac);
         }
 
         const float pB = dt * syncFrac;
@@ -69,12 +81,18 @@ private:
     float phase = 0.0f, pulseWidth = 0.5f;
     float delayed = 0.0f, current = 0.0f;   // correction accumulators
 
+    // ASSUMPTION: shape errors chosen by ear, not measured. kSawCurve < 0 makes the ramp steeper in the middle:
+    // the fundamental of the saw rises ≈0.5 dB against the upper harmonics. Triangle peak at 0.48 of the cycle: H2 −30 dB.
+    static constexpr float kSawCurve = -0.08f;
+    static constexpr float kTriPeak = 0.48f;
+    static constexpr float kTriUp = 2.0f / kTriPeak, kTriDown = 2.0f / (1.0f - kTriPeak);   // slopes per cycle
+
     float naive (float p) const noexcept
     {
         switch (wave)
         {
-            case Wave::Triangle: return p < 0.5f ? (-1.0f + 4.0f * p) : (3.0f - 4.0f * p);
-            case Wave::Saw:      return 2.0f * p - 1.0f;
+            case Wave::Triangle: return p < kTriPeak ? (-1.0f + kTriUp * p) : (1.0f - kTriDown * (p - kTriPeak));
+            case Wave::Saw:      { const float x = 2.0f * p - 1.0f; return x + kSawCurve * (x * x * x - x); }
             case Wave::Square:
             case Wave::Pulse:    return p < pulseWidth ? 1.0f : -1.0f;
         }
@@ -118,12 +136,15 @@ private:
                 if (crosses (pulseWidth + 1.0f)) addStep (-2.0f, timeOf (pulseWidth + 1.0f));
                 break;
             case Wave::Triangle:
-                if (crosses (0.5f)) addRamp (-8.0f * dt, timeOf (0.5f));
-                if (wrap)           addRamp ( 8.0f * dt, timeOf (1.0f));
-                if (crosses (1.5f)) addRamp (-8.0f * dt, timeOf (1.5f));
+                if (crosses (kTriPeak))        addRamp (-(kTriUp + kTriDown) * dt, timeOf (kTriPeak));
+                if (wrap)                      addRamp ( (kTriUp + kTriDown) * dt, timeOf (1.0f));
+                if (crosses (kTriPeak + 1.0f)) addRamp (-(kTriUp + kTriDown) * dt, timeOf (kTriPeak + 1.0f));
                 break;
         }
     }
+
+    // Slope of the saw ramp per cycle at phase p.
+    static float sawSlope (float p) noexcept { const float x = 2.0f * p - 1.0f; return 2.0f * (1.0f + kSawCurve * (3.0f * x * x - 1.0f)); }
 
     float finish() noexcept
     {

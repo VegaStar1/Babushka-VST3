@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="36 36 36 36 36 36 36 36 34 34 34 34 31 31 33 33" seq2="36 36 48 36 36 48 36 48"
           seq3="36 R 36 36 R 36 36 R" patch="" presetName="Chase Pulse"
-          presetModified="0" presetRandom="0" presetFile="" category="Cinematic"
-          tags="DARK EVOLVING" description="Relentless 16th-note low pulse with the filter slowly breathing, for chase scenes. Plays by itself.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Cinematic" tags="DARK EVOLVING" description="Relentless 16th-note low pulse with the filter slowly breathing, for chase scenes. Plays by itself.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4129999876022339"/>
+  <PARAM id="cutoff" value="0.3183999955654144"/>
   <PARAM id="decay" value="0.4589999914169312"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.3499999940395355"/>
@@ -49,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.949999988079071"/>
   <PARAM id="mixOsc2" value="0.699999988079071"/>
   <PARAM id="modWheel" value="1.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

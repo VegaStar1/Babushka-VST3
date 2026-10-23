@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="36T 36 36 36 36T 36 36 36 36T 36 36 36 39T 39 39 39" seq2="36 R 36 36 36 R 36 36"
           seq3="36 36 36 36 34 34 34 34" patch="" presetName="Gallop" presetModified="0"
-          presetRandom="0" presetFile="" category="Sequences" tags="FAT AGGRESSIVE"
-          description="Plays by itself: galloping eighth + two sixteenths rhythm, 140 BPM; heavy and driving.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Sequences"
+          tags="FAT AGGRESSIVE" description="Plays by itself: galloping eighth + two sixteenths rhythm, 140 BPM; heavy and driving.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.4539999961853027"/>
+  <PARAM id="cutoff" value="0.3598999977111816"/>
   <PARAM id="decay" value="0.4589999914169312"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.449999988079071"/>
@@ -49,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.75"/>
   <PARAM id="mixOsc2" value="0.699999988079071"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

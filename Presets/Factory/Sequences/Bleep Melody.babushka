@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="72 R 76 79 R 76 72 R 74 R 77 81 R 77 74 R" seq2="72 79 76 79 72 79 76 79"
           seq3="72 R 72 R 84 R 72 R" patch="" presetName="Bleep Melody"
-          presetModified="0" presetRandom="0" presetFile="" category="Sequences"
-          tags="BRIGHT CLEAN" description="Plays by itself: square bleep melody at 130 BPM, chiptune flavour.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Sequences" tags="BRIGHT CLEAN" description="Plays by itself: square bleep melody at 130 BPM, chiptune flavour.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.8560000061988831"/>
+  <PARAM id="cutoff" value="0.7674999833106995"/>
   <PARAM id="decay" value="0.3989999890327454"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -49,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.0"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="3.0"/>
   <PARAM id="osc1Wave" value="2.0"/>

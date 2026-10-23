@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="modWaveOut:vcaAmtIn modShOut:attIn attOut:osc1PitchIn"
           presetName="Glitch Stutter" presetModified="0" presetRandom="0"
-          presetFile="" category="FX" tags="AGGRESSIVE BRIGHT" description="Hold a key: a fast square LFO chops the sound (DRONE VCA, MOD WAVE OUT -&gt; VCA AMT IN) while S/H throws random pitches (MOD S/H OUT -&gt; attenuator -&gt; PITCH IN).">
+          presetFile="" cutoffLaw="2" category="FX" tags="AGGRESSIVE BRIGHT"
+          description="Hold a key: a fast square LFO chops the sound (DRONE VCA, MOD WAVE OUT -&gt; VCA AMT IN) while S/H throws random pitches (MOD S/H OUT -&gt; attenuator -&gt; PITCH IN).">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.8140000104904175"/>
+  <PARAM id="cutoff" value="0.7249000072479248"/>
   <PARAM id="decay" value="0.5070000290870667"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.4000000059604645"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="2.0"/>
   <PARAM id="osc1Wave" value="2.0"/>

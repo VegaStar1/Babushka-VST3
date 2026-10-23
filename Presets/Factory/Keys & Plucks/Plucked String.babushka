@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Plucked String"
-          presetModified="0" presetRandom="0" presetFile="" category="Keys &amp; Plucks"
-          tags="PLUCKY WARM" description="Saw + pulse through a fast envelope with key tracking: a guitar-like pluck.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Keys &amp; Plucks" tags="PLUCKY WARM" description="Saw + pulse through a fast envelope with key tracking: a guitar-like pluck.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5080000162124634"/>
+  <PARAM id="cutoff" value="0.4147000014781952"/>
   <PARAM id="decay" value="0.6480000019073486"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.550000011920929"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.550000011920929"/>
   <PARAM id="mixOsc2" value="0.4000000059604645"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="2.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="kbVelOut:attIn attOut:filterCutoffIn"
           presetName="Expressive Velocity Lead" presetModified="0" presetRandom="0"
-          presetFile="" category="Lead" tags="BRIGHT WARM" description="Play harder for a brighter note. Cable: KB VEL OUT -&gt; attenuator -&gt; CUTOFF IN.">
+          presetFile="" cutoffLaw="2" category="Lead" tags="BRIGHT WARM"
+          description="Play harder for a brighter note. Cable: KB VEL OUT -&gt; attenuator -&gt; CUTOFF IN.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5590000152587891"/>
+  <PARAM id="cutoff" value="0.4663999974727631"/>
   <PARAM id="decay" value="0.621999979019165"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.25"/>
@@ -48,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.550000011920929"/>
   <PARAM id="mixOsc2" value="0.449999988079071"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="2.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

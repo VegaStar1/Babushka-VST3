@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Sandworm Drone"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="DARK EVOLVING NOISY" description="In the style of the huge low drones of Hans Zimmer's 'Dune' (2021): sub saw and pulse in DRONE mode, a throaty resonant vowel moving very slowly, noise breath.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="DARK EVOLVING NOISY" description="In the style of the huge low drones of Hans Zimmer's 'Dune' (2021): sub saw and pulse in DRONE mode, a throaty resonant vowel moving very slowly, noise breath.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.3959999978542328"/>
+  <PARAM id="cutoff" value="0.3010999858379364"/>
   <PARAM id="decay" value="0.5070000290870667"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.699999988079071"/>
   <PARAM id="mixOsc2" value="0.5"/>
   <PARAM id="modWheel" value="1.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="0.0"/>
   <PARAM id="osc1Wave" value="1.0"/>
@@ -90,5 +91,5 @@
   <PARAM id="tapTreble" value="0.5"/>
   <PARAM id="tapWow" value="0.2000000029802322"/>
   <PARAM id="vcaMode" value="2.0"/>
-  <PARAM id="volume" value="0.4790000021457672"/>
+  <PARAM id="volume" value="0.6299999952316284"/>
 </BABUSHKA>

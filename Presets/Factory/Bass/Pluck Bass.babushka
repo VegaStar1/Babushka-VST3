@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Pluck Bass" presetModified="0"
-          presetRandom="0" presetFile="" category="Bass" tags="PLUCKY"
-          description="Short and percussive; the filter envelope does all the work. Good for fast lines.">
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Bass"
+          tags="PLUCKY" description="Short and percussive; the filter envelope does all the work. Good for fast lines.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.3420000076293945"/>
+  <PARAM id="cutoff" value="0.246399998664856"/>
   <PARAM id="decay" value="0.5279999971389771"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.550000011920929"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.5"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

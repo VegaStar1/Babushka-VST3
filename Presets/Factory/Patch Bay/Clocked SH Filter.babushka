@@ -2,7 +2,8 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="modShOut:attIn attOut:filterCutoffIn"
           presetName="Clocked S/H Filter" presetModified="0" presetRandom="0"
-          presetFile="" category="Patch Bay" tags="RESONANT EVOLVING" description="The S/H steps the cutoff on every LFO cycle: the classic random filter. Cables: MOD S/H OUT -&gt; attenuator -&gt; CUTOFF IN. Hold a key.">
+          presetFile="" cutoffLaw="2" category="Patch Bay" tags="RESONANT EVOLVING"
+          description="The S/H steps the cutoff on every LFO cycle: the classic random filter. Cables: MOD S/H OUT -&gt; attenuator -&gt; CUTOFF IN. Hold a key.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -23,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5590000152587891"/>
+  <PARAM id="cutoff" value="0.4663999974727631"/>
   <PARAM id="decay" value="0.5070000290870667"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.0"/>
@@ -48,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.5"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

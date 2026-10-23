@@ -276,8 +276,9 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         const float cutBass = pr.apvts.getRawParameterValue ("cutoff")->load();
         pr.applyFactoryPreset (0);      // Init
         const float cutInit = pr.apvts.getRawParameterValue ("cutoff")->load();
-        std::printf ("Preset reset: cutoff %.2f after Classic Bass (expect %.2f), %.2f after Init (default 0.60)\n", cutBass, bassCutoff, cutInit);
-        if (std::abs (cutBass - bassCutoff) > 1e-3f || std::abs (cutInit - 0.6f) > 1e-3f) return fail ("preset values / reset");
+        std::printf ("Preset reset: cutoff %.3f after Classic Bass (expect %.3f), %.3f after Init (default %.3f)\n", cutBass, bassCutoff, cutInit,
+                     babushka::dsp::kCutoffDefault);
+        if (std::abs (cutBass - bassCutoff) > 1e-3f || std::abs (cutInit - babushka::dsp::kCutoffDefault) > 1e-3f) return fail ("preset values / reset");
 
         // user presets: save, reload in a fresh processor, delete
         auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("babushka_preset_test");
@@ -295,6 +296,18 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
         std::printf ("User preset reload: cutoff %.3f (expect 0.770), cables %d (expect 1), name '%s'\n",
                      cutUser, pr.getPatchCopy().count, pr.getCurrentPresetName().toRawUTF8());
         if (std::abs (cutUser - 0.77f) > 1e-3f || pr.getPatchCopy().count != 1 || pr.getCurrentPresetName() != "Test Sound") return fail ("user preset round trip");
+        {   // a preset file from before the CUTOFF law followed the print: the same frequency on the new knob
+            auto xml = juce::parseXML (files[0]);
+            xml->removeAttribute ("cutoffLaw");
+            for (auto* c : xml->getChildIterator()) if (c->getStringAttribute ("id") == "cutoff") c->setAttribute ("value", 0.6);
+            const auto old = dir.getChildFile ("User").getChildFile ("Old Law.babushka");
+            xml->writeTo (old);
+            pr.loadUserPreset (old);
+            const float cutOld = pr.apvts.getRawParameterValue ("cutoff")->load();
+            std::printf ("Old-law preset: cutoff 0.600 -> %.4f (expect %.4f, the same 663 Hz)\n", cutOld, babushka::dsp::cutoffKnobFromLegacy (0.6f));
+            if (std::abs (cutOld - babushka::dsp::cutoffKnobFromLegacy (0.6f)) > 1e-3f) return fail ("old cutoff law conversion");
+            old.deleteFile();
+        }
         if (! pr.deleteUserPreset (files[0]) || ! pr.getUserPresetFiles().isEmpty()) return fail ("delete user preset");
         dir.deleteRecursively();
     }
@@ -355,10 +368,10 @@ static int runTest (const juce::String& pluginPath, const juce::String& shotPath
             const float startTune = app.apvts.getParameter ("fineTune")->convertFrom0to1 (app.apvts.getParameter ("fineTune")->getValue());
             std::unique_ptr<juce::AudioProcessorEditor> appEd (app.createEditor());
             app.setStateInformation (appState.getData(), (int) appState.getSize());      // File > Load a saved state...
-            std::printf ("Standalone start: '%s' (cutoff %.2f, default 0.60; drift kept %.2f; fine tune %.0f ct, expect 0), after Load state: '%s'\n",
-                         startName.toRawUTF8(), app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut), startDrift, startTune * 100.0f,
+            std::printf ("Standalone start: '%s' (cutoff %.3f, default %.3f; drift kept %.2f; fine tune %.0f ct, expect 0), after Load state: '%s'\n",
+                         startName.toRawUTF8(), app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut), babushka::dsp::kCutoffDefault, startDrift, startTune * 100.0f,
                          app.getCurrentPresetName().toRawUTF8());
-            if (startName != "Init" || std::abs (app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut) - 0.6f) > 1e-3f
+            if (startName != "Init" || std::abs (app.apvts.getParameter ("cutoff")->convertFrom0to1 (startCut) - babushka::dsp::kCutoffDefault) > 1e-3f
                 || std::abs (startDrift - 0.8f) > 1e-4f || std::abs (startTune) > 1e-4f || app.isSoundModified() == false
                 || app.getCurrentPresetName() != "Berlin School")
                 return fail ("standalone start must be Init");

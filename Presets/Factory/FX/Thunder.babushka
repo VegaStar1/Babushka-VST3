@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Thunder" presetModified="0"
-          presetRandom="0" presetFile="" category="FX" tags="DARK NOISY"
+          presetRandom="0" presetFile="" cutoffLaw="2" category="FX" tags="DARK NOISY"
           description="Low rumbling noise in a long envelope into the spring tank.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
@@ -23,7 +23,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5189999938011169"/>
+  <PARAM id="cutoff" value="0.4257999956607819"/>
   <PARAM id="decay" value="0.8920000195503235"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.300000011920929"/>
@@ -48,6 +48,7 @@
   <PARAM id="mixOsc1" value="0.0"/>
   <PARAM id="mixOsc2" value="0.0"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="1.0"/>

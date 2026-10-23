@@ -2,8 +2,8 @@
 
 <BABUSHKA seq1="36 48 36 46 36 48 36 43 36 48 36 46 39 41 43 46" seq2="36 36 48 36 36 48 36 48"
           seq3="36 48 43 48 41 48 39 48" patch="" presetName="Grid Runner"
-          presetModified="0" presetRandom="0" presetFile="" category="Legends"
-          tags="BRIGHT PLUCKY" description="In the style of Daft Punk's 'Tron: Legacy' score ('Derezzed', 2010): driving square/saw 16ths with a bright snappy envelope. Plays by itself; a key transposes.">
+          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
+          category="Legends" tags="BRIGHT PLUCKY" description="In the style of Daft Punk's 'Tron: Legacy' score ('Derezzed', 2010): driving square/saw 16ths with a bright snappy envelope. Plays by itself; a key transposes.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="2.0"/>
   <PARAM id="arpHold" value="0.0"/>
@@ -24,7 +24,7 @@
   <PARAM id="choRate" value="0.449999988079071"/>
   <PARAM id="choWidth" value="1.0"/>
   <PARAM id="clockOutPpqn" value="2.0"/>
-  <PARAM id="cutoff" value="0.5590000152587891"/>
+  <PARAM id="cutoff" value="0.4663999974727631"/>
   <PARAM id="decay" value="0.4589999914169312"/>
   <PARAM id="drift" value="0.25"/>
   <PARAM id="envAmt" value="0.4000000059604645"/>
@@ -49,6 +49,7 @@
   <PARAM id="mixOsc1" value="0.6000000238418579"/>
   <PARAM id="mixOsc2" value="0.5"/>
   <PARAM id="modWheel" value="0.0"/>
+  <PARAM id="noiseFloor" value="0.0"/>
   <PARAM id="notePriority" value="0.0"/>
   <PARAM id="osc1Octave" value="1.0"/>
   <PARAM id="osc1Wave" value="2.0"/>

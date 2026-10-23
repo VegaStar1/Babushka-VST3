@@ -67,6 +67,7 @@ namespace ids
     static constexpr const char* clockOutPpqn = "clockOutPpqn";
     // Global settings (manual p. 38)
     static constexpr const char* localOn    = "localOn";
+    static constexpr const char* noiseFloor = "noiseFloor";
     static constexpr const char* kbOutRange = "kbOutRange";
 }
 
@@ -105,7 +106,7 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     knob (ids::modWheel, "Mod Wheel", 0.0f);
 
     // Filter
-    knob (ids::cutoff, "Cutoff", 0.6f);
+    knob (ids::cutoff, "Cutoff", babushka::dsp::kCutoffDefault);
     knob (ids::resonance, "Resonance", 0.0f);
     choice (ids::kbdTrack, "Kbd Track", { "Off", "1:2", "1:1" }, 0);
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ids::envAmt, 1 }, "Envelope Amt",
@@ -164,6 +165,8 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ids::clockOutPpqn, 1 }, "Clock Out PPQN", 1, 48, 2));
     p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::localOn, 1 }, "Local On", true));
     choice (ids::kbOutRange, "KB Out Range", { "-5 to +5 V", "0 to +10 V" }, 0);
+    // Plugin-only, no control on the panel yet: the hardware's hiss (≈ −68 dBFS) in the pauses. Off by default.
+    p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ids::noiseFloor, 1 }, "Noise Floor", false));
 
     // Pedals on the rear panel (plugin-only, see dsp/Pedals.h). Off by default: a preset without them sounds as before.
     // Knobs read 0 … 10 like the pedals' own scales; rates and the echo time in real units.
@@ -287,6 +290,7 @@ babushka::dsp::Params BabushkaProcessor::paramsFromState (const std::function<fl
     p.extLevel = f (ids::extLevel);
     p.hpCutoff = f (ids::hpCutoff); p.attenuator = f (ids::attenuator);
     p.localOn = f (ids::localOn) > 0.5f; p.kbOutRange = i (ids::kbOutRange);
+    p.noiseFloor = f (ids::noiseFloor) > 0.5f;
     auto& q = p.pedals;
     q.order = babushka::pedalOrderFromIndex (i ("fxOrder"));
     q.on = { f ("satOn") > 0.5f, f ("phaOn") > 0.5f, f ("choOn") > 0.5f, f ("tapOn") > 0.5f };
@@ -602,6 +606,7 @@ std::unique_ptr<juce::XmlElement> BabushkaProcessor::createStateXml()
     state.setProperty ("presetModified", soundModified, nullptr);
     state.setProperty ("presetRandom", randomSound, nullptr);
     state.setProperty ("presetFile", currentPresetFile.getFullPathName(), nullptr);
+    state.setProperty ("cutoffLaw", kCutoffLaw, nullptr);
     return state.createXml();
 }
 
@@ -609,6 +614,13 @@ void BabushkaProcessor::restoreFromXml (const juce::XmlElement& xml)
 {
     if (! xml.hasTagName (apvts.state.getType())) return;
     auto tree = juce::ValueTree::fromXml (xml);
+    // Projects and preset files saved before the CUTOFF law followed the panel print: the same frequency, new knob.
+    if ((int) tree.getProperty ("cutoffLaw", 1) < kCutoffLaw)
+    {
+        auto child = tree.getChildWithProperty ("id", "cutoff");
+        if (child.isValid()) child.setProperty ("value", babushka::dsp::cutoffKnobFromLegacy ((float) child.getProperty ("value")), nullptr);
+    }
+    tree.setProperty ("cutoffLaw", kCutoffLaw, nullptr);
     std::array<babushka::dsp::Sequence, 3> loaded;
     for (int i = 0; i < 3; ++i)
         loaded[(size_t) i] = sequenceFromString (tree.getProperty ("seq" + juce::String (i + 1)).toString());

@@ -122,6 +122,11 @@ public:
     std::vector<PresetRef> listPresets() const;
     void loadPreset (const PresetRef& ref);
     void stepPreset (int delta);                     // previous / next in that list (wraps around)
+    // Favourites (the hearts of the browser): kept in <library>/favorites.txt, shared by every instance.
+    // A factory preset is remembered by its name, a user preset by its path under User.
+    bool isFavorite (const PresetRef& ref) const;
+    void setFavorite (const PresetRef& ref, bool on);
+    void reloadFavorites() const { favoritesRead = false; }   // the file may have changed in another instance
 
     // ---- History (message thread) ---------------------------------------------------------------------------
     // The last kMaxHistory states of the sound. A step is a finished knob / switch gesture, a cable, a preset load
@@ -180,6 +185,10 @@ private:
     mutable std::map<juce::String, TagCacheEntry> tagCache;
     juce::StringArray readPresetTags (const juce::File& file) const;
     juce::String currentPresetName { "Init" };
+    mutable juce::StringArray favorites;
+    mutable bool favoritesRead = false;
+    juce::String favoriteKey (const PresetRef& ref) const;
+    juce::File favoritesFile() const { return getPresetRoot().getChildFile ("favorites.txt"); }
     bool soundModified = false, randomSound = false;
     RandomKind randomKind = RandomKind::Any;
     int randomCount = 0;
@@ -203,6 +212,7 @@ private:
 
     std::unique_ptr<juce::XmlElement> createStateXml();
     void restoreFromXml (const juce::XmlElement&);
+    static constexpr int kCutoffLaw = 2;     // states carry it; 1 (or none): CUTOFF knob of the old 10 Hz ... 11 kHz law
     static babushka::dsp::Params paramsFromState (const std::function<float (const char*)>& value);
     static babushka::dsp::ArpSeqParams arpParamsFromState (const std::function<float (const char*)>& value);
     void setSequences (const std::array<babushka::dsp::Sequence, 3>&);
