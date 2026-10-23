@@ -352,6 +352,22 @@ private:
             // the name under the jack, on two lines when it is long (EURORACK / OUT)
             auto jack = [&g] (juce::Point<float> c, const juce::String& line1, const juce::String& line2, juce::Colour textColour) {
                 drawJack (g, c);
+                if (line2 == "OUT")
+                {
+                    // both lines in one small box, tight round the longer name: black with white print on the coloured
+                    // plate, soft cream with dark print on the black one
+                    const bool onColour = textColour.getPerceivedBrightness() < 0.5f;
+                    const auto f = font (Weight::NarrowBold, type::jack, 0.03f);
+                    const float w = juce::jmax (juce::GlyphArrangement::getStringWidth (f, line1), juce::GlyphArrangement::getStringWidth (f, line2)) + 6.0f;
+                    const auto box = juce::Rectangle<float> (w, 24.0f).withCentre ({ c.x, c.y + 26.0f });
+                    g.setColour (onColour ? juce::Colour (0xff161514).withAlpha (0.88f) : juce::Colour (0xffe6e1d3).withAlpha (0.82f));
+                    g.fillRoundedRectangle (box, 1.2f);
+                    const auto print = onColour ? juce::Colour (0xffece6d6) : juce::Colour (0xff1a1918);
+                    for (auto [t, y] : { std::pair<juce::String, float> { line1, c.y + 20.0f }, { line2, c.y + 32.0f } })
+                        label (g, t, juce::Rectangle<float> (w - 2.0f, 12.0f).withCentre ({ c.x, y }), print, type::jack, Weight::NarrowBold,
+                               juce::Justification::centred, 0.03f);
+                    return;
+                }
                 label (g, line1, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, type::jack, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
                 if (line2.isNotEmpty())
