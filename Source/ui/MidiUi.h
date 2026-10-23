@@ -84,7 +84,7 @@ public:
         g.setColour (juce::Colour (0xff1d1c1a));
         g.fillRect (lr.getX(), lr.getY() - 30.0f, lr.getWidth(), 30.0f);
         for (auto [t, cx] : { std::pair<const char*, float> { "PARAMETER", 14.0f }, { "CC", 340.0f }, { "CHANNEL", 420.0f }, { "VALUE", 520.0f } })
-            label (g, t, { lr.getX() + cx, lr.getY() - 30.0f, 120.0f, 30.0f }, col::amber.brighter (0.2f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.16f);
+            label (g, t, { lr.getX() + cx, lr.getY() - 30.0f, 120.0f, 30.0f }, col::accent.brighter (0.2f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.16f);
         if (rows.empty())
             label (g, "No bindings. LEARN ON PANEL: click a control, move a knob. QUICK ASSIGN: move the keyboard's knobs one after another.",
                    lr.reduced (30.0f, 0.0f), col::ink.withAlpha (0.6f), 16.0f, Weight::NarrowSemi, juce::Justification::centred, 0.01f, 3);
@@ -164,7 +164,7 @@ private:
     {
         if (row < 0 || row >= (int) rows.size()) return;
         const auto& b = rows[(size_t) row];
-        if (selected) { g.setColour (col::amber.withAlpha (0.15f)); g.fillRect (0, 0, width, height); }
+        if (selected) { g.setColour (col::accent.withAlpha (0.15f)); g.fillRect (0, 0, width, height); }
         const float h = (float) height;
         label (g, map.parameterName (b.paramId), { 14.0f, 0.0f, 320.0f, h }, col::ink, 16.5f, Weight::NarrowSemi, juce::Justification::centredLeft, 0.01f);
         label (g, "CC " + juce::String (b.cc), { 340.0f, 0.0f, 80.0f, h }, col::ledAmber, 16.5f, Weight::NarrowBold, juce::Justification::centredLeft, 0.01f);
@@ -174,7 +174,7 @@ private:
         if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (processor.apvts.getParameter (b.paramId))) v = p->getValue();
         const juce::Rectangle<float> bar (520.0f, h * 0.5f - 3.0f, 150.0f, 6.0f);
         g.setColour (juce::Colour (0xff2a2826)); g.fillRoundedRectangle (bar, 3.0f);
-        g.setColour (col::amber); g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * v), 3.0f);
+        g.setColour (col::accent); g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * v), 3.0f);
         label (g, "x", { (float) width - 40.0f, 0.0f, 30.0f, h }, col::ink.withAlpha (0.6f), 17.0f, Weight::NarrowBold, juce::Justification::centred, 0.0f);
     }
     void listBoxItemClicked (int row, const juce::MouseEvent& e) override

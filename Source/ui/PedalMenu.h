@@ -294,7 +294,7 @@ public:
         label (g, tagline[pedal], { 0.0f, 64.0f, (float) getWidth(), 22.0f }, col::ink.withAlpha (0.7f), 15.0f, Weight::NarrowSemi, juce::Justification::centred, 0.02f);
 
         auto heading = [&g] (const juce::String& t, float x, float y, float w) {
-            label (g, t, { x, y, w, 20.0f }, col::amber.brighter (0.2f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.16f);
+            label (g, t, { x, y, w, 20.0f }, col::accent.brighter (0.2f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.16f);
         };
         heading ("PEDAL PRESETS", 34.0f, 98.0f, 260.0f);
         heading (pedal == 3 ? "HEADS" : pedal == 0 ? "CHARACTER" : "MODE", 340.0f, 98.0f, 200.0f);

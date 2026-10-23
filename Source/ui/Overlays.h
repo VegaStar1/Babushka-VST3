@@ -56,7 +56,7 @@ public:
     {
         setColour (juce::PopupMenu::backgroundColourId, juce::Colour (0xff151413));
         setColour (juce::PopupMenu::textColourId, col::ink);
-        setColour (juce::PopupMenu::highlightedBackgroundColourId, col::amber.withAlpha (0.35f));
+        setColour (juce::PopupMenu::highlightedBackgroundColourId, col::accent.withAlpha (0.35f));
         setColour (juce::PopupMenu::highlightedTextColourId, col::ledAmber.brighter (0.3f));
         setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff0b0a09));
         setColour (juce::ComboBox::textColourId, col::ledAmber);
@@ -65,14 +65,14 @@ public:
         setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff0b0a09));
         setColour (juce::TextEditor::textColourId, col::ledAmber);
         setColour (juce::Label::textColourId, col::ledAmber);
-        setColour (juce::Slider::trackColourId, col::amber);
+        setColour (juce::Slider::trackColourId, col::accent);
         setColour (juce::Slider::backgroundColourId, juce::Colour (0xff0b0a09));
         setColour (juce::Slider::thumbColourId, col::metalLight);
         setColour (juce::Slider::textBoxTextColourId, col::ledAmber);
         setColour (juce::Slider::textBoxOutlineColourId, col::outline.withAlpha (0.35f));
         setColour (juce::ToggleButton::tickColourId, col::ledAmber);
         setColour (juce::ToggleButton::tickDisabledColourId, col::ink.withAlpha (0.6f));
-        setColour (juce::ScrollBar::thumbColourId, col::amber.withAlpha (0.7f));
+        setColour (juce::ScrollBar::thumbColourId, col::accent.withAlpha (0.7f));
     }
     juce::Font getComboBoxFont (juce::ComboBox&) override { return font (Weight::NarrowSemi, 17.0f, 0.02f); }
     juce::Font getPopupMenuFont() override { return font (Weight::NarrowSemi, 17.0f, 0.02f); }
@@ -527,7 +527,7 @@ private:
         const bool isInit = b.key == kInitKey;
         const bool on = isInit ? initCursor : (b.key == branch && ! initCursor);
         if (b.key == "User" || b.key == "All") { g.setColour (col::outline.withAlpha (0.25f)); g.fillRect (12, 0, w - 24, 1); }
-        if (on) { g.setColour (col::amber.withAlpha (0.22f)); g.fillRect (0, 0, w, h); g.setColour (col::amber); g.fillRect (0, 0, 3, h); }
+        if (on) { g.setColour (col::accent.withAlpha (0.22f)); g.fillRect (0, 0, w, h); g.setColour (col::accent); g.fillRect (0, 0, 3, h); }
         float x = b.folder ? 36.0f : 14.0f;
         if (isInit)
         {
@@ -572,12 +572,12 @@ private:
         if (e.header)
         {
             g.setColour (juce::Colour (0xff1d1c1a)); g.fillRect (0, 0, w, h);
-            label (g, e.text.toUpperCase(), juce::Rectangle<float> (14.0f, 0.0f, (float) w - 20.0f, (float) h), col::amber.brighter (0.2f), 14.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.18f);
+            label (g, e.text.toUpperCase(), juce::Rectangle<float> (14.0f, 0.0f, (float) w - 20.0f, (float) h), col::accent.brighter (0.2f), 14.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.18f);
             return;
         }
         const auto& r = presets[(size_t) e.preset];
         const bool sel = isCurrentRow (row) || (row == presetCursor && currentRef() == nullptr);
-        if (sel) { g.setColour (col::amber.withAlpha (0.22f)); g.fillRect (0, 0, w, h); g.setColour (col::amber); g.fillRect (0, 0, 3, h); }
+        if (sel) { g.setColour (col::accent.withAlpha (0.22f)); g.fillRect (0, 0, w, h); g.setColour (col::accent); g.fillRect (0, 0, 3, h); }
         drawHeart (g, juce::Rectangle<float> ((float) w - (float) kHeartW + 12.0f, (float) h * 0.5f - 7.0f, 16.0f, 14.0f), processor.isFavorite (r));
         float right = (float) w - (float) kHeartW - 4.0f;
         if (! r.factory)
@@ -626,8 +626,8 @@ private:
     // The focused side has a bright frame.
     void showZone()
     {
-        branchList.setColour (juce::ListBox::outlineColourId, zone == Zone::Branches ? col::amber.withAlpha (0.9f) : col::outline.withAlpha (0.3f));
-        presetList.setColour (juce::ListBox::outlineColourId, zone == Zone::Presets ? col::amber.withAlpha (0.9f) : col::outline.withAlpha (0.3f));
+        branchList.setColour (juce::ListBox::outlineColourId, zone == Zone::Branches ? col::accent.withAlpha (0.9f) : col::outline.withAlpha (0.3f));
+        presetList.setColour (juce::ListBox::outlineColourId, zone == Zone::Presets ? col::accent.withAlpha (0.9f) : col::outline.withAlpha (0.3f));
         branchList.repaint(); presetList.repaint();
     }
 

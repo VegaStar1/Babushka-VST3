@@ -393,7 +393,7 @@ private:
             const float left = juce::jmax (lo, l.x - natural * 0.5f), right = juce::jmin (hi, l.x + natural * 0.5f);
             const float x = 0.5f * (left + right), w = right - left;
             const auto t = l.text; const auto c = l.colour; const float y = l.y;
-            op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, type::jack, Weight::NarrowBold, w, 0.03f); });
+            op ([=] (juce::Graphics& g) { drawJackName (g, t, { x, y }, w, c, type::jack, isOutputName (t)); });
         }
         jackLabels.clear();
     }
@@ -591,9 +591,9 @@ private:
         textAt ("DECAY", 1144, 344, ink, type::control, Weight::NarrowBold, 70.0f);
         ticks (1144, 404, 50, 11, ink); knob ("release", 1144, 404, 50, [] (double v) { return fmt::envTime (v, 0.002); });
         textAt ("RELEASE", 1144, 441, ink, type::control, Weight::NarrowBold, 70.0f);
-        sustain = std::make_unique<Fader> (apvts, "sustain", 232.0f);
+        sustain = std::make_unique<Fader> (apvts, "sustain", 222.0f);
         sustain->hints = &hints;
-        sustain->setCentrePosition (1246, 318);
+        sustain->setCentrePosition (1246, 313);
         addAndMakeVisible (*sustain);
         placed (*sustain);
         learnables.push_back ({ sustain.get(), "sustain" });
@@ -618,9 +618,9 @@ private:
         placeJackLabels();                  // still in the front zone
         zone = Zone::Keys;
         glideKnob = knob ("glide", 101, 606, 40, [] (double v) { return fmt::glide (v); });
-        playPad = addPad (S.play, 162, 610, 40);
-        holdPad = addPad (S.hold, 207, 610, 40);
-        tapPad  = addPad (S.tap, 252, 610, 40);
+        playPad = addPad (S.play, 162, 610, 34);
+        holdPad = addPad (S.hold, 207, 610, 34);
+        tapPad  = addPad (S.tap, 252, 610, 34);
         setupPads();
         pitchWheel = std::make_unique<Wheel> (true, 196.0f, S.wheel);
         pitchWheel->title = "Pitch";
@@ -668,8 +668,8 @@ private:
         drawText (g, "[< KB]", kPadX[0], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
         drawText (g, "[SHIFT]", kPadX[1], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
         drawText (g, "[KB >]", kPadX[2], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
-        drawPill (g, "PLAY", kPadX[0], kl.pillY, 42, S.pillArp, lhInk); drawPill (g, "HOLD", kPadX[1], kl.pillY, 42, S.pillArp, lhInk);
-        drawPill (g, "TAP", kPadX[2], kl.pillY, 42, S.pillArp, lhInk);
+        drawPill (g, "PLAY", kPadX[0], kl.pillY, 39, S.pillArp, lhInk); drawPill (g, "HOLD", kPadX[1], kl.pillY, 39, S.pillArp, lhInk);
+        drawPill (g, "TAP", kPadX[2], kl.pillY, 39, S.pillArp, lhInk);
         drawText (g, "(TIE)", kPadX[0], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 44.0f, 0.02f);
         drawText (g, "(REST)", kPadX[1], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 44.0f, 0.02f);
         drawText (g, "(ACCENT)", kPadX[2], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 46.0f, 0.02f);

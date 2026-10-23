@@ -15,17 +15,18 @@ constexpr int kW = 1500, kH = 1085;      // logical size of the whole instrument
 
 namespace col
 {
-    inline const juce::Colour chassis   { 0xff0e0e0e };
-    inline const juce::Colour panel     { 0xff1d1c1b };      // black module plates
+    inline const juce::Colour chassis   { 0xff141414 };
+    inline const juce::Colour panel     { 0xff19191a };      // black module plates
     inline const juce::Colour panelLow  { 0xff151413 };
     inline const juce::Colour outline   { 0xffd8d2c4 };      // thin line round a module
     inline const juce::Colour ink       { 0xffe9e4d6 };      // text on dark plates
     inline const juce::Colour inkDark   { 0xff161514 };      // text on coloured plates
-    inline const juce::Colour amber     { 0xffd9a73c };      // ARP / SEQ
-    inline const juce::Colour teal      { 0xff6a9aa6 };      // OSCILLATORS and the title strip
-    inline const juce::Colour olive     { 0xff88a552 };      // FILTER
-    inline const juce::Colour brick     { 0xffb94a3d };      // SPRING REVERB
-    inline const juce::Colour cream     { 0xffd9cfb4 };      // title strip
+    inline const juce::Colour amber     { 0xffd9d94c };      // ARP / SEQ: lemon enamel
+    inline const juce::Colour teal      { 0xff86c8de };      // OSCILLATORS and the title strip: sky blue
+    inline const juce::Colour olive     { 0xff68c94a };      // FILTER: grass green
+    inline const juce::Colour brick     { 0xffd7353b };      // SPRING REVERB: red
+    inline const juce::Colour cream     { 0xffd9cfb4 };
+    inline const juce::Colour accent    { 0xffffbe52 };      // amber of the displays and of what is selected in the menus
     inline const juce::Colour ledRed    { 0xffff4a3a };
     inline const juce::Colour ledAmber  { 0xffffb540 };
     inline const juce::Colour ledGreen  { 0xff7be07a };
@@ -49,15 +50,17 @@ struct Skin
 
 inline const std::vector<Skin>& skins()
 {
+    // Babushka: the enamel colours of the hardware - lemon ARP/SEQ, sky-blue OSCILLATORS and title strip, grass-green
+    // FILTER, red SPRING REVERB; hard plastic keys that light in their own colour.
     static const std::vector<Skin> all {
         { "Babushka", juce::Colour (0xff0e0e0e), col::panel, col::amber, col::teal, col::olive, col::brick, col::amber,
-          col::teal, col::olive, juce::Colour (0xff62c9d8), col::ledAmber.withAlpha (0.95f), col::cream,
-          col::brick.brighter (0.25f), col::ledGreen, juce::Colour (0xff62c9d8), col::ledAmber, juce::Colour (0xff77797c) },
-        { "Classic Black", juce::Colour (0xff0b0b0b), juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a),
-          juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a), juce::Colour (0xff1a1a1a),
+          col::teal, col::olive, col::teal, col::amber, col::teal,
+          juce::Colour (0xffe8453f), juce::Colour (0xff5fd04a), juce::Colour (0xff6fc0de), juce::Colour (0xffe2d84a), juce::Colour (0xffece8de) },
+        { "Classic Black", juce::Colour (0xff0b0b0b), juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c),
+          juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c),
           juce::Colours::transparentBlack, juce::Colours::transparentBlack, juce::Colours::transparentBlack, juce::Colours::transparentBlack,
-          juce::Colour (0xff1c1c1c), juce::Colour (0xffff5a2a), juce::Colour (0xffff3b30), juce::Colour (0xffff3b30), juce::Colour (0xffff3b30),
-          juce::Colour (0xffb9bbbd) },
+          juce::Colour (0xff1b1b1c), juce::Colour (0xffff3a2a), juce::Colour (0xffff3a2a), juce::Colour (0xffff3a2a), juce::Colour (0xffff3a2a),
+          juce::Colour (0xffece8de) },
     };
     return all;
 }
@@ -148,21 +151,183 @@ inline void grain (juce::Graphics& g, juce::Rectangle<float> area, float opacity
     g.fillRect (area);
 }
 
-// ---- module plate: dark or coloured panel with a thin outline just inside the edge ------------------------------
+// ---- surface textures ------------------------------------------------------------------------------------------
+// Tiles made once from seeded, tileable value noise. A tile is a height field lit from the top left and stored as
+// white (lit) and black (shaded) at low alpha, so it shades whatever colour is under it.
+namespace detail
+{
+    // Tileable value noise: `cells` lattice cells across the tile, smooth interpolation, `octaves` octaves.
+    inline std::vector<float> noiseField (int size, int cells, int octaves, juce::int64 seed)
+    {
+        std::vector<float> h ((size_t) (size * size), 0.0f);
+        float amp = 1.0f, total = 0.0f;
+        for (int o = 0; o < octaves; ++o, cells *= 2, amp *= 0.5f)
+        {
+            juce::Random r (seed + o * 7919);
+            std::vector<float> lattice ((size_t) (cells * cells));
+            for (auto& v : lattice) v = r.nextFloat();
+            auto at = [&] (int x, int y) { return lattice[(size_t) (((y % cells + cells) % cells) * cells + ((x % cells + cells) % cells))]; };
+            const float step = (float) cells / (float) size;
+            for (int y = 0; y < size; ++y)
+                for (int x = 0; x < size; ++x)
+                {
+                    const float fx = (float) x * step, fy = (float) y * step;
+                    const int ix = (int) fx, iy = (int) fy;
+                    float tx = fx - (float) ix, ty = fy - (float) iy;
+                    tx = tx * tx * (3.0f - 2.0f * tx); ty = ty * ty * (3.0f - 2.0f * ty);
+                    const float v = juce::jmap (ty, juce::jmap (tx, at (ix, iy), at (ix + 1, iy)), juce::jmap (tx, at (ix, iy + 1), at (ix + 1, iy + 1)));
+                    h[(size_t) (y * size + x)] += amp * v;
+                }
+            total += amp;
+        }
+        for (auto& v : h) v /= total;
+        return h;
+    }
+
+    // Shading tile from a height field: lit = white, shaded = black; `strength` is the alpha at full slope.
+    inline juce::Image litTile (int size, int cells, int octaves, juce::int64 seed, float relief, float strength)
+    {
+        const auto h = noiseField (size, cells, octaves, seed);
+        juce::Image im (juce::Image::ARGB, size, size, true);
+        juce::Image::BitmapData d (im, juce::Image::BitmapData::writeOnly);
+        auto H = [&] (int x, int y) { return h[(size_t) (((y + size) % size) * size + ((x + size) % size))]; };
+        const float lx = -0.62f, ly = -0.62f;                    // light from the top left
+        for (int y = 0; y < size; ++y)
+            for (int x = 0; x < size; ++x)
+            {
+                const float dx = (H (x + 1, y) - H (x - 1, y)) * relief, dy = (H (x, y + 1) - H (x, y - 1)) * relief;
+                const float shade = juce::jlimit (-1.0f, 1.0f, -(dx * lx + dy * ly));
+                const auto a = (juce::uint8) juce::jlimit (0, 255, (int) (std::abs (shade) * strength * 255.0f));
+                d.setPixelColour (x, y, (shade > 0 ? juce::Colours::white : juce::Colours::black).withAlpha (a));
+            }
+        return im;
+    }
+
+    // Broad blotches of slightly lighter and darker paint.
+    inline juce::Image mottleTile()
+    {
+        const int size = 512;
+        const auto h = noiseField (size, 5, 3, 11);
+        juce::Image im (juce::Image::ARGB, size, size, true);
+        juce::Image::BitmapData d (im, juce::Image::BitmapData::writeOnly);
+        for (int y = 0; y < size; ++y)
+            for (int x = 0; x < size; ++x)
+            {
+                const float v = (h[(size_t) (y * size + x)] - 0.5f) * 2.0f;
+                d.setPixelColour (x, y, (v > 0 ? juce::Colours::white : juce::Colours::black).withAlpha ((juce::uint8) juce::jlimit (0, 255, (int) (std::abs (v) * 16.0f))));
+            }
+        return im;
+    }
+}
+
+// Enamel: a fine "orange peel" relief; the chassis: rougher powder coat.
+inline const juce::Image& enamelTile() { static const juce::Image t = detail::litTile (256, 128, 2, 3, 2.0f, 0.15f); return t; }
+inline const juce::Image& powderTile() { static const juce::Image t = detail::litTile (256, 128, 2, 5, 3.0f, 0.40f); return t; }
+inline const juce::Image& mottle()     { static const juce::Image t = detail::mottleTile(); return t; }
+
+inline void fillTiled (juce::Graphics& g, const juce::Image& tile, const juce::Path& area, float opacity)
+{
+    juce::Graphics::ScopedSaveState s (g);
+    g.reduceClipRegion (area);
+    g.setTiledImageFill (tile, 0, 0, opacity);
+    g.fillPath (area);
+}
+
+// Light use: hairline scratches, a few chips on the corners and edges (bare aluminium under the paint), dust and
+// rubbed edges. Seeded by the plate, so every plate has its own marks and they are the same on every redraw.
+inline void drawWear (juce::Graphics& g, juce::Rectangle<float> r, bool coloured, float amount = 1.0f)
+{
+    juce::Random rnd ((juce::int64) (r.getX() * 131.0f + r.getY() * 977.0f + r.getWidth() * 7.0f + r.getHeight()));
+    const float area = r.getWidth() * r.getHeight();
+    juce::Graphics::ScopedSaveState s (g);
+    g.reduceClipRegion (r.toNearestInt());
+    // scratches: short, slightly curved, a lighter line over a hint of shadow
+    const int scratches = (int) ((3.0f + area / 30000.0f) * amount);
+    for (int i = 0; i < scratches; ++i)
+    {
+        const float x = r.getX() + 8.0f + rnd.nextFloat() * (r.getWidth() - 16.0f), y = r.getY() + 8.0f + rnd.nextFloat() * (r.getHeight() - 16.0f);
+        const float len = 5.0f + rnd.nextFloat() * 15.0f;
+        const float a = (rnd.nextFloat() - 0.5f) * 1.2f + (rnd.nextFloat() < 0.3f ? juce::MathConstants<float>::halfPi : 0.0f);
+        juce::Path p;
+        p.startNewSubPath (x, y);
+        p.quadraticTo (x + 0.5f * len * std::cos (a) + rnd.nextFloat() - 0.5f, y + 0.5f * len * std::sin (a) + rnd.nextFloat() - 0.5f, x + len * std::cos (a), y + len * std::sin (a));
+        g.setColour (juce::Colours::black.withAlpha (0.20f));
+        g.strokePath (p, juce::PathStrokeType (0.6f), juce::AffineTransform::translation (0.5f, 0.6f));
+        g.setColour (juce::Colours::white.withAlpha (0.14f + 0.14f * rnd.nextFloat()));
+        g.strokePath (p, juce::PathStrokeType (0.4f));
+    }
+    // chips: mostly at the corners
+    const juce::Point<float> corners[] = { r.getTopLeft(), r.getTopRight(), r.getBottomLeft(), r.getBottomRight() };
+    const int chips = (int) ((coloured ? 3 : 2) * amount);
+    for (int i = 0; i < chips; ++i)
+    {
+        juce::Point<float> c = corners[rnd.nextInt (4)];
+        if (i >= 2 && rnd.nextFloat() > 0.75f)
+            c = rnd.nextBool() ? juce::Point<float> (r.getX() + rnd.nextFloat() * r.getWidth(), rnd.nextBool() ? r.getY() : r.getBottom())
+                               : juce::Point<float> (rnd.nextBool() ? r.getX() : r.getRight(), r.getY() + rnd.nextFloat() * r.getHeight());
+        const float size = 1.4f + rnd.nextFloat() * 1.8f;
+        juce::Path chip;
+        for (int k = 0; k < 7; ++k)
+        {
+            const float a = (float) k / 7.0f * juce::MathConstants<float>::twoPi + (rnd.nextFloat() - 0.5f) * 0.6f;
+            const float rr = size * (0.45f + 0.55f * rnd.nextFloat());
+            if (k == 0) chip.startNewSubPath (c.x + rr * std::cos (a), c.y + rr * std::sin (a)); else chip.lineTo (c.x + rr * std::cos (a), c.y + rr * std::sin (a));
+        }
+        chip.closeSubPath();
+        g.setColour (coloured ? juce::Colour (0xff8d9195) : juce::Colour (0xff4a4c4e));
+        g.fillPath (chip);
+        juce::ColourGradient sh (juce::Colours::white.withAlpha (0.5f), c.x - size, c.y - size, juce::Colours::black.withAlpha (0.35f), c.x + size, c.y + size, false);
+        g.setGradientFill (sh); g.fillPath (chip);
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.strokePath (chip, juce::PathStrokeType (0.6f));
+    }
+    // dust
+    const int specks = (int) (area / 900.0f * amount);
+    for (int i = 0; i < specks; ++i)
+    {
+        const float d = 0.5f + rnd.nextFloat();
+        g.setColour (juce::Colours::white.withAlpha (0.06f + 0.14f * rnd.nextFloat()));
+        g.fillEllipse (r.getX() + rnd.nextFloat() * r.getWidth(), r.getY() + rnd.nextFloat() * r.getHeight(), d, d);
+    }
+    // edges rubbed thin in a few places
+    juce::Path edge; edge.addRoundedRectangle (r.reduced (0.5f), 3.0f);
+    juce::Path dashed;
+    const float dashes[] = { 14.0f + 26.0f * rnd.nextFloat(), 20.0f + 50.0f * rnd.nextFloat(), 5.0f + 13.0f * rnd.nextFloat(), 30.0f + 60.0f * rnd.nextFloat() };
+    juce::PathStrokeType (1.2f).createDashedStroke (dashed, edge, dashes, 4);
+    g.setColour (juce::Colours::white.withAlpha (0.10f));
+    g.fillPath (dashed);
+}
+
+// Enamel finish over a filled area: orange-peel relief, blotches, a broad gloss from the top-left light.
+inline void enamel (juce::Graphics& g, const juce::Path& area, juce::Rectangle<float> r)
+{
+    fillTiled (g, enamelTile(), area, 1.0f);
+    fillTiled (g, mottle(), area, 0.9f);
+    juce::Graphics::ScopedSaveState s (g);
+    g.reduceClipRegion (area);
+    juce::ColourGradient gloss (juce::Colours::white.withAlpha (0.18f), r.getX() + r.getWidth() * 0.22f, r.getY() - r.getHeight() * 0.08f,
+                                juce::Colours::white.withAlpha (0.0f), r.getX() + r.getWidth() * 0.22f + juce::jmax (r.getWidth(), r.getHeight()) * 0.7f, r.getY() + r.getHeight() * 0.5f, true);
+    g.setGradientFill (gloss);
+    g.fillRect (r);
+}
+
+// ---- module plate: enamelled panel with a thin outline just inside the edge, lightly worn -------------------------
 inline void drawPlate (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour fill, bool outlined = true)
 {
     g.setColour (juce::Colours::black.withAlpha (0.55f));
     g.fillRoundedRectangle (r.expanded (1.5f).translated (0.0f, 1.5f), 3.5f);                    // contact shadow
-    juce::ColourGradient grad (fill.brighter (0.06f), r.getX(), r.getY(), fill.darker (0.12f), r.getX(), r.getBottom(), false);
+    juce::ColourGradient grad (fill.brighter (0.08f), r.getX(), r.getY(), fill.darker (0.14f), r.getX(), r.getBottom(), false);
     g.setGradientFill (grad);
-    g.fillRoundedRectangle (r, 2.5f);
-    grain (g, r, 0.9f);
-    g.setColour (juce::Colours::white.withAlpha (0.10f));
+    juce::Path face; face.addRoundedRectangle (r, 2.5f);
+    g.fillPath (face);
+    enamel (g, face, r);
+    drawWear (g, r, fill.getPerceivedBrightness() > 0.3f);
+    g.setColour (juce::Colours::white.withAlpha (0.16f));
     g.drawRoundedRectangle (r.reduced (0.5f), 2.5f, 1.0f);                                         // bevel highlight
     if (outlined)
     {
-        g.setColour (col::outline.withAlpha (0.78f));
-        g.drawRoundedRectangle (r.reduced (4.5f), 2.0f, 1.0f);
+        g.setColour ((fill.getPerceivedBrightness() > 0.42f ? col::inkDark : col::outline).withAlpha (0.78f));
+        g.drawRoundedRectangle (r.reduced (4.5f), 2.0f, 1.1f);
     }
 }
 
