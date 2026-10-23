@@ -504,7 +504,7 @@ public:
         for (int i = 0; i < 3; ++i)
         {
             drawJack (g, { kJackX[i], kJackY }, 9.5f);
-            drawJackName (g, names[i], { kJackX[i], 38.0f }, 36.0f, look.ink, type::jack, i == 2);
+            drawJackName (g, names[i], { kJackX[i], 38.0f }, 36.0f, i == 2 ? col::inkDark : look.ink, type::jack, i == 2);
         }
         for (int i = 0; i < 2; ++i)
             label (g, info.knobs[(size_t) i].name, juce::Rectangle<float> (48.0f, 14.0f).withCentre ({ kKnobX[i], kNamesY }), look.ink, type::control,

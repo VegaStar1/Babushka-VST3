@@ -352,17 +352,6 @@ private:
             // the name under the jack, on two lines when it is long (EURORACK / OUT)
             auto jack = [&g] (juce::Point<float> c, const juce::String& line1, const juce::String& line2, juce::Colour textColour) {
                 drawJack (g, c);
-                const bool out = line2 == "OUT";
-                if (out)
-                {
-                    // both lines on one white plaque
-                    const auto box = juce::Rectangle<float> (54.0f, 26.0f).withCentre ({ c.x, c.y + 26.0f });
-                    g.setColour (juce::Colour (0xfff1ede2)); g.fillRoundedRectangle (box, 1.5f);
-                    for (auto [t, y] : { std::pair<juce::String, float> { line1, c.y + 20.0f }, { line2, c.y + 32.0f } })
-                        label (g, t, juce::Rectangle<float> (50.0f, 14.0f).withCentre ({ c.x, y }), juce::Colour (0xff151414), type::jack, Weight::NarrowBold,
-                               juce::Justification::centred, 0.03f);
-                    return;
-                }
                 label (g, line1, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, type::jack, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
                 if (line2.isNotEmpty())

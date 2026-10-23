@@ -764,13 +764,15 @@ inline void drawJackName (juce::Graphics& g, const juce::String& text, juce::Poi
                           bool plaque = false)
 {
     if (! plaque) { label (g, text, juce::Rectangle<float> (maxWidth, size * 1.5f).withCentre (centre), ink, size, Weight::NarrowBold, juce::Justification::centred, 0.03f); return; }
-    const float w = juce::jmin (maxWidth, juce::GlyphArrangement::getStringWidth (font (Weight::NarrowBold, size, 0.03f), text) + 8.0f);
-    const auto box = juce::Rectangle<float> (w, size + 3.5f).withCentre (centre);
-    g.setColour (juce::Colour (0xfff1ede2));
-    g.fillRoundedRectangle (box, 1.5f);
-    g.setColour (juce::Colours::black.withAlpha (0.2f));
-    g.drawRoundedRectangle (box, 1.5f, 0.5f);
-    label (g, text, box.reduced (3.0f, 0.0f), juce::Colour (0xff151414), size, Weight::NarrowBold, juce::Justification::centred, 0.03f);
+    // A small printed box, as on the hardware: black with white print on the coloured plates and the pedals, a soft cream
+    // box with dark print on the black plates. Tight round the name, so it does not shout.
+    const bool onColour = ink.getPerceivedBrightness() < 0.5f;             // dark print: the plate is coloured
+    const float w = juce::jmin (maxWidth, juce::GlyphArrangement::getStringWidth (font (Weight::NarrowBold, size, 0.03f), text) + 5.0f);
+    const auto box = juce::Rectangle<float> (w, size + 1.5f).withCentre (centre);
+    g.setColour (onColour ? juce::Colour (0xff161514).withAlpha (0.88f) : juce::Colour (0xffe6e1d3).withAlpha (0.82f));
+    g.fillRoundedRectangle (box, 1.2f);
+    label (g, text, box.reduced (1.5f, 0.0f), onColour ? juce::Colour (0xffece6d6) : juce::Colour (0xff1a1918), size, Weight::NarrowBold,
+           juce::Justification::centred, 0.03f);
 }
 // ---- plastic key of the dialogs and the bottom strip --------------------------------------------------------------
 // A black key in a black frame; `lit`: lit amber from inside (a chosen tag, the main button of a dialog).
