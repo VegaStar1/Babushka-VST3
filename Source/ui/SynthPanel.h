@@ -22,18 +22,14 @@ public:
     PlateButton (const juce::String& t, float textHeight = type::title) : text (t), height (textHeight) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
     std::function<void()> onClick, onRightClick;          // right click (or ctrl-click on a Mac) opens a menu where there is one
     void setText (const juce::String& t) { text = t; repaint(); }
+    bool primary = false;                                  // the main button of a dialog: lit amber
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (1.5f);
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.fillRoundedRectangle (r.translated (0.0f, 1.5f), 4.0f);
-        juce::ColourGradient grad (juce::Colour (down ? 0xff1c1b1a : 0xff3a3836), r.getX(), r.getY(), juce::Colour (down ? 0xff2d2b29 : 0xff161514), r.getX(), r.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillRoundedRectangle (r, 4.0f);
-        g.setColour (col::outline.withAlpha (0.45f));
-        g.drawRoundedRectangle (r, 4.0f, 1.0f);
-        label (g, text, r.translated (0.0f, down ? 1.0f : 0.0f), col::ink.withAlpha (isEnabled() ? 1.0f : 0.35f), height, Weight::NarrowBold,
-               juce::Justification::centred, 0.1f);
+        const auto r = getLocalBounds().toFloat().reduced (3.0f);
+        const bool lit = primary && isEnabled();
+        drawKey (g, r, lit, down);
+        label (g, text, r.translated (0.0f, down ? 1.0f : 0.0f), lit ? juce::Colour (0xff2a1700) : col::ink.withAlpha (isEnabled() ? 1.0f : 0.35f), height,
+               Weight::NarrowBold, juce::Justification::centred, 0.12f);
     }
     void enablementChanged() override { repaint(); }
     void mouseDown (const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; down = true; repaint(); }

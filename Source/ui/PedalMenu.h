@@ -16,13 +16,9 @@ public:
     void setLit (bool on) { if (on != lit) { lit = on; repaint(); } }
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (1.0f);
-        const float rad = r.getHeight() * 0.5f;
-        g.setColour (lit ? col::ledAmber.withAlpha (0.92f) : juce::Colour (0xff1c1b19));
-        g.fillRoundedRectangle (r, rad);
-        g.setColour (lit ? col::ledAmber : col::outline.withAlpha (0.4f));
-        g.drawRoundedRectangle (r, rad, 1.0f);
-        label (g, text, r, lit ? col::inkDark : col::ink, 13.0f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+        const auto r = getLocalBounds().toFloat().reduced (2.5f);
+        drawKey (g, r, lit, lit, 3.5f);
+        label (g, text, r, lit ? juce::Colour (0xff2a1700) : col::ink, 13.0f, Weight::NarrowBold, juce::Justification::centred, 0.1f);
     }
     void mouseDown (const juce::MouseEvent&) override { if (onHold) onHold (true); }
     void mouseUp (const juce::MouseEvent&) override { if (onHold) onHold (false); }
@@ -242,6 +238,7 @@ public:
         nameField.onReturnKey = [this] { save(); };
         deleteButton.onClick = [this] { removeSelected(); };
         closeButton.onClick = [this] { if (onClose) onClose(); };
+        closeButton.primary = true;
 
         addAndMakeVisible (onChip);
         onChip.onClick = [this] { setPedalParam (processor, info.onId, pedalValue (processor, info.onId) > 0.5f ? 0.0f : 1.0f); refresh(); };
@@ -289,16 +286,20 @@ public:
     void paint (juce::Graphics& g) override
     {
         const auto frame = getLocalBounds().toFloat().reduced (4.0f);
-        drawDialogFrame (g, frame, info.name);
-        // a stripe in the pedal's colour under the title
-        g.setColour (look.top);
-        g.fillRoundedRectangle (juce::Rectangle<float> (120.0f, 4.0f).withCentre ({ frame.getCentreX(), 58.0f }), 2.0f);
+        drawDialogFrame (g, frame, info.name, look.top);         // the window in the colour of the pedal's box
+        drawScreens (g, *this);
+        drawScreenBezel (g, picture.getBounds().toFloat());
         static const char* tagline[] = { "warm drive: tube, tape, transformer, diodes", "the swirl of the classic JFET and OTA phasers",
                                          "bucket-brigade chorus with its compander and hiss", "three playback heads on a loop of tape" };
-        label (g, tagline[pedal], { 0.0f, 64.0f, (float) getWidth(), 22.0f }, col::ink.withAlpha (0.7f), 15.0f, Weight::NarrowSemi, juce::Justification::centred, 0.02f);
+        const auto ink = inkOn (look.top);
+        label (g, tagline[pedal], { 0.0f, 64.0f, (float) getWidth(), 22.0f }, ink.withAlpha (0.8f), 15.0f, Weight::NarrowSemi, juce::Justification::centred, 0.02f);
 
-        auto heading = [&g] (const juce::String& t, float x, float y, float w) {
-            label (g, t, { x, y, w, 20.0f }, col::accent.brighter (0.2f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.16f);
+        // headings on white plaques, as the outputs on the panel
+        auto heading = [&g] (const juce::String& t, float x, float y, float) {
+            const float w = juce::GlyphArrangement::getStringWidth (font (Weight::NarrowBold, 12.0f, 0.16f), t) + 14.0f;
+            const juce::Rectangle<float> box (x, y + 1.0f, w, 18.0f);
+            g.setColour (juce::Colour (0xfff1ede2)); g.fillRoundedRectangle (box, 2.0f);
+            label (g, t, box, juce::Colour (0xff151414), 12.0f, Weight::NarrowBold, juce::Justification::centred, 0.16f);
         };
         heading ("PEDAL PRESETS", 34.0f, 98.0f, 260.0f);
         heading (pedal == 3 ? "HEADS" : pedal == 0 ? "CHARACTER" : "MODE", 340.0f, 98.0f, 200.0f);
@@ -307,17 +308,19 @@ public:
         for (size_t i = 0; i < knobs.size(); ++i)
         {
             const auto b = knobs[i]->getBounds().toFloat();
-            label (g, info.knobs[i].name, { b.getCentreX() - 50.0f, b.getBottom() + 1.0f, 100.0f, 18.0f }, col::ink, 13.5f, Weight::NarrowBold,
+            label (g, info.knobs[i].name, { b.getCentreX() - 50.0f, b.getBottom() + 1.0f, 100.0f, 18.0f }, ink, 13.5f, Weight::NarrowBold,
                    juce::Justification::centred, 0.08f);
             const auto synced = knobs[i]->shownText ? knobs[i]->shownText() : juce::String();
-            label (g, synced.isNotEmpty() ? synced : pedalText (processor, info.knobs[i].id), { b.getCentreX() - 50.0f, b.getBottom() + 18.0f, 100.0f, 18.0f }, col::ledAmber, 13.5f,
+            const juce::Rectangle<float> readout (b.getCentreX() - 34.0f, b.getBottom() + 20.0f, 68.0f, 18.0f);   // a small amber screen
+            drawScreenBezel (g, readout);
+            label (g, synced.isNotEmpty() ? synced : pedalText (processor, info.knobs[i].id), readout.reduced (2.0f, 0.0f), col::accent, 13.0f,
                    Weight::NarrowSemi, juce::Justification::centred, 0.02f);
         }
         // what the selected preset is about, or what the controls do
-        label (g, about, { 340.0f, 482.0f, (float) getWidth() - 374.0f, 44.0f }, col::ink.withAlpha (0.8f), 15.0f, Weight::Narrow, juce::Justification::topLeft, 0.01f, 2);
+        label (g, about, { 340.0f, 482.0f, (float) getWidth() - 374.0f, 44.0f }, ink.withAlpha (0.85f), 15.0f, Weight::Narrow, juce::Justification::topLeft, 0.01f, 2);
         juce::String foot = juce::String (info.knobs[0].name) + " and " + info.knobs[1].name + " are also on the pedal. LOCK keeps this pedal when presets change.";
         if (processor.getFxLocks() & BabushkaProcessor::kLockAllFx) foot = "FX lock is on in the preset block: every pedal stays as it is when presets change.";
-        label (g, foot, { 34.0f, (float) getHeight() - 58.0f, (float) getWidth() - 220.0f, 30.0f }, col::ink.withAlpha (0.6f), 14.0f, Weight::Narrow,
+        label (g, foot, { 34.0f, (float) getHeight() - 58.0f, (float) getWidth() - 220.0f, 30.0f }, ink.withAlpha (0.75f), 14.0f, Weight::Narrow,
                juce::Justification::centredLeft, 0.01f);
     }
 

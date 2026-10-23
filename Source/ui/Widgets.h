@@ -776,4 +776,50 @@ inline void drawJackName (juce::Graphics& g, const juce::String& text, juce::Poi
     g.drawRoundedRectangle (box, 1.5f, 0.5f);
     label (g, text, box.reduced (3.0f, 0.0f), juce::Colour (0xff151414), size, Weight::NarrowBold, juce::Justification::centred, 0.03f);
 }
+// ---- plastic key of the dialogs and the bottom strip --------------------------------------------------------------
+// A black key in a black frame; `lit`: lit amber from inside (a chosen tag, the main button of a dialog).
+inline void drawKey (juce::Graphics& g, juce::Rectangle<float> r, bool lit, bool down, float radius = 4.5f)
+{
+    g.setColour (juce::Colours::black.withAlpha (0.6f));
+    g.fillRoundedRectangle (r.translated (0.0f, 2.5f), radius + 1.0f);
+    g.setColour (juce::Colour (0xff2c2c2c));
+    g.fillRoundedRectangle (r.expanded (1.0f), radius + 1.5f);
+    g.setColour (juce::Colour (0xff0a0a0a));
+    g.fillRoundedRectangle (r, radius + 0.5f);
+    const auto face = r.reduced (2.5f).translated (0.0f, down ? 1.0f : 0.0f);
+    if (lit)
+    {
+        drawGlow (g, r.getCentre(), juce::jmax (r.getWidth(), r.getHeight()) * 0.75f, col::accent, 0.55f);
+        juce::ColourGradient fg (juce::Colour (0xfffff3d6), face.getCentreX(), face.getCentreY() - face.getHeight() * 0.1f, juce::Colour (0xffb46e10),
+                                 face.getX(), face.getY(), true);
+        fg.addColour (0.45, juce::Colour (0xffffcf6e)); fg.addColour (0.8, juce::Colour (0xfff0a22e));
+        g.setGradientFill (fg);
+        g.fillRoundedRectangle (face, radius);
+        g.setColour (col::accent.withAlpha (0.55f));
+        g.drawRoundedRectangle (r.expanded (1.5f), radius + 2.0f, 1.4f);
+    }
+    else
+    {
+        juce::ColourGradient fg (juce::Colour (down ? 0xff1c1c1c : 0xff444444), 0.0f, face.getY(), juce::Colour (0xff151515), 0.0f, face.getBottom(), false);
+        fg.addColour (0.48, juce::Colour (0xff262626)); fg.addColour (0.55, juce::Colour (0xff151515));
+        g.setGradientFill (fg);
+        g.fillRoundedRectangle (face, radius);
+    }
+    g.setColour (juce::Colours::white.withAlpha (lit ? 0.7f : 0.22f));
+    g.drawLine (face.getX() + radius, face.getY() + 0.7f, face.getRight() - radius, face.getY() + 0.7f, 0.9f);
+}
+
+// A screen of a dialog (a list, a text field, a menu): a chrome bezel round dark glass.
+inline void drawScreenBezel (juce::Graphics& g, juce::Rectangle<float> r)
+{
+    g.setColour (juce::Colours::black.withAlpha (0.55f));
+    g.fillRoundedRectangle (r.expanded (3.0f).translated (0.0f, 2.0f), 6.0f);
+    juce::ColourGradient chrome (juce::Colour (0xffd9dbde), 0.0f, r.getY() - 3.0f, juce::Colour (0xffcfd2d5), 0.0f, r.getBottom() + 3.0f, false);
+    chrome.addColour (0.22, juce::Colour (0xff6e7277)); chrome.addColour (0.55, juce::Colour (0xff3c3f42)); chrome.addColour (0.85, juce::Colour (0xff8d9196));
+    g.setGradientFill (chrome);
+    g.fillRoundedRectangle (r.expanded (3.0f), 6.0f);
+    g.setColour (juce::Colour (0xff0e0a05));
+    g.fillRoundedRectangle (r, 4.0f);
+}
+
 } // namespace babushka::ui

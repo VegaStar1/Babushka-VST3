@@ -41,10 +41,11 @@ struct PedalLook { juce::Colour top, bottom, ink, lcd; const char* folder; };
 inline const PedalLook& pedalLook (int pedal)
 {
     static const PedalLook looks[] = {
-        { juce::Colour (0xffc65a4c), juce::Colour (0xff9b3c33), juce::Colour (0xff1a0f0d), juce::Colour (0xffffb540), "Saturator" },
-        { juce::Colour (0xffe08a3c), juce::Colour (0xffb8662a), juce::Colour (0xff1f1206), juce::Colour (0xffffd28a), "Phaser" },
-        { juce::Colour (0xff6f9fb8), juce::Colour (0xff4b7690), juce::Colour (0xff0d1a22), juce::Colour (0xff8fe6ff), "BBD Chorus" },
-        { juce::Colour (0xffddd2ab), juce::Colour (0xffb8ad86), juce::Colour (0xff1a1810), juce::Colour (0xff9dffa0), "Tape Echo" },
+        // enamel colours of the die-cast boxes; the pedals keep them on every skin
+        { juce::Colour (0xffc8362f), juce::Colour (0xff9e2822), juce::Colour (0xffece6d6), juce::Colour (0xffffb540), "Saturator" },
+        { juce::Colour (0xffe57b25), juce::Colour (0xffbb5f16), juce::Colour (0xff1f1206), juce::Colour (0xffffd28a), "Phaser" },
+        { juce::Colour (0xff3f7fc0), juce::Colour (0xff2c6099), juce::Colour (0xffece6d6), juce::Colour (0xff8fe6ff), "BBD Chorus" },
+        { juce::Colour (0xffe9e1c8), juce::Colour (0xffc4bb9f), juce::Colour (0xff1a1810), juce::Colour (0xff9dffa0), "Tape Echo" },
     };
     return looks[juce::jlimit (0, babushka::kNumPedals - 1, pedal)];
 }
@@ -474,14 +475,26 @@ public:
         const auto r = getLocalBounds().toFloat().reduced (1.0f, 0.0f).withTrimmedBottom (2.0f);
         g.setColour (juce::Colours::black.withAlpha (0.6f));                                            // shadow on the board
         g.fillRoundedRectangle (r.translated (0.0f, 2.5f), 9.0f);
-        juce::ColourGradient body (look.top, 0.0f, r.getY(), look.bottom, 0.0f, r.getBottom(), false);
+        // die-cast box in smooth enamel: a gloss from the top-left light, the face a few pixels inside the rounded edge,
+        // worn corners, four screws
+        juce::ColourGradient body (look.top.brighter (0.08f), 0.0f, r.getY(), look.bottom, 0.0f, r.getBottom(), false);
         g.setGradientFill (body);
-        g.fillRoundedRectangle (r, 9.0f);
-        grain (g, r, 0.9f);                                                                             // hammertone finish
-        g.setColour (juce::Colours::white.withAlpha (0.28f));
-        g.drawLine (r.getX() + 9.0f, r.getY() + 0.8f, r.getRight() - 9.0f, r.getY() + 0.8f, 1.0f);
-        g.setColour (juce::Colours::black.withAlpha (0.35f));
-        g.drawRoundedRectangle (r.reduced (0.5f), 9.0f, 1.0f);
+        juce::Path box; box.addRoundedRectangle (r, 9.0f);
+        g.fillPath (box);
+        enamel (g, box, r);
+        drawWear (g, r, true, 1.4f);
+        juce::ColourGradient edge (juce::Colours::white.withAlpha (0.45f), 0.0f, r.getY(), juce::Colours::black.withAlpha (0.35f), 0.0f, r.getBottom(), false);
+        g.setGradientFill (edge);
+        g.drawRoundedRectangle (r.reduced (0.8f), 8.5f, 1.6f);
+        g.setColour (juce::Colours::black.withAlpha (0.16f));
+        g.drawRoundedRectangle (r.reduced (4.0f), 6.0f, 1.0f);                                           // the face inside the cast edge
+        g.setColour (juce::Colours::white.withAlpha (0.14f));
+        g.drawRoundedRectangle (r.reduced (4.0f).translated (0.0f, 1.0f), 6.0f, 0.8f);
+        for (auto c : { juce::Point<float> (r.getX() + 6.0f, r.getY() + 6.0f), juce::Point<float> (r.getRight() - 6.0f, r.getY() + 6.0f),
+                        juce::Point<float> (r.getX() + 6.0f, r.getBottom() - 6.0f), juce::Point<float> (r.getRight() - 6.0f, r.getBottom() - 6.0f) })
+            drawScrew (g, c, 2.8f, 0.6f + c.x * 0.37f);
+        g.setColour (juce::Colours::black.withAlpha (0.45f));
+        g.drawRoundedRectangle (r.reduced (0.3f), 9.0f, 0.8f);
         if (dragging)
         {
             g.setColour (col::ledAmber.withAlpha (0.7f));
@@ -491,8 +504,7 @@ public:
         for (int i = 0; i < 3; ++i)
         {
             drawJack (g, { kJackX[i], kJackY }, 9.5f);
-            label (g, names[i], juce::Rectangle<float> (36.0f, 12.0f).withCentre ({ kJackX[i], 38.0f }), look.ink, type::jack, Weight::NarrowBold,
-                   juce::Justification::centred, 0.03f);
+            drawJackName (g, names[i], { kJackX[i], 38.0f }, 36.0f, look.ink, type::jack, i == 2);
         }
         for (int i = 0; i < 2; ++i)
             label (g, info.knobs[(size_t) i].name, juce::Rectangle<float> (48.0f, 14.0f).withCentre ({ kKnobX[i], kNamesY }), look.ink, type::control,

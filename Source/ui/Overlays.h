@@ -78,19 +78,66 @@ public:
     juce::Font getPopupMenuFont() override { return font (Weight::NarrowSemi, 17.0f, 0.02f); }
     juce::Font getLabelFont (juce::Label&) override { return font (Weight::NarrowSemi, 16.0f, 0.02f); }
     juce::Typeface::Ptr getTypefaceForFont (const juce::Font&) override { return typeface (Weight::NarrowSemi); }
+
+    // Sliders: a slot with an amber track and a small black fader cap with a white line.
+    void drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos, float, float,
+                           juce::Slider::SliderStyle style, juce::Slider& slider) override
+    {
+        if (style != juce::Slider::LinearHorizontal) { LookAndFeel_V4::drawLinearSlider (g, x, y, width, height, sliderPos, 0, 0, style, slider); return; }
+        const float cy = (float) y + (float) height * 0.5f;
+        const juce::Rectangle<float> slot ((float) x, cy - 4.0f, (float) width, 8.0f);
+        g.setColour (juce::Colours::black); g.fillRoundedRectangle (slot, 4.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.1f)); g.drawLine (slot.getX() + 3.0f, slot.getBottom() + 0.5f, slot.getRight() - 3.0f, slot.getBottom() + 0.5f, 0.8f);
+        drawGlow (g, { ((float) x + sliderPos) * 0.5f, cy }, 6.0f, col::accent, 0.0f);
+        g.setColour (col::accent); g.fillRoundedRectangle (slot.getX() + 1.0f, cy - 2.0f, juce::jmax (0.0f, sliderPos - (float) x - 1.0f), 4.0f, 2.0f);
+        const juce::Rectangle<float> cap (sliderPos - 8.0f, cy - 13.0f, 16.0f, 26.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.6f)); g.fillRoundedRectangle (cap.translated (2.0f, 3.0f), 3.0f);
+        juce::ColourGradient body (juce::Colour (0xff4a4a4a), cap.getX(), 0.0f, juce::Colour (0xff2a2a2a), cap.getRight(), 0.0f, false);
+        body.addColour (0.45, juce::Colour (0xff1a1a1a)); body.addColour (0.55, juce::Colour (0xff070707));
+        g.setGradientFill (body); g.fillRoundedRectangle (cap, 3.0f);
+        g.setColour (juce::Colour (0xfff6f2e8)); g.fillRect (cap.getCentreX() - 1.0f, cap.getY() + 3.0f, 2.0f, cap.getHeight() - 6.0f);
+    }
+
+    // Tick boxes: a small plastic key with an LED, green when on.
+    void drawTickBox (juce::Graphics& g, juce::Component&, float x, float y, float w, float h, bool ticked, bool, bool, bool) override
+    {
+        const auto r = juce::Rectangle<float> (x, y, w, h).withSizeKeepingCentre (juce::jmax (w, h) * 1.6f, h).reduced (0.0f, 1.0f);
+        drawKey (g, r, false, false, 3.0f);
+        const auto c = r.getCentre();
+        if (ticked) drawGlow (g, c, 9.0f, col::ledGreen, 0.9f);
+        g.setColour (ticked ? col::ledGreen.brighter (0.3f) : juce::Colour (0xff1f2a1d));
+        g.fillEllipse (c.x - 3.5f, c.y - 3.5f, 7.0f, 7.0f);
+    }
 };
 
-inline void drawDialogFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title)
+// A dialog is a plate of its own: enamel (dark, or a pedal's colour), a printed frame, four screws, light wear.
+inline void drawDialogFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title, juce::Colour fill = juce::Colour (0xff1b1b1c))
 {
     g.setColour (juce::Colours::black.withAlpha (0.65f));
     g.fillRoundedRectangle (r.translated (0.0f, 8.0f).expanded (6.0f), 14.0f);
-    juce::ColourGradient grad (juce::Colour (0xff252321), r.getX(), r.getY(), juce::Colour (0xff131211), r.getX(), r.getBottom(), false);
+    juce::ColourGradient grad (fill.brighter (0.1f), r.getX(), r.getY(), fill.darker (0.2f), r.getX(), r.getBottom(), false);
     g.setGradientFill (grad);
-    g.fillRoundedRectangle (r, 10.0f);
-    grain (g, r, 0.9f);
-    g.setColour (col::outline.withAlpha (0.55f));
-    g.drawRoundedRectangle (r.reduced (6.0f), 7.0f, 1.0f);
-    label (g, title, r.withHeight (46.0f).translated (0.0f, 8.0f), col::ink, 17.0f, Weight::Bold, juce::Justification::centred, 0.18f);
+    juce::Path face; face.addRoundedRectangle (r, 10.0f);
+    g.fillPath (face);
+    enamel (g, face, r);
+    drawWear (g, r, fill.getPerceivedBrightness() > 0.3f, 1.2f);
+    g.setColour (juce::Colours::white.withAlpha (0.2f));
+    g.drawRoundedRectangle (r.reduced (0.7f), 10.0f, 1.2f);
+    const auto ink = inkOn (fill);
+    g.setColour ((ink == col::inkDark ? col::inkDark : col::outline).withAlpha (0.55f));
+    g.drawRoundedRectangle (r.reduced (8.0f), 6.0f, 1.1f);
+    for (auto c : { r.getTopLeft() + juce::Point<float> (15.0f, 15.0f), r.getTopRight() + juce::Point<float> (-15.0f, 15.0f),
+                    r.getBottomLeft() + juce::Point<float> (15.0f, -15.0f), r.getBottomRight() + juce::Point<float> (-15.0f, -15.0f) })
+        drawScrew (g, c, 4.0f, 0.7f + c.x * 0.3f);
+    label (g, title, r.withHeight (46.0f).translated (0.0f, 8.0f), ink, 17.0f, Weight::Bold, juce::Justification::centred, 0.32f);
+}
+
+// Lists, text fields and menus of a dialog sit behind glass in a chrome bezel; call from the dialog's paint().
+inline void drawScreens (juce::Graphics& g, juce::Component& dialog)
+{
+    for (auto* c : dialog.getChildren())
+        if (c->isVisible() && (dynamic_cast<juce::ListBox*> (c) || dynamic_cast<juce::TextEditor*> (c) || dynamic_cast<juce::ComboBox*> (c)))
+            drawScreenBezel (g, c->getBounds().toFloat());
 }
 
 // ---- preset browser -----------------------------------------------------------------------------------------------------
@@ -105,13 +152,9 @@ public:
     const juce::String& getText() const { return text; }
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (1.0f);
-        const float rad = r.getHeight() * 0.5f;
-        g.setColour (lit ? col::ledAmber.withAlpha (0.92f) : juce::Colour (0xff1c1b19));
-        g.fillRoundedRectangle (r, rad);
-        g.setColour (lit ? col::ledAmber : col::outline.withAlpha (0.4f));
-        g.drawRoundedRectangle (r, rad, 1.0f);
-        label (g, text, r, lit ? col::inkDark : col::ink, 13.0f, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+        const auto r = getLocalBounds().toFloat().reduced (2.5f);
+        drawKey (g, r, lit, false, 3.5f);
+        label (g, text, r, lit ? juce::Colour (0xff2a1700) : col::ink, 13.0f, Weight::NarrowBold, juce::Justification::centred, 0.1f);
     }
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
 private:
@@ -151,6 +194,7 @@ public:
         }
         cancelButton.onClick = [this] { if (onCancel) onCancel(); };
         saveButton.onClick = [this] { if (onSave) onSave(); };
+        saveButton.primary = true;
         nameEditor.onReturnKey = [this] { if (onSave) onSave(); };
         nameEditor.onTextChange = [this] { confirmReplace = false; status = {}; repaint(); };
         setSize (640, 340);
@@ -188,6 +232,7 @@ public:
     void paint (juce::Graphics& g) override
     {
         drawDialogFrame (g, getLocalBounds().toFloat().reduced (4.0f), "SAVE PRESET");
+        drawScreens (g, *this);
         auto caption = [&g] (const char* t, int y) { label (g, t, juce::Rectangle<float> (30.0f, (float) y, 400.0f, 18.0f), col::ink.withAlpha (0.7f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.14f); };
         caption ("NAME", 62);
         caption ("FOLDER (USER PRESETS)", 132);
@@ -262,6 +307,7 @@ public:
 
         for (auto* b : { &saveButton, &duplicateButton, &deleteButton, &importButton, &exportButton, &folderButton, &closeButton }) addAndMakeVisible (*b);
         closeButton.onClick = [this] { if (onClose) onClose(); };
+        closeButton.primary = true;
         saveButton.onClick = [this] { openSaveDialog(); };
         duplicateButton.onClick = [this] {
             const auto f = processor.duplicateCurrentSound();
@@ -378,6 +424,7 @@ public:
     void paint (juce::Graphics& g) override
     {
         drawDialogFrame (g, getLocalBounds().toFloat().reduced (4.0f), "PRESETS");
+        drawScreens (g, *this);
         label (g, countText, searchBox.getBounds().toFloat().withX ((float) searchBox.getRight() - 150.0f).withWidth (110.0f), col::ink.withAlpha (0.65f), 14.0f,
                Weight::Narrow, juce::Justification::centredRight, 0.01f);
         label (g, "CHARACTER", juce::Rectangle<float> (28.0f, (float) kTagsY, 110.0f, 30.0f), col::ink.withAlpha (0.7f), 13.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.16f);
@@ -818,6 +865,7 @@ public:
         addRow (apvts, "Local on", "Off: keys and wheels drive only the KB / GATE / VEL jacks.", "localOn", Row::Toggle);
         addAndMakeVisible (closeButton);
         closeButton.onClick = [this] { if (onClose) onClose(); };
+        closeButton.primary = true;
         setSize (1040, kTop + (int) rows.size() * kRow + 74);
     }
     ~SettingsOverlay() override { setLookAndFeel (nullptr); }
@@ -828,6 +876,7 @@ public:
     void paint (juce::Graphics& g) override
     {
         drawDialogFrame (g, getLocalBounds().toFloat().reduced (4.0f), "SETTINGS");
+        drawScreens (g, *this);
         for (size_t i = 0; i < rows.size(); ++i)
         {
             const float y = (float) (kTop + (int) i * kRow);

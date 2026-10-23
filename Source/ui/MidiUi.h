@@ -39,6 +39,7 @@ public:
             refresh(); };
         clearButton.onClick = [this] { map.endQuickAssign(); map.clear(); status = "All bindings removed."; refresh(); };
         closeButton.onClick = [this] { if (onClose) onClose(); };
+        closeButton.primary = true;
         setSize (900, 760);
         refreshDevices();
         startTimerHz (20);
@@ -65,6 +66,7 @@ public:
     void paint (juce::Graphics& g) override
     {
         drawDialogFrame (g, getLocalBounds().toFloat().reduced (4.0f), "MIDI CONTROLLER");
+        drawScreens (g, *this);
         const float x = 36.0f;
         auto row = [&] (float y, const juce::String& title, const juce::String& text, juce::Colour c) {
             label (g, title, { x, y, 160.0f, 34.0f }, col::ink, 17.0f, Weight::NarrowBold, juce::Justification::centredLeft, 0.02f);
@@ -198,6 +200,7 @@ public:
     {
         for (auto* b : { &saveButton, &cancelButton }) addAndMakeVisible (*b);
         saveButton.onClick = [this] { map.stopLearn(); if (onDone) onDone(); };
+        saveButton.primary = true;
         cancelButton.onClick = [this] { map.stopLearn(); map.restore (before); if (onDone) onDone(); };
         setSize (kW, kH);
         saveButton.setBounds (banner().getRight() - 250, banner().getCentreY() - 17, 110, 34);
