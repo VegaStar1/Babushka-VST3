@@ -9,9 +9,9 @@
 
 namespace
 {
-void save (juce::Component& c, const juce::File& f)
+void save (juce::Component& c, const juce::File& f, float scale = 1.0f)
 {
-    auto img = c.createComponentSnapshot (c.getLocalBounds(), true, 1.0f);
+    auto img = c.createComponentSnapshot (c.getLocalBounds(), true, scale);
     f.deleteFile();
     juce::FileOutputStream os (f);
     juce::PNGImageFormat().writeImageToStream (img, os);
@@ -261,7 +261,13 @@ struct Runner : private juce::Timer
                            auto* sync = proc.apvts.getParameter ("tapSync"); sync->setValueNotifyingHost (sync->convertTo0to1 (5.0f)); }
         if (tick == 260) { save (ed, out.getChildFile ("ui_pedal_echo_sync.png"));
                            std::printf ("echo sync: %s\n", proc.apvts.getParameter ("tapSync")->getCurrentValueAsText().toRawUTF8()); }
-        if (tick == 262) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        // retina and 4K: the same panel drawn at 2x and 3x
+        if (tick == 262) { ed.showPedal (-1); ed.synthPanel().setRearOpen (false, false); load ("Two Saws"); }
+        if (tick > 262 && tick <= 266) play (48);
+        if (tick == 266) { save (ed, out.getChildFile ("ui_2x.png"), 2.0f); save (ed, out.getChildFile ("ui_3x.png"), 3.0f); ed.synthPanel().setRearOpen (true, false); }
+        if (tick == 268) { save (ed, out.getChildFile ("ui_rear_2x.png"), 2.0f); ed.setSkin (1); }
+        if (tick == 270) { save (ed, out.getChildFile ("ui_black_rear_2x.png"), 2.0f); ed.setSkin (0); ed.synthPanel().setRearOpen (false, false); }
+        if (tick == 272) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };

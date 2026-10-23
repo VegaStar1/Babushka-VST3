@@ -573,12 +573,12 @@ private:
                     g.fillRoundedRectangle (seg, 1.5f);
                 }
             }
-            label (g, ch == 0 ? "L" : "R", juce::Rectangle<float> (18.0f, 15.0f).withPosition (r.getX() + 6.0f, y), green, 13.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
+            label (g, ch == 0 ? "L" : "R", juce::Rectangle<float> (18.0f, 15.0f).withPosition (r.getX() + 6.0f, y), green, 16.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
         }
-        label (g, "dB", juce::Rectangle<float> (20.0f, 12.0f).withPosition (r.getX() + 6.0f, r.getY() + 34.0f), green, 10.5f, Weight::Narrow, juce::Justification::centred, 0.0f);
+        label (g, "dB", juce::Rectangle<float> (22.0f, 12.0f).withPosition (r.getX() + 5.0f, r.getY() + 34.0f), green, 12.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
         const std::pair<int, const char*> marks[] = { { 0, "-20" }, { 2, "-15" }, { 4, "-10" }, { 6, "-6" }, { 8, "-3" }, { 9, "0" }, { 11, "+2" }, { 12, "+4" } };
         for (auto [i, t] : marks)
-            label (g, t, juce::Rectangle<float> (30.0f, 12.0f).withCentre ({ segX (i) + segW * 0.5f, r.getY() + 40.0f }), i > 9 ? red : green, 11.0f, Weight::Narrow,
+            label (g, t, juce::Rectangle<float> (30.0f, 12.0f).withCentre ({ segX (i) + segW * 0.5f, r.getY() + 40.0f }), i > 9 ? red : green, 13.5f, Weight::Narrow,
                    juce::Justification::centred, 0.0f);
     }
 

@@ -62,17 +62,20 @@ public:
             const auto face = key.translated (0.0f, on ? 2.0f : 0.0f);
             g.setColour (juce::Colours::black.withAlpha (0.5f));
             g.fillRoundedRectangle (face.translated (3.0f, 5.0f), 3.0f);
-            juce::ColourGradient grad (juce::Colour (0xff343436), face.getX(), face.getY(), juce::Colour (0xff060607), face.getX(), face.getBottom(), false);
+            // the sides: dark at the edges, a soft sheen down the middle
+            juce::ColourGradient grad (juce::Colour (0xff030303), face.getX(), 0.0f, juce::Colour (0xff030303), face.getRight(), 0.0f, false);
+            grad.addColour (0.2, juce::Colour (0xff1d1d1d)); grad.addColour (0.5, juce::Colour (0xff262626)); grad.addColour (0.8, juce::Colour (0xff151515));
             g.setGradientFill (grad);
             g.fillRoundedRectangle (face, 3.0f);
-            const auto top = face.reduced (ww * 0.07f, 0.0f).withTrimmedBottom (face.getHeight() * 0.22f).withTrimmedTop (3.0f);
-            juce::ColourGradient top2 (juce::Colour (on ? 0xff2a2a2c : 0xff4a4a4d), top.getX(), top.getY(), juce::Colour (0xff111112), top.getX(), top.getBottom(), false);
+            // the top of the key: lighter towards its front edge, then the lit front lip
+            const float lip = juce::jmax (8.0f, face.getHeight() * 0.06f);
+            const auto top = face.reduced (ww * 0.06f, 0.0f).withTrimmedBottom (lip);
+            juce::ColourGradient top2 (juce::Colour (0xff0d0d0d), 0.0f, top.getY(), juce::Colour (on ? 0xff2c2c2c : 0xff3d3d3d), 0.0f, top.getBottom(), false);
+            top2.addColour (0.6, juce::Colour (on ? 0xff1f1f1f : 0xff262626)); top2.addColour (0.92, juce::Colour (on ? 0xff2c2c2c : 0xff3d3d3d));
             g.setGradientFill (top2);
-            g.fillRoundedRectangle (top, 2.0f);
-            g.setColour (juce::Colours::white.withAlpha (0.18f));                                  // glossy edge
-            g.drawLine (face.getX() + 2.0f, face.getY() + 2.0f, face.getX() + 2.0f, face.getBottom() - 6.0f, 1.0f);
-            g.setColour (juce::Colours::white.withAlpha (0.09f));
-            g.fillRoundedRectangle (top.withHeight (top.getHeight() * 0.35f).reduced (2.0f, 0.0f), 1.5f);
+            g.fillRoundedRectangle (top, 2.5f);
+            g.setColour (juce::Colour (on ? 0xff555555 : 0xff777777));
+            g.drawLine (top.getX() + 2.0f, top.getBottom() - 0.5f, top.getRight() - 2.0f, top.getBottom() - 0.5f, 1.0f);
         }
     }
 

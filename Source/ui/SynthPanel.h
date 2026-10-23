@@ -57,10 +57,12 @@ public:
         const auto r = getLocalBounds().toFloat().reduced (1.0f);
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillRoundedRectangle (r.translated (0.0f, 2.0f), 6.0f);
-        juce::ColourGradient bezel (juce::Colour (0xff3a3836), r.getX(), r.getY(), juce::Colour (0xff121110), r.getX(), r.getBottom(), false);
+        // chrome bezel round the glass, as on the panel's other screens
+        juce::ColourGradient bezel (juce::Colour (0xffd7d9dc), 0.0f, r.getY(), juce::Colour (0xffacb0b5), 0.0f, r.getBottom(), false);
+        bezel.addColour (0.5, juce::Colour (0xff62666b));
         g.setGradientFill (bezel);
         g.fillRoundedRectangle (r, 6.0f);
-        const auto lcd = r.reduced (6.0f);
+        const auto lcd = r.reduced (3.5f);
         juce::ColourGradient glass (juce::Colour (0xff1b130a), lcd.getX(), lcd.getY(), juce::Colour (0xff0a0704), lcd.getX(), lcd.getBottom(), false);
         g.setGradientFill (glass);
         g.fillRoundedRectangle (lcd, 4.0f);
@@ -458,10 +460,14 @@ private:
             const juce::Rectangle<float> r (30.0f, 26.0f, 1440.0f, 1040.0f);
             g.setColour (juce::Colours::black.withAlpha (0.6f));
             g.fillRoundedRectangle (r.translated (0.0f, 6.0f).expanded (4.0f), 22.0f);
-            juce::ColourGradient grad (c.brighter (0.5f), r.getX(), r.getY(), c.darker (0.3f), r.getX(), r.getBottom(), false);
+            // black powder coat: a rough relief, lit from the top, a little worn
+            juce::ColourGradient grad (juce::Colour (0xff3a3a3a), r.getX(), r.getY(), c.darker (0.2f), r.getX(), r.getBottom(), false);
+            grad.addColour (0.06, juce::Colour (0xff262626)); grad.addColour (0.5, juce::Colour (0xff1c1c1c));
             g.setGradientFill (grad);
-            g.fillRoundedRectangle (r, 20.0f);
-            grain (g, r, 1.0f);
+            juce::Path body; body.addRoundedRectangle (r, 20.0f);
+            g.fillPath (body);
+            fillTiled (g, Texture::Powder, body, 1.0f);
+            drawWear (g, r.reduced (4.0f), false, 2.0f);
             g.setColour (juce::Colours::white.withAlpha (0.12f));
             g.drawRoundedRectangle (r.reduced (0.7f), 20.0f, 1.2f); });
 
@@ -655,9 +661,11 @@ private:
         const auto lhInk = col::ink;
         {
             const juce::Rectangle<float> r (78.0f, kl.top + 4.0f, 216.0f, kl.height - 4.0f);
-            g.setColour (juce::Colour (0xff0c0c0c));
-            g.fillRoundedRectangle (r, 6.0f);
-            grain (g, r, 0.8f);
+            juce::ColourGradient bed (juce::Colour (0xff161616), 0.0f, r.getY(), juce::Colour (0xff0a0a0a), 0.0f, r.getBottom(), false);
+            g.setGradientFill (bed);
+            juce::Path p; p.addRoundedRectangle (r, 6.0f);
+            g.fillPath (p);
+            fillTiled (g, Texture::Powder, p, 0.8f);
             g.setColour (juce::Colours::white.withAlpha (0.10f));
             g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
         }
@@ -778,8 +786,10 @@ private:
         g.fillRoundedRectangle (r.translated (0.0f, 2.0f), 3.0f);
         juce::ColourGradient grad (fill.brighter (dark ? 0.15f : 0.08f), r.getX(), r.getY(), fill.darker (0.14f), r.getX(), r.getBottom(), false);
         g.setGradientFill (grad);
-        g.fillRoundedRectangle (r, 3.0f);
-        grain (g, r, 0.8f);
+        juce::Path face; face.addRoundedRectangle (r, 3.0f);
+        g.fillPath (face);
+        enamel (g, face, r);
+        drawWear (g, r, ! dark, 1.2f);
         if (dark) { g.setColour (col::outline.withAlpha (0.78f)); g.drawRoundedRectangle (r.reduced (4.5f), 2.0f, 1.0f); }
 
         const auto band = r.reduced (0.0f, 13.0f);          // 36 px tall, centred

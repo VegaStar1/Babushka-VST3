@@ -57,10 +57,10 @@ namespace detail
             g.setGradientFill (grad);
             g.fillEllipse (c - 0.5f, c - 0.5f, 1.0f, 1.0f);
         }
-        for (int i = 0; i < 64; ++i)      // knurling
+        for (int i = 0; i < 96; ++i)      // knurling
         {
-            const float a = juce::MathConstants<float>::twoPi * (float) i / 64.0f;
-            const float r0 = 0.452f, r1 = 0.496f;
+            const float a = juce::MathConstants<float>::twoPi * (float) i / 96.0f;
+            const float r0 = 0.40f, r1 = 0.496f;
             g.setColour ((i & 1) ? juce::Colours::white.withAlpha (0.10f) : juce::Colours::black.withAlpha (0.38f));
             g.drawLine (c + r0 * std::cos (a), c + r0 * std::sin (a), c + r1 * std::cos (a), c + r1 * std::sin (a), 0.016f);
         }
@@ -70,30 +70,23 @@ namespace detail
             g.drawEllipse (c - 0.494f, c - 0.494f, 0.988f, 0.988f, 0.012f);
         }
         g.setColour (juce::Colours::black.withAlpha (0.85f));                     // gap between skirt and cap
-        g.drawEllipse (c - 0.428f, c - 0.428f, 0.856f, 0.856f, 0.034f);
-        drawBrushedDisc (g, { c, c }, 0.416f, 40.0f, 0.62f, 0.30f);
+        g.drawEllipse (c - 0.382f, c - 0.382f, 0.764f, 0.764f, 0.03f);
+        drawBrushedDisc (g, { c, c }, 0.37f, 40.0f, 0.72f, 0.26f);
         for (int i = 0; i < 20; ++i)      // lathe-turned rings
         {
-            const float r = 0.10f + 0.0155f * (float) i;
+            const float r = 0.08f + 0.0145f * (float) i;
             g.setColour ((i & 1) ? juce::Colours::white.withAlpha (0.07f) : juce::Colours::black.withAlpha (0.09f));
             g.drawEllipse (c - r, c - r, 2 * r, 2 * r, 0.004f);
         }
         {   // overall shading of the cap
-            juce::ColourGradient grad (juce::Colours::white.withAlpha (0.16f), c - 0.14f, c - 0.16f, juce::Colours::black.withAlpha (0.30f), c + 0.34f, c + 0.38f, true);
+            juce::ColourGradient grad (juce::Colours::white.withAlpha (0.16f), c - 0.14f, c - 0.16f, juce::Colours::black.withAlpha (0.16f), c + 0.34f, c + 0.38f, true);
             g.setGradientFill (grad);
-            g.fillEllipse (c - 0.416f, c - 0.416f, 0.832f, 0.832f);
-        }
-        {   // centre dimple
-            juce::ColourGradient grad (juce::Colour (0x66101214), c - 0.09f, c - 0.1f, juce::Colour (0x88ffffff), c + 0.1f, c + 0.1f, false);
-            g.setGradientFill (grad);
-            g.fillEllipse (c - 0.115f, c - 0.115f, 0.23f, 0.23f);
-            g.setColour (juce::Colours::black.withAlpha (0.35f));
-            g.drawEllipse (c - 0.115f, c - 0.115f, 0.23f, 0.23f, 0.006f);
+            g.fillEllipse (c - 0.37f, c - 0.37f, 0.74f, 0.74f);
         }
         {   // bright edge of the cap
             juce::ColourGradient grad (juce::Colours::white.withAlpha (0.75f), c - 0.3f, c - 0.3f, juce::Colours::black.withAlpha (0.5f), c + 0.3f, c + 0.3f, false);
             g.setGradientFill (grad);
-            g.drawEllipse (c - 0.416f, c - 0.416f, 0.832f, 0.832f, 0.011f);
+            g.drawEllipse (c - 0.37f, c - 0.37f, 0.74f, 0.74f, 0.011f);
         }
     }
 
@@ -203,7 +196,7 @@ namespace detail
         g.addTransform (juce::AffineTransform::rotation (angleRad, c.x, c.y));
         juce::Path p;
         if (wedge)  { p.startNewSubPath (c.x, c.y - 0.405f * D); p.lineTo (c.x + 0.045f * D, c.y - 0.15f * D); p.lineTo (c.x - 0.045f * D, c.y - 0.15f * D); p.closeSubPath(); }
-        else        p.addRoundedRectangle (c.x - 0.026f * D, c.y - 0.40f * D, 0.052f * D, 0.27f * D, 0.02f * D);
+        else        p.addRoundedRectangle (c.x - 0.026f * D, c.y - 0.41f * D, 0.052f * D, 0.36f * D, 0.02f * D);
         g.setColour (juce::Colours::black.withAlpha (0.45f));
         g.fillPath (p, juce::AffineTransform::translation (0.012f * D, 0.016f * D));
         g.setColour (juce::Colour (0xfff3eddc));
@@ -364,13 +357,15 @@ public:
         const juce::Point<float> tip (c.x + std::sin (tilt) * len, c.y - std::cos (tilt) * len);
         g.setColour (juce::Colours::black.withAlpha (0.5f));
         g.drawLine (c.x + 2.0f, c.y + 2.0f, tip.x + 3.0f, tip.y + 3.5f, 5.5f);
-        {   // hex nut
-            juce::Path nut; nut.addPolygon (c, 6, 9.5f, juce::MathConstants<float>::pi / 6.0f);
-            juce::ColourGradient grad (col::metalLight, c.x - 6.0f, c.y - 6.0f, col::metalDark, c.x + 8.0f, c.y + 9.0f, false);
+        {   // round chrome nut
+            g.setColour (juce::Colours::black.withAlpha (0.6f));
+            g.fillEllipse (c.x - 7.5f, c.y - 6.0f, 15.0f, 15.0f);
+            juce::ColourGradient grad (juce::Colour (0xfff2f3f4), c.x - 5.0f, c.y - 6.0f, juce::Colour (0xff5d6166), c.x + 6.0f, c.y + 7.0f, false);
+            grad.addColour (0.45, juce::Colour (0xffe5e7e9)); grad.addColour (0.6, juce::Colour (0xff7c8186));
             g.setGradientFill (grad);
-            g.fillPath (nut);
-            g.setColour (juce::Colours::black.withAlpha (0.55f));
-            g.strokePath (nut, juce::PathStrokeType (0.8f));
+            g.fillEllipse (c.x - 7.0f, c.y - 7.0f, 14.0f, 14.0f);
+            g.setColour (juce::Colours::black.withAlpha (0.45f));
+            g.drawEllipse (c.x - 7.0f, c.y - 7.0f, 14.0f, 14.0f, 0.7f);
         }
         {   // handle: tapered, shaded across its width
             juce::Path h;
@@ -380,13 +375,14 @@ public:
             h.lineTo (tip.x + n.x * 2.3f, tip.y + n.y * 2.3f);
             h.lineTo (c.x + n.x * 3.4f, c.y + n.y * 3.4f);
             h.closeSubPath();
-            juce::ColourGradient grad (juce::Colour (0xfff2f3f4), c.x - n.x * 3.4f, c.y - n.y * 3.4f, juce::Colour (0xff62666b), c.x + n.x * 3.4f, c.y + n.y * 3.4f, false);
-            grad.addColour (0.45, juce::Colour (0xffcfd2d5));
+            // white plastic bat, rounded at the end
+            juce::ColourGradient grad (juce::Colour (0xff9e9c96), c.x - n.x * 3.4f, c.y - n.y * 3.4f, juce::Colour (0xff8f8d87), c.x + n.x * 3.4f, c.y + n.y * 3.4f, false);
+            grad.addColour (0.38, juce::Colours::white); grad.addColour (0.66, juce::Colour (0xffefede8));
             g.setGradientFill (grad);
             g.fillPath (h);
-            juce::ColourGradient ball (juce::Colours::white, tip.x - 1.6f, tip.y - 1.8f, juce::Colour (0xff6b6f74), tip.x + 2.5f, tip.y + 3.0f, true);
-            g.setGradientFill (ball);
-            g.fillEllipse (tip.x - 3.6f, tip.y - 3.6f, 7.2f, 7.2f);
+            g.fillEllipse (tip.x - 2.6f, tip.y - 2.6f, 5.2f, 5.2f);
+            g.setColour (juce::Colours::black.withAlpha (0.25f));
+            g.strokePath (h, juce::PathStrokeType (0.6f));
         }
     }
 
@@ -629,19 +625,19 @@ public:
         {
             const float t0 = -kVisible + 2.0f * kVisible * (float) i / (float) bands, t1 = t0 + 2.0f * kVisible / (float) bands;
             const float tm = 0.5f * (t0 + t1);
-            const float light = juce::jlimit (0.0f, 1.0f, 0.18f + 0.95f * std::cos (tm + 0.38f) * std::cos (tm));
-            g.setColour (tone.withMultipliedBrightness (0.35f + 0.9f * light));
+            const float light = juce::jlimit (0.0f, 1.0f, 0.08f + 0.95f * std::cos (tm + 0.38f) * std::cos (tm));
+            g.setColour (tone.withMultipliedBrightness (0.12f + 0.92f * std::pow (light, 1.4f)));
             g.fillRect (juce::Rectangle<float>::leftTopRightBottom (w.getX(), yAt (t0), w.getRight(), yAt (t1) + 0.6f));
         }
         // ribs moulded into the tread
-        const float step = juce::degreesToRadians (7.5f);
+        const float step = juce::degreesToRadians (5.0f);
         const float first = std::fmod (turn, step) - std::ceil (kVisible / step) * step;
         for (float th = first; th < kVisible; th += step)
         {
             if (th < -kVisible) continue;
             const float c = std::cos (th);
-            const float y = yAt (th), hgt = juce::jmax (0.4f, 2.6f * c);
-            g.setColour (juce::Colours::black.withAlpha (0.55f * c));
+            const float y = yAt (th), hgt = juce::jmax (0.3f, 1.4f * c);
+            g.setColour (juce::Colours::black.withAlpha (0.35f * c));
             g.fillRect (w.getX(), y - hgt * 0.5f, w.getWidth(), hgt);
             const bool facingLight = th < 0.25f;
             g.setColour (juce::Colours::white.withAlpha ((facingLight ? 0.22f : 0.08f) * c));

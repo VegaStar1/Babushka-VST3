@@ -7,6 +7,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <BinaryData.h>
 #include <cmath>
+#include <map>
 #include <vector>
 
 namespace babushka::ui
@@ -77,7 +78,7 @@ namespace type
     constexpr float mark    = 9.5f;    // scales and positions round knobs and levers, the pads' key names
 }
 
-inline juce::Colour inkOn (juce::Colour plate) { return plate.getPerceivedBrightness() > 0.42f ? col::inkDark : col::ink; }
+inline juce::Colour inkOn (juce::Colour plate) { return plate.getPerceivedBrightness() > 0.5f ? col::inkDark : col::ink; }
 
 // ---- fonts (SIL Open Font License 1.1; see docs/licenses) ----------------------------------------------------------
 // Montserrat for the logotype, display and dialogs; Barlow Semi Condensed for the small panel print, which needs
@@ -123,10 +124,13 @@ inline void label (juce::Graphics& g, const juce::String& text, juce::Rectangle<
 }
 
 // ---- noise (printed-circuit-board-ish grain on plates) ----------------------------------------------------------
-inline const juce::Image& noiseTile()
+inline const juce::Image& noiseTile (int pixelScale = 1)
 {
-    static const juce::Image tile = [] {
-        juce::Image im (juce::Image::ARGB, 160, 160, true);
+    static std::map<int, juce::Image> cache;
+    pixelScale = juce::jlimit (1, 4, pixelScale);
+    if (auto it = cache.find (pixelScale); it != cache.end()) return it->second;
+    const juce::Image tile = [pixelScale] {
+        juce::Image im (juce::Image::ARGB, 160 * pixelScale, 160 * pixelScale, true);
         juce::Random r (20240607);
         juce::Image::BitmapData d (im, juce::Image::BitmapData::writeOnly);
         for (int y = 0; y < d.height; ++y)
@@ -139,15 +143,21 @@ inline const juce::Image& noiseTile()
             }
         return im;
     }();
-    return tile;
+    return cache.emplace (pixelScale, tile).first->second;
 }
+
+// Physical pixels per logical pixel of the drawing target, as a whole number for the texture caches (1 … 4).
+inline int textureScale (juce::Graphics& g) { return juce::jlimit (1, 4, (int) std::ceil ((float) g.getInternalContext().getPhysicalPixelScaleFactor() - 0.01f)); }
 
 inline void grain (juce::Graphics& g, juce::Rectangle<float> area, float opacity = 0.5f, juce::Rectangle<float>* clipPath = nullptr)
 {
     juce::Graphics::ScopedSaveState s (g);
     g.reduceClipRegion (area.getSmallestIntegerContainer());
     (void) clipPath;
-    g.setTiledImageFill (noiseTile(), 0, 0, opacity);
+    const int ts = textureScale (g);
+    juce::FillType fill (noiseTile (ts), juce::AffineTransform::scale (1.0f / (float) ts));
+    fill.setOpacity (opacity);
+    g.setFillType (fill);
     g.fillRect (area);
 }
 
@@ -185,8 +195,11 @@ namespace detail
     }
 
     // Shading tile from a height field: lit = white, shaded = black; `strength` is the alpha at full slope.
-    inline juce::Image litTile (int size, int cells, int octaves, juce::int64 seed, float relief, float strength)
+    // `pixelScale`: the tile has that many pixels per logical pixel (same pattern, finer pixels).
+    inline juce::Image litTile (int size, int cells, int octaves, juce::int64 seed, float relief, float strength, int pixelScale = 1)
     {
+        size *= pixelScale;
+        relief *= (float) pixelScale;
         const auto h = noiseField (size, cells, octaves, seed);
         juce::Image im (juce::Image::ARGB, size, size, true);
         juce::Image::BitmapData d (im, juce::Image::BitmapData::writeOnly);
@@ -214,22 +227,35 @@ namespace detail
             for (int x = 0; x < size; ++x)
             {
                 const float v = (h[(size_t) (y * size + x)] - 0.5f) * 2.0f;
-                d.setPixelColour (x, y, (v > 0 ? juce::Colours::white : juce::Colours::black).withAlpha ((juce::uint8) juce::jlimit (0, 255, (int) (std::abs (v) * 16.0f))));
+                d.setPixelColour (x, y, (v > 0 ? juce::Colours::white : juce::Colours::black).withAlpha ((juce::uint8) juce::jlimit (0, 255, (int) (std::abs (v) * 12.0f))));
             }
         return im;
     }
 }
 
-// Enamel: a fine "orange peel" relief; the chassis: rougher powder coat.
-inline const juce::Image& enamelTile() { static const juce::Image t = detail::litTile (256, 128, 2, 3, 2.0f, 0.15f); return t; }
-inline const juce::Image& powderTile() { static const juce::Image t = detail::litTile (256, 128, 2, 5, 3.0f, 0.40f); return t; }
-inline const juce::Image& mottle()     { static const juce::Image t = detail::mottleTile(); return t; }
+// Enamel: a fine "orange peel" relief; the chassis: rougher powder coat. Tiles per pixel scale, so they stay sharp on
+// retina and 4K screens.
+enum class Texture { Enamel, Powder, Mottle };
+inline const juce::Image& texture (Texture t, int pixelScale)
+{
+    static std::map<int, juce::Image> cache;
+    pixelScale = juce::jlimit (1, 4, t == Texture::Mottle ? 1 : pixelScale);       // the blotches are soft anyway
+    const int key = (int) t * 10 + pixelScale;
+    if (auto it = cache.find (key); it != cache.end()) return it->second;
+    juce::Image im = t == Texture::Enamel ? detail::litTile (256, 160, 2, 3, 1.2f, 0.07f, pixelScale)
+                   : t == Texture::Powder ? detail::litTile (256, 200, 2, 5, 1.6f, 0.22f, pixelScale)
+                                          : detail::mottleTile();
+    return cache.emplace (key, im).first->second;
+}
 
-inline void fillTiled (juce::Graphics& g, const juce::Image& tile, const juce::Path& area, float opacity)
+inline void fillTiled (juce::Graphics& g, Texture t, const juce::Path& area, float opacity)
 {
     juce::Graphics::ScopedSaveState s (g);
     g.reduceClipRegion (area);
-    g.setTiledImageFill (tile, 0, 0, opacity);
+    const int ts = t == Texture::Mottle ? 1 : textureScale (g);
+    juce::FillType fill (texture (t, ts), juce::AffineTransform::scale (1.0f / (float) ts));
+    fill.setOpacity (opacity);
+    g.setFillType (fill);
     g.fillPath (area);
 }
 
@@ -301,8 +327,8 @@ inline void drawWear (juce::Graphics& g, juce::Rectangle<float> r, bool coloured
 // Enamel finish over a filled area: orange-peel relief, blotches, a broad gloss from the top-left light.
 inline void enamel (juce::Graphics& g, const juce::Path& area, juce::Rectangle<float> r)
 {
-    fillTiled (g, enamelTile(), area, 1.0f);
-    fillTiled (g, mottle(), area, 0.9f);
+    fillTiled (g, Texture::Enamel, area, 1.0f);
+    fillTiled (g, Texture::Mottle, area, 0.9f);
     juce::Graphics::ScopedSaveState s (g);
     g.reduceClipRegion (area);
     juce::ColourGradient gloss (juce::Colours::white.withAlpha (0.18f), r.getX() + r.getWidth() * 0.22f, r.getY() - r.getHeight() * 0.08f,
