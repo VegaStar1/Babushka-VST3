@@ -1,4 +1,4 @@
-// Babushka — arpeggiator and step sequencer (Grandmother-style ARP / SEQ / REC).
+// Babushka — arpeggiator and step sequencer (ARP / SEQ / REC).
 //
 // ARP:  plays held keys one at a time in the order they were pressed (ORDR), forward-then-back
 //       (FWD/BKWD) or random (RNDM), over 1–3 octaves. HOLD latches: keys pressed while others are

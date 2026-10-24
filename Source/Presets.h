@@ -74,7 +74,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 2 }, { "osc1Wave", 3 }, { "mixOsc1", 0.7f }, { "cutoff", 0.4664f }, { "resonance", 0.2f }, { "envAmt", 0.5f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.606f }, { "sustain", 0.0f }, { "release", 0.606f }, { "reverbMix", 0.6f }, { "volume", 1.0f }, { "tapOn", 1 }, { "tapHeads", 6 }, { "tapTime", 0.338f }, { "tapFeedback", 0.45f }, { "tapMix", 0.35f }, { "tapWow", 0.25f }, { "tapFlutter", 0.25f }, { "tapAge", 0.35f }, { "tapTreble", 0.5f }, { "tapSync", 0 }, { "tapBass", 0.5f } } },
 
         // ---------------------------------------------------------------- Legends
-        { "Legends", "Munich '77", "In the style of Giorgio Moroder's bass on Donna Summer's 'I Feel Love' (1977, Moog modular): 16' saws a hair apart, a tight envelope; the double-note pulse that a tape delay gave the original is written into the sequence. Plays by itself; a key transposes; OCT/SEQ picks the chord.",
+        { "Legends", "Munich '77", "In the style of Giorgio Moroder's bass on Donna Summer's 'I Feel Love' (1977, modular synthesizer): 16' saws a hair apart, a tight envelope; the double-note pulse that a tape delay gave the original is written into the sequence. Plays by itself; a key transposes; OCT/SEQ picks the chord.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "cutoff", 0.441f }, { "resonance", 0.25f }, { "envAmt", 0.35f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.481f }, { "sustain", 0.0f }, { "release", 0.417f }, { "reverbMix", 0.15f }, { "arpPlay", 1 }, { "arpMode", 1 }, { "arpOctSeq", 0 }, { "arpRate", 0.697f }, { "arpFreeStep", 2 }, { "volume", 1.0f } },
           "",
           "36 36 48 48 43 43 46 46 36 36 48 48 43 43 46 46",
@@ -108,7 +108,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           "33 33 45 33 33 45 33 45",
           "33 R 33 R 33 R 36 R" },
 
-        { "Legends", "Lucky Lead", "In the style of Keith Emerson's portamento solo on ELP's 'Lucky Man' (1970, played on his Moog modular): near-unison squares, a resonant filter, a long logarithmic glide; walk slowly up the keys for the famous climbing sweep.",
+        { "Legends", "Lucky Lead", "In the style of Keith Emerson's portamento solo on ELP's 'Lucky Man' (1970, played on a modular synthesizer): near-unison squares, a resonant filter, a long logarithmic glide; walk slowly up the keys for the famous climbing sweep.",
           { { "osc1Octave", 2 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "osc2Freq", 0.08f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.6f }, { "cutoff", 0.6519f }, { "resonance", 0.45f }, { "kbdTrack", 2 }, { "attack", 0.325f }, { "decay", 0.703f }, { "sustain", 0.9f }, { "release", 0.648f }, { "reverbMix", 0.25f }, { "glide", 0.64f }, { "glideType", 2 }, { "lfoRate", 0.444f }, { "lfoPitchAmt", 0.112f }, { "modWheel", 0.2f }, { "volume", 0.534f } } },
 
         { "Legends", "Funky Worm", "In the style of the Ohio Players' 'Funky Worm' (1972): a thin, high, whining lead with portamento and quick vibrato. Play an octave or two above middle C.",
@@ -173,7 +173,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
         { "Legends", "Braam", "In the style of the trailer 'BRAAM' made famous by 'Inception' (2010): a low overdriven brass blast that swells open. Hold low notes.",
           { { "osc1Octave", 0 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.2f }, { "mixOsc1", 1.0f }, { "mixOsc2", 0.95f }, { "mixNoise", 0.15f }, { "cutoff", 0.218f }, { "resonance", 0.3f }, { "envAmt", 0.6f }, { "attack", 0.476f }, { "decay", 0.785f }, { "sustain", 0.7f }, { "release", 0.73f }, { "reverbMix", 0.35f }, { "volume", 0.622f } } },
 
-        { "Legends", "Thesis On Sound", "A nod to Adrian Younge, who featured the Grandmother in Moog's 'Thesis on Sound' film: a warm, slightly gritty soul lead with slow vibrato and a wet spring, for retro cinematic themes.",
+        { "Legends", "Retro Soul Lead", "A warm, slightly gritty soul lead with slow vibrato and a wet spring, for retro cinematic themes.",
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 0 }, { "osc2Freq", 0.09f }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.5f }, { "cutoff", 0.5667f }, { "resonance", 0.3f }, { "envAmt", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.325f }, { "decay", 0.688f }, { "sustain", 0.8f }, { "release", 0.648f }, { "reverbMix", 0.35f }, { "glide", 0.383f }, { "lfoRate", 0.43f }, { "lfoPitchAmt", 0.091f }, { "modWheel", 0.35f }, { "volume", 0.564f } } },
 
         { "Legends", "Chicago Acid", "In the style of Phuture's 'Acid Tracks' (1987) and early Chicago acid: resonant saw sequence with accents and slides. Plays by itself; turn CUTOFF and RESONANCE.",
@@ -291,7 +291,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
         { "Bass", "Sub Square", "Square at 16' with a square an octave up, filter low and dark: club sub bass with body.",
           { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 1 }, { "osc2Wave", 2 }, { "mixOsc1", 0.7f }, { "mixOsc2", 0.3f }, { "cutoff", 0.3711f }, { "resonance", 0.1f }, { "envAmt", 0.15f }, { "attack", 0.0f }, { "decay", 0.588f }, { "sustain", 0.9f }, { "release", 0.459f }, { "volume", 0.585f } } },
 
-        { "Bass", "Round Moog Bass", "The warm round bass of countless records: saw + square, resonance a little up, decay to a medium sustain.",
+        { "Bass", "Round Bass", "The warm round bass of countless records: saw + square, resonance a little up, decay to a medium sustain.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", -0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.55f }, { "cutoff", 0.3184f }, { "resonance", 0.3f }, { "envAmt", 0.38f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.58f }, { "sustain", 0.55f }, { "release", 0.459f }, { "volume", 0.749f } } },
 
         { "Bass", "Pluck Bass", "Short and percussive; the filter envelope does all the work. Good for fast lines.",
@@ -361,7 +361,7 @@ inline const std::vector<FactoryPreset>& factoryPresets()
         { "Bass", "Phased Funk", "Funk Rubber through a little four-stage phaser: the swirl of a 70s funk bass rig.",
           { { "osc1Octave", 1 }, { "osc1Wave", 2 }, { "osc2Octave", 0 }, { "osc2Wave", 1 }, { "osc2Freq", 0.04f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.55f }, { "cutoff", 0.3011f }, { "resonance", 0.55f }, { "envAmt", 0.5f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.552f }, { "sustain", 0.25f }, { "release", 0.433f }, { "glide", 0.383f }, { "legatoGlide", 1 }, { "volume", 0.937f }, { "phaOn", 1 }, { "phaRate", 0.2f }, { "phaDepth", 0.9f }, { "phaFeedback", 0.1f }, { "phaStereo", 0.2f }, { "phaMode", 0 }, { "phaCenter", 0.5f }, { "phaMix", 0.5f } } },
 
-        { "Bass", "Dub Bass", "Round Moog Bass with a dark dub echo answering the line: play sparse notes and let the tape talk.",
+        { "Bass", "Dub Bass", "Round Bass with a dark dub echo answering the line: play sparse notes and let the tape talk.",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", -0.06f }, { "mixOsc1", 0.65f }, { "mixOsc2", 0.55f }, { "cutoff", 0.3184f }, { "resonance", 0.3f }, { "envAmt", 0.38f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.58f }, { "sustain", 0.55f }, { "release", 0.459f }, { "volume", 0.749f }, { "tapOn", 1 }, { "tapHeads", 5 }, { "tapTime", 0.575f }, { "tapFeedback", 0.72f }, { "tapMix", 0.22f }, { "tapWow", 0.3f }, { "tapFlutter", 0.25f }, { "tapAge", 0.45f }, { "tapBass", 0.4f }, { "tapTreble", 0.35f }, { "tapSync", 0 } } },
 
         // ---------------------------------------------------------------- Lead
@@ -968,15 +968,15 @@ inline const std::vector<FactoryPreset>& factoryPresets()
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.5f }, { "mixOsc2", 0.5f }, { "cutoff", 0.515f }, { "attack", 0.0f }, { "decay", 0.507f }, { "sustain", 1.0f }, { "release", 0.481f }, { "vcaMode", 2 }, { "reverbMix", 0.25f }, { "lfoRate", 0.453f }, { "lfoWave", 3 }, { "volume", 0.661f }, { "satOn", 1 }, { "satMode", 1 }, { "satDrive", 0.5f }, { "satBias", 0.0f }, { "satBody", 0.45f }, { "satTone", 0.42f }, { "satMix", 1.0f }, { "satOutput", 0.5f }, { "tapOn", 1 }, { "tapSync", 3 }, { "tapTime", 0.5f }, { "tapFeedback", 0.4f }, { "tapMix", 0.35f }, { "tapFlutter", 0.15f }, { "tapAge", 0.2f }, { "tapHeads", 0 }, { "tapWow", 0.15f }, { "tapBass", 0.5f }, { "tapTreble", 0.55f } },
           "modWaveOut:vcaAmtIn modWaveOut:satCv" },
 
-        // The Minimoog trick of feeding the output back into the mixer ("depth and welly"): the loop pushes the
-        // fundamental up and rounds off the top. Grandmother has no VCA OUT jack, so the loop starts at FILTER OUT; the
+        // The classic trick of feeding the output back into the mixer ("depth and welly"): the loop pushes the
+        // fundamental up and rounds off the top. There is no VCA OUT jack, so the loop starts at FILTER OUT; the
         // mixer knob of that input sets the amount. (EURORACK OUT is not used: it comes after the decimator, and its
         // delay turns the loop into a comb filter.)
-        { "Patch Bay", "Feedback Loop Bass", "The filter fed back into its own mixer, as on a Minimoog: a deeper, rounder bass. Cable: FILTER OUT -> MIXER NOISE IN (the Noise knob sets the feedback).",
+        { "Patch Bay", "Feedback Loop Bass", "The filter fed back into its own mixer, as on classic monosynths: a deeper, rounder bass. Cable: FILTER OUT -> MIXER NOISE IN (the Noise knob sets the feedback).",
           { { "osc1Octave", 1 }, { "osc1Wave", 1 }, { "osc2Octave", 0 }, { "osc2Wave", 2 }, { "osc2Freq", 0.06f }, { "mixOsc1", 0.6f }, { "mixOsc2", 0.5f }, { "mixNoise", 0.8f }, { "cutoff", 0.2646f }, { "resonance", 0.3f }, { "envAmt", 0.4f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.55f }, { "sustain", 0.5f }, { "release", 0.45f }, { "volume", 0.75f } },
           "filterOut:mixNoiseIn" },
 
-        { "Patch Bay", "Feedback Loop Lead", "Two saws with the filter fed back into the mixer: the fundamental swells, the top gets rounder, as the Minimoog loop. Cable: FILTER OUT -> MIXER NOISE IN (the Noise knob sets the feedback).",
+        { "Patch Bay", "Feedback Loop Lead", "Two saws with the filter fed back into the mixer: the fundamental swells, the top gets rounder, as in the classic feedback loop. Cable: FILTER OUT -> MIXER NOISE IN (the Noise knob sets the feedback).",
           { { "osc1Octave", 2 }, { "osc1Wave", 1 }, { "osc2Octave", 1 }, { "osc2Wave", 1 }, { "osc2Freq", 0.1f }, { "mixOsc1", 0.55f }, { "mixOsc2", 0.45f }, { "mixNoise", 1.0f }, { "cutoff", 0.66f }, { "resonance", 0.25f }, { "envAmt", 0.2f }, { "kbdTrack", 1 }, { "attack", 0.0f }, { "decay", 0.6f }, { "sustain", 0.75f }, { "release", 0.45f }, { "reverbMix", 0.15f }, { "glide", 0.3f }, { "volume", 0.7f } },
           "filterOut:mixNoiseIn" },
 

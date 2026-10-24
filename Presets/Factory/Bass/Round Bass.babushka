@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Round Moog Bass"
-          presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
-          category="Bass" tags="WARM FAT" description="The warm round bass of countless records: saw + square, resonance a little up, decay to a medium sustain.">
+<BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Round Bass" presetModified="0"
+          presetRandom="0" presetFile="" cutoffLaw="2" category="Bass"
+          tags="WARM FAT" description="The warm round bass of countless records: saw + square, resonance a little up, decay to a medium sustain.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>

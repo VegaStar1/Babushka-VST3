@@ -2,7 +2,7 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="filterOut:mixNoiseIn" presetName="Feedback Loop Bass"
           presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
-          category="Patch Bay" tags="FAT DARK" description="The filter fed back into its own mixer, as on a Minimoog: a deeper, rounder bass. Cable: FILTER OUT -&gt; MIXER NOISE IN (the Noise knob sets the feedback).">
+          category="Patch Bay" tags="FAT DARK" description="The filter fed back into its own mixer, as on classic monosynths: a deeper, rounder bass. Cable: FILTER OUT -&gt; MIXER NOISE IN (the Noise knob sets the feedback).">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>

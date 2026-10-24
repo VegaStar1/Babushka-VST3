@@ -1,4 +1,4 @@
-// Babushka — ADSR (911-style RC contour generator).
+// Babushka — ADSR (RC contour generator).
 //
 // Analogue ADSRs charge and discharge a capacitor through resistors, so every segment is an
 // exponential approach. The attack aims past full scale (overshoot target) and switches to decay

@@ -1,6 +1,6 @@
 // Babushka — the instrument: module plates, knobs, switches, jacks, left-hand controller, keyboard, rear strip.
 //
-// The layout follows the Grandmother front panel (modules left to right: ARP/SEQ, MODULATION, OSCILLATORS, MIXER,
+// The layout follows the signal flow (modules left to right: ARP/SEQ, MODULATION, OSCILLATORS, MIXER,
 // UTILITIES, FILTER, ENVELOPE, OUTPUT + SPRING REVERB; title strip; left-hand controller and keyboard below) in a
 // fixed logical coordinate system. Static artwork is a list of drawing operations recorded while the layout is
 // built, so every coordinate is written down once.
@@ -769,8 +769,7 @@ private:
             layoutForRear(); };
     }
 
-    // Logotype in the manner of the hardware: the first half of the name solid, the second half in outline; then
-    // SEMI-MODULAR / ANALOG SYNTHESIZER on two lines; the maker's mark on the right. The three share one band: the
+    // Logotype: the name in a wide heavy face (Unbounded Black), then SEMI-MODULAR / SYNTHESIZER on two lines; the maker's mark on the right. The three share one band: the
     // capitals of the name, the two lines of print and the mark all run from its top to its bottom, the band is centred
     // in the strip and the margins left of the name and right of the mark are equal. Sizes come from the outlines of
     // the letters, not from font metrics, so the edges line up exactly.
@@ -815,21 +814,22 @@ private:
             return bounds.getWidth() * k * stretch;
         };
 
-        // BABUSHKA: both halves measured together so they share one scale and baseline.
-        auto solid = textPath ("BABU", Weight::Bold, 47.0f, 0.02f), hollow = textPath ("SHKA", Weight::Bold, 47.0f, 0.02f);
-        const float gapHalves = 3.0f / 1.14f;
-        hollow.applyTransform (juce::AffineTransform::translation (solid.getBounds().getRight() + gapHalves, 0.0f));
-        auto both = solid; both.addPath (hollow);
-        const auto nameBounds = tight (both);
-        const float nameW = place (solid, nameBounds, band.getX() + margin, band.getY(), band.getHeight(), 1.14f);
-        place (hollow, nameBounds, band.getX() + margin, band.getY(), band.getHeight(), 1.14f);
+        // BABUSHKA, solid, in its own face.
+        static const auto wide = juce::Typeface::createSystemTypefaceFor (BinaryData::UnboundedBlack_ttf, (size_t) BinaryData::UnboundedBlack_ttfSize);
+        juce::Path name;
+        {
+            juce::GlyphArrangement ga;
+            ga.addLineOfText (juce::Font (juce::FontOptions (wide).withHeight (47.0f).withKerningFactor (0.01f)), "BABUSHKA", 0.0f, 0.0f);
+            ga.createPath (name);
+        }
+        const auto nameBounds = tight (name);
+        const float nameW = place (name, nameBounds, band.getX() + margin, band.getY(), band.getHeight(), 1.0f);
         g.setColour (print);
-        g.fillPath (solid);
-        g.strokePath (hollow, juce::PathStrokeType (1.7f, juce::PathStrokeType::mitered));
+        g.fillPath (name);
 
         // Two lines of print: the first starts at the top of the band, the second ends at its bottom.
         const float capH = band.getHeight() / 2.6f, textX = band.getX() + margin + nameW + 24.0f;
-        auto line1 = textPath ("SEMI-MODULAR", Weight::Bold, 17.0f, 0.04f), line2 = textPath ("ANALOG SYNTHESIZER", Weight::Bold, 17.0f, 0.04f);
+        auto line1 = textPath ("SEMI-MODULAR", Weight::Bold, 17.0f, 0.04f), line2 = textPath ("SYNTHESIZER", Weight::Bold, 17.0f, 0.04f);
         // capitals of the font (a flat-topped letter) set the scale for both lines; round letters may overshoot a little
         const auto capRef = tight (textPath ("H", Weight::Bold, 17.0f, 0.04f));
         const float k = capH / capRef.getHeight();

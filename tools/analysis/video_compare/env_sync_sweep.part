@@ -1,4 +1,4 @@
-# Grandmother patch from a Moog video: +ENV OUT -> OSC 2 PITCH IN, SYNC on, VCA KB RLS, SUSTAIN low.
+# Patch from a demo video of the hardware: +ENV OUT -> OSC 2 PITCH IN, SYNC on, VCA KB RLS, SUSTAIN low.
 # Hardware excerpt: 19.0 ... 30.6 s of the video soundtrack (not in the repository: pass the WAV to compare.py).
 # Part transcribed from the bass pitch of the recording (hardware ~18 cents sharp), played detached: each new key
 # restarts the envelope attack from its current level, as the recording shows. Times in seconds from the excerpt start.

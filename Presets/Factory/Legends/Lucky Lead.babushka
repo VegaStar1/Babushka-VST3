@@ -2,7 +2,7 @@
 
 <BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Lucky Lead" presetModified="0"
           presetRandom="0" presetFile="" cutoffLaw="2" category="Legends"
-          tags="RESONANT WARM" description="In the style of Keith Emerson's portamento solo on ELP's 'Lucky Man' (1970, played on his Moog modular): near-unison squares, a resonant filter, a long logarithmic glide; walk slowly up the keys for the famous climbing sweep.">
+          tags="RESONANT WARM" description="In the style of Keith Emerson's portamento solo on ELP's 'Lucky Man' (1970, played on a modular synthesizer): near-unison squares, a resonant filter, a long logarithmic glide; walk slowly up the keys for the famous climbing sweep.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>

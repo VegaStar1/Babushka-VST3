@@ -33,7 +33,7 @@ juce_add_plugin(Babushka
     ICON_BIG Source/ui/art/app_icon_big.png       # Standalone app icon: the NUWMUN bat, app_icon.svg (babushka_uishot --icons)
     ICON_SMALL Source/ui/art/app_icon_small.png)  # the same at 512 px
 
-# Fonts embedded in the editor (Montserrat and Barlow Semi Condensed, SIL Open Font License 1.1 — see docs/licenses)
+# Fonts embedded in the editor (Montserrat, Barlow Semi Condensed and Unbounded, SIL Open Font License 1.1 — see docs/licenses)
 # and the NUWMUN logo (vector).
 juce_add_binary_data(BabushkaAssets SOURCES
     Source/ui/fonts/Montserrat-Regular.ttf
@@ -42,6 +42,7 @@ juce_add_binary_data(BabushkaAssets SOURCES
     Source/ui/fonts/BarlowSemiCondensed-Medium.ttf
     Source/ui/fonts/BarlowSemiCondensed-SemiBold.ttf
     Source/ui/fonts/BarlowSemiCondensed-Bold.ttf
+    Source/ui/fonts/Unbounded-Black.ttf
     Source/ui/art/nuwmun_logo.svg
     Source/ui/art/selector_lever.png             # outline of the selector knobs' lever (beak up, base disc r = 0.45)
     Source/ui/art/selector_slit.png              # the white line in its beak

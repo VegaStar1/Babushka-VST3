@@ -4,7 +4,7 @@
 // Every discontinuity, including hard-sync resets, is placed at its exact fractional time.
 // Output is delayed by one sample so corrections can be applied on both sides of an event.
 //
-// Waveforms follow the Grandmother panel: Triangle, Sawtooth, Square, Narrow Pulse.
+// Waveforms: Triangle, Sawtooth, Square, Narrow Pulse.
 //
 // The shapes are not ideal, as the waveshapers of an analogue VCO are not: the saw ramp is slightly S-shaped
 // (its ends unchanged, so the reset step stays 2 and no new corner appears), the triangle's peak sits a little

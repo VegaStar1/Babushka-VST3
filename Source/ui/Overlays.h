@@ -181,7 +181,7 @@ public:
     SavePresetDialog() : cancelButton ("CANCEL"), saveButton ("SAVE")
     {
         styleField (nameEditor, "preset name");
-        styleField (newFolderEditor, "+ new folder", col::teal.brighter (0.4f));
+        styleField (newFolderEditor, "+ new folder", col::osc.brighter (0.4f));
         for (auto* c : { (juce::Component*) &nameEditor, (juce::Component*) &folderBox, (juce::Component*) &newFolderEditor,
                          (juce::Component*) &cancelButton, (juce::Component*) &saveButton }) addAndMakeVisible (*c);
         for (auto* t : babushka::kCharacterTags)
@@ -593,7 +593,7 @@ private:
             const float fy = (float) h * 0.5f - 6.0f;
             pth.startNewSubPath (x, fy + 1.0f); pth.lineTo (x + 6.0f, fy + 1.0f); pth.lineTo (x + 8.0f, fy + 3.0f); pth.lineTo (x + 15.0f, fy + 3.0f);
             pth.lineTo (x + 15.0f, fy + 12.0f); pth.lineTo (x, fy + 12.0f); pth.closeSubPath();
-            g.setColour (col::teal.brighter (0.4f));
+            g.setColour (col::osc.brighter (0.4f));
             g.strokePath (pth, juce::PathStrokeType (1.4f));
             x += 22.0f;
         }
@@ -630,7 +630,7 @@ private:
         if (! r.factory)
         {
             const juce::Rectangle<float> tag (right - 44.0f, (float) h * 0.5f - 9.0f, 44.0f, 18.0f);
-            g.setColour (col::teal.brighter (0.35f));
+            g.setColour (col::osc.brighter (0.35f));
             g.fillRoundedRectangle (tag, 3.0f);
             label (g, "USER", tag, col::inkDark, 11.0f, Weight::NarrowBold, juce::Justification::centred, 0.1f);
             right -= 52.0f;
