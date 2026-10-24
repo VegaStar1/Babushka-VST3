@@ -28,7 +28,7 @@ inline const char* factoryPresetTags (std::string_view name)
         { "Grid Runner", "BRIGHT PLUCKY" }, { "On The Run", "EVOLVING NOISY" }, { "Oxygen Lead", "WARM EVOLVING" },
         { "Switched-On", "BRIGHT CLEAN" }, { "Nightdrive", "DARK FAT" }, { "BFG Bass", "AGGRESSIVE NOISY DARK" },
         { "Carpenter Pulse", "DARK EVOLVING" }, { "Blade Brass", "WARM FAT EVOLVING" }, { "Sandworm Drone", "DARK EVOLVING NOISY" },
-        { "Braam", "FAT AGGRESSIVE DARK" }, { "Thesis On Sound", "WARM" }, { "Chicago Acid", "RESONANT AGGRESSIVE" },
+        { "Braam", "FAT AGGRESSIVE DARK" }, { "Retro Soul Lead", "WARM" }, { "Chicago Acid", "RESONANT AGGRESSIVE" },
         { "Tape Memory", "WARM DARK EVOLVING" },
         // Cinematic
         { "Braam Titan", "FAT AGGRESSIVE DARK" }, { "Braam Distorted", "AGGRESSIVE NOISY RESONANT" }, { "Braam Slow Swell", "FAT EVOLVING DARK" },
@@ -37,7 +37,7 @@ inline const char* factoryPresetTags (std::string_view name)
         { "Epic Brass Stab", "PLUCKY BRIGHT FAT" }, { "Dark Brass Swell", "DARK EVOLVING" }, { "Trailer Rise", "EVOLVING BRIGHT" },
         { "Low String Ostinato", "DARK PLUCKY" }, { "Chase Pulse", "DARK EVOLVING" },
         // Bass
-        { "Classic Bass", "WARM FAT" }, { "Sub Square", "DARK CLEAN" }, { "Round Moog Bass", "WARM FAT" }, { "Pluck Bass", "PLUCKY" },
+        { "Classic Bass", "WARM FAT" }, { "Sub Square", "DARK CLEAN" }, { "Round Bass", "WARM FAT" }, { "Pluck Bass", "PLUCKY" },
         { "Funk Rubber", "RESONANT PLUCKY" }, { "Overdriven Saw Bass", "AGGRESSIVE FAT" }, { "Reese", "DARK FAT EVOLVING" },
         { "Hollow Pulse Bass", "BRIGHT CLEAN" }, { "Wobble", "EVOLVING FAT" }, { "Acid Squelch", "RESONANT AGGRESSIVE" },
         { "Deep Triangle", "DARK CLEAN" }, { "Synced Growl", "AGGRESSIVE EVOLVING" }, { "Mono Synth Pop", "BRIGHT PLUCKY" },

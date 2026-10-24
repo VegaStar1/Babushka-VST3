@@ -36,7 +36,7 @@ python3 tools/analysis/video_compare/compare.py <запись.wav> tools/analysi
 
 ## env_sync_sweep.part
 
-Патч из видео Moog о Grandmother: +ENV OUT → OSC 2 PITCH IN, SYNC включён, VCA в KB RLS, SUSTAIN низко. Сама запись
+Патч из демо-видео железа: +ENV OUT → OSC 2 PITCH IN, SYNC включён, VCA в KB RLS, SUSTAIN низко. Сама запись
 (звуковая дорожка видео, 19,0–30,6 с) в репозиторий не входит.
 
 Как получена партия:

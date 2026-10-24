@@ -1,4 +1,4 @@
-// Babushka — 6" spring tank model (905-style).
+// Babushka — 6" spring tank model.
 //
 // Parametric (non-physical) spring model in the spirit of Välimäki/Parker/Abel (2010) and
 // Parker (EURASIP JASP 2011): each spring is a feedback loop containing a transit delay and a

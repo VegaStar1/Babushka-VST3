@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Thesis On Sound"
+<BABUSHKA seq1="" seq2="" seq3="" patch="" presetName="Retro Soul Lead"
           presetModified="0" presetRandom="0" presetFile="" cutoffLaw="2"
-          category="Legends" tags="WARM" description="A nod to Adrian Younge, who featured the Grandmother in Moog's 'Thesis on Sound' film: a warm, slightly gritty soul lead with slow vibrato and a wet spring, for retro cinematic themes.">
+          category="Legends" tags="WARM" description="A warm, slightly gritty soul lead with slow vibrato and a wet spring, for retro cinematic themes.">
   <PARAM id="arpDirection" value="0.0"/>
   <PARAM id="arpFreeStep" value="1.0"/>
   <PARAM id="arpHold" value="0.0"/>

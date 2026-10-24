@@ -2,7 +2,7 @@
 // cables, and compilation of a patch into per-input routing tables. 41 of them are the hardware's; the IN / CV / OUT
 // jacks of the four pedals on the rear panel are plugin-only.
 //
-// The jack list follows the Grandmother manual (Patch Point Index, signal-flow diagram). Every input has a
+// The jack list follows the patch point index and the signal-flow diagram of the instrument. Every input has a
 // "normalled" internal source; plugging a cable into an input breaks that connection (even if the cable
 // carries nothing). Cables are not directional: the net a cable belongs to is driven by the output jacks
 // in it, and read by the input jacks in it. The four Mult jacks are one electrical node.

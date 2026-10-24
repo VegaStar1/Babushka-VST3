@@ -1,4 +1,4 @@
-// Babushka — nonlinear transistor-ladder low-pass (904A-style), zero-delay-feedback.
+// Babushka — nonlinear transistor-ladder low-pass, zero-delay-feedback.
 //
 // Model (per stage, normalised units of 2·Vt):
 //     dy1/dt = wc · ( tanh(x − k·y4) − tanh(y1) )

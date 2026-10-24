@@ -24,10 +24,11 @@ namespace col
     inline const juce::Colour outline   { 0xffd8d2c4 };      // thin line round a module
     inline const juce::Colour ink       { 0xffe9e4d6 };      // text on dark plates
     inline const juce::Colour inkDark   { 0xff161514 };      // text on coloured plates
-    inline const juce::Colour amber     { 0xffd9d94c };      // ARP / SEQ: lemon enamel
-    inline const juce::Colour teal      { 0xff86c8de };      // OSCILLATORS and the title strip: sky blue
-    inline const juce::Colour olive     { 0xff68c94a };      // FILTER: grass green
-    inline const juce::Colour brick     { 0xffd7353b };      // SPRING REVERB: red
+    inline const juce::Colour arp       { 0xfff28c28 };      // ARP / SEQ: tangerine
+    inline const juce::Colour osc       { 0xff23b5b0 };      // OSCILLATORS: turquoise
+    inline const juce::Colour filter    { 0xffd2407e };      // FILTER: berry
+    inline const juce::Colour reverb    { 0xff6a4fc4 };      // SPRING REVERB: violet
+    inline const juce::Colour strip     { 0xff161617 };      // title strip: black
     inline const juce::Colour cream     { 0xffd9cfb4 };
     inline const juce::Colour accent    { 0xffffbe52 };      // amber of the displays and of what is selected in the menus
     inline const juce::Colour ledRed    { 0xffff4a3a };
@@ -53,17 +54,16 @@ struct Skin
 
 inline const std::vector<Skin>& skins()
 {
-    // Babushka: the enamel colours of the hardware - lemon ARP/SEQ, sky-blue OSCILLATORS and title strip, grass-green
-    // FILTER, red SPRING REVERB; hard plastic keys that light in their own colour.
+    // Babushka: tangerine ARP/SEQ, turquoise OSCILLATORS, berry FILTER, violet SPRING REVERB, black title strip.
+    // Pastel: the same plates in peach, lavender, mint and coral. Hard plastic keys light in their own colour.
     static const std::vector<Skin> all {
-        { "Babushka", juce::Colour (0xff0e0e0e), col::panel, col::amber, col::teal, col::olive, col::brick, col::amber,
-          col::teal, col::olive, col::teal, col::amber, col::teal,
-          juce::Colour (0xffe8453f), juce::Colour (0xff5fd04a), juce::Colour (0xff6fc0de), juce::Colour (0xffe2d84a), juce::Colour (0xffece8de) },
-        { "Classic Black", juce::Colour (0xff0b0b0b), juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c),
-          juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c), juce::Colour (0xff1b1b1c),
-          juce::Colours::transparentBlack, juce::Colours::transparentBlack, juce::Colours::transparentBlack, juce::Colours::transparentBlack,
-          juce::Colour (0xff1b1b1c), juce::Colour (0xffff3a2a), juce::Colour (0xffff3a2a), juce::Colour (0xffff3a2a), juce::Colour (0xffff3a2a),
-          juce::Colour (0xffece8de) },
+        { "Babushka", juce::Colour (0xff0e0e0e), col::panel, col::arp, col::osc, col::filter, col::reverb, col::arp,
+          col::osc, col::filter, col::osc, col::arp, col::strip,
+          juce::Colour (0xfff25a2a), juce::Colour (0xff2fd0c8), juce::Colour (0xffe8508e), juce::Colour (0xfff5a030), juce::Colour (0xffece8de) },
+        { "Pastel", juce::Colour (0xff0e0e0e), col::panel, juce::Colour (0xfff6b38a), juce::Colour (0xffa79ceb), juce::Colour (0xff78d6b0),
+          juce::Colour (0xfff2707a), juce::Colour (0xfff6b38a),
+          juce::Colour (0xffa79ceb), juce::Colour (0xff78d6b0), juce::Colour (0xffa79ceb), juce::Colour (0xfff6b38a), col::strip,
+          juce::Colour (0xfff2707a), juce::Colour (0xff8fe3c0), juce::Colour (0xffb9aef5), juce::Colour (0xfff8c39e), juce::Colour (0xffece8de) },
     };
     return all;
 }

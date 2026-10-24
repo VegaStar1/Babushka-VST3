@@ -446,7 +446,7 @@ int main (int argc, char** argv)
     }
 
     // ---------------- 3b. Calibration against recordings of the hardware ----------------------
-    // Targets come from analysis of recorded Grandmother material (see docs/analysis/hardware-recordings.md).
+    // Targets come from analysis of recorded hardware material (see docs/analysis/hardware-recordings.md).
     {
         // Spring tank: T60 per octave band, estimated like the recordings: band-pass, smoothed energy,
         // linear fit of the dB decay from 0.3 s after the peak down to 30 dB below it.

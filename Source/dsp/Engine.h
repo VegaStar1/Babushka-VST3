@@ -417,7 +417,7 @@ private:
         }
     }
 
-    // Each component (the two VCO cores, the ladder, the 911's timing capacitors) lands a little differently on
+    // Each component (the two VCO cores, the ladder, the envelope's timing capacitors) lands a little differently on
     // every note: the panel and the keyboard CV are the same, the analogue parts are not. Ranges at the default
     // Analog Drift (0.25); a full knob gives about three times as much, 0 gives identical notes.
     // ASSUMPTION: the ranges are not measured on hardware (the recordings only bound the slow pitch drift).
@@ -547,7 +547,7 @@ private:
     static constexpr float kLadderDrive = 2.0f;
     // CV feedthrough ("thump"): the hardware is not perfectly balanced, so its control signals leak into the audio.
     // Ladder: a fast envelope sweep of the cutoff unbalances the ladder's bias currents; modelled as the envelope's
-    // share of the cutoff (in octaves) through a high-pass, added to the filter output. VCA (902): the control current
+    // share of the cutoff (in octaves) through a high-pass, added to the filter output. VCA: the control current
     // leaves a small offset at the output, proportional to the gain. Both pass the AC coupling after them, so a fast
     // attack gives a short low "thump" and the end of a note a slow return to zero with an undershoot (as seen in the
     // recordings of the hardware after the gate closes). Slow envelopes leak only a slow, inaudible DC shift.
@@ -690,7 +690,7 @@ private:
         y = filterDc.process (y);
         if (isUsed (Jack::FilterOut)) setOut (Jack::FilterOut, acOut[2].process (y) * 5.0f);
 
-        // VCA (902-style): gain from ENV / KB RLS / DRONE, mild output saturation and a small bleed when closed
+        // VCA: gain from ENV / KB RLS / DRONE, mild output saturation and a small bleed when closed
         // (−66 dB; recordings of the hardware: −60 … −77 dB below the sounding note).
         // VCA AMT IN: in DRONE it alone sets the level (0 … +8 V); in ENV / KB RLS it multiplies the envelope.
         float gain = p.vcaMode == 0 ? e : (p.vcaMode == 1 ? kb : 1.0f);
