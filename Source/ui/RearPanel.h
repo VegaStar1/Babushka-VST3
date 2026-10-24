@@ -352,6 +352,22 @@ private:
             // the name under the jack, on two lines when it is long (EURORACK / OUT)
             auto jack = [&g] (juce::Point<float> c, const juce::String& line1, const juce::String& line2, juce::Colour textColour) {
                 drawJack (g, c);
+                if (line2 == "OUT")
+                {
+                    // both lines in one small box, tight round the longer name: black with white print on the coloured
+                    // plate, soft cream with dark print on the black one
+                    const bool onColour = textColour.getPerceivedBrightness() < 0.5f;
+                    const auto f = font (Weight::NarrowBold, type::jack, 0.03f);
+                    const float w = juce::jmax (juce::GlyphArrangement::getStringWidth (f, line1), juce::GlyphArrangement::getStringWidth (f, line2)) + 6.0f;
+                    const auto box = juce::Rectangle<float> (w, 24.0f).withCentre ({ c.x, c.y + 26.0f });
+                    g.setColour (onColour ? juce::Colour (0xff161514).withAlpha (0.88f) : juce::Colour (0xffe6e1d3).withAlpha (0.82f));
+                    g.fillRoundedRectangle (box, 1.2f);
+                    const auto print = onColour ? juce::Colour (0xffece6d6) : juce::Colour (0xff1a1918);
+                    for (auto [t, y] : { std::pair<juce::String, float> { line1, c.y + 20.0f }, { line2, c.y + 32.0f } })
+                        label (g, t, juce::Rectangle<float> (w - 2.0f, 12.0f).withCentre ({ c.x, y }), print, type::jack, Weight::NarrowBold,
+                               juce::Justification::centred, 0.03f);
+                    return;
+                }
                 label (g, line1, juce::Rectangle<float> (54.0f, 14.0f).withCentre ({ c.x, c.y + 20.0f }), textColour, type::jack, Weight::NarrowBold,
                        juce::Justification::centred, 0.03f);
                 if (line2.isNotEmpty())
@@ -370,52 +386,141 @@ private:
     } content;
 };
 
-// ---- output meters: a needle VU meter, an oscilloscope and a clip lamp -------------------------------------------------
-// Both read the ring of recent output samples the processor keeps. The VU meter follows the classic standard
-// (0 VU = −12 dBFS RMS here, ≈300 ms to reach the reading, a slight overshoot); the scope triggers on rising zero
-// crossings and shows about two and a half periods of the note.
+// ---- output meters -------------------------------------------------------------------------------------------------
+// One window under glass with a drum behind it. Front (the default): a digital L-R meter, two rows of LED segments.
+// The button on the right turns the drum (a short flip about its horizontal axis): on the back, a needle VU meter and
+// an oscilloscope, and the CLIP lamp comes up beside the window. All of it reads the rings of recent output samples
+// the processor keeps.
 //
-// The backlight follows the needle: dim at rest, glowing up as the level rises (with a bulb's lag).
-// Cheap to run: the face (lamps, scale, print) is drawn only when the window is scaled, as two images — lamps low and
-// lamps full — and each frame blends them; only the needle area, the scope and the lamp are repainted, and only when
-// they change.
+// L-R: the peak level of each channel in dBFS (0 = full scale); the bars rise at once, fall 20 dB/s, the peak segment
+// holds for a second. VU: 0 VU = -12 dBFS RMS, ~300 ms to the reading with a slight overshoot; its backlight follows the
+// needle. The scope triggers on rising zero crossings and shows about two and a half periods of the note.
 class OutputMeters : public juce::Component, private juce::Timer
 {
 public:
     explicit OutputMeters (BabushkaProcessor& p) : processor (p)
     {
-        setInterceptsMouseClicks (true, false);           // only for the hints
         lastPos = processor.scopeWritePosition();
         lastClips = processor.getClipCount();
         startTimerHz (60);
     }
 
     HintSink* hints = nullptr;
-    // What the meters show, when the pointer rests on them.
+    std::function<void (bool)> onModeChanged;          // the user switched the meters (true: VU + scope)
+
+    bool showsVu() const { return vu; }
+    void setShowsVu (bool v, bool animate = true)
+    {
+        vu = v;
+        if (! animate) { flip = vu ? 1.0f : 0.0f; flipVel = 0.0f; }
+        repaint();
+    }
+
     void mouseMove (const juce::MouseEvent& e) override
     {
         if (hints == nullptr) return;
         const auto p = e.position;
-        const int zone = p.getDistanceFrom (lampCentre()) < 22.0f ? 1 : vuArea().contains (p) ? 2 : 0;
+        const int zone = buttonArea().contains (p) ? 3 : (vu && p.getDistanceFrom (lampCentre()) < 14.0f) ? 1 : window().contains (p) ? 2 : 0;
         if (zone == hintZone) return;
         hintZone = zone;
-        if (zone == 1) hints->showHint (*this, "CLIP: the output reached 0 dBFS - turn VOLUME (or the channel fader) down");
-        else if (zone == 2) hints->showHint (*this, "VU: the average level (0 VU = -12 dBFS); the peaks light CLIP");
+        if (zone == 3) hints->showHint (*this, vu ? "Show the L-R meter" : "Show the VU meter and the oscilloscope");
+        else if (zone == 1) hints->showHint (*this, "CLIP: the output reached 0 dBFS - turn VOLUME (or the channel fader) down");
+        else if (zone == 2) hints->showHint (*this, vu ? "VU: the average level (0 VU = -12 dBFS); the peaks light CLIP"
+                                                       : "L-R: the peak level of each channel in dBFS; red from -3 dBFS, 0 is full scale");
         else hints->hideHint();
+        setMouseCursor (zone == 3 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
     }
     void mouseExit (const juce::MouseEvent&) override { hintZone = 0; if (hints) hints->hideHint(); }
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        if (! buttonArea().contains (e.position)) return;
+        pressed = true; repaint();
+    }
+    void mouseUp (const juce::MouseEvent& e) override
+    {
+        if (! pressed) return;
+        pressed = false;
+        if (buttonArea().contains (e.position)) { vu = ! vu; if (onModeChanged) onModeChanged (vu); hintZone = 0; mouseMove (e); }
+        repaint();
+    }
 
     void paint (juce::Graphics& g) override
     {
-        drawVu (g, vuArea());
-        drawScope (g, scopeArea());
-        const auto c = lampCentre();
-        if (clipHold > 0.0f) drawGlow (g, c, 14.0f, col::ledRed, juce::jmin (1.0f, clipHold * 2.0f));
+        const auto win = window();
+        // chrome bezel and the dark recess the drum turns in
         g.setColour (juce::Colours::black.withAlpha (0.6f));
-        g.fillEllipse (c.x - 5.5f, c.y - 5.0f, 11.0f, 11.0f);
-        g.setColour (clipHold > 0.0f ? col::ledRed.brighter (0.3f) : col::ledRed.withMultipliedBrightness (0.25f));
-        g.fillEllipse (c.x - 4.5f, c.y - 4.5f, 9.0f, 9.0f);
-        label (g, "CLIP", juce::Rectangle<float> (40.0f, 14.0f).withCentre ({ c.x, c.y + 16.0f }), col::ink, type::jack, Weight::NarrowBold, juce::Justification::centred, 0.08f);
+        g.fillRoundedRectangle (win.expanded (6.0f, 2.0f).translated (0.0f, 2.5f), 7.0f);
+        juce::ColourGradient chrome (juce::Colour (0xffeef0f2), 0.0f, win.getY() - 2.0f, juce::Colour (0xffe0e2e5), 0.0f, win.getBottom() + 2.0f, false);
+        chrome.addColour (0.16, juce::Colour (0xff8e9297)); chrome.addColour (0.5, juce::Colour (0xff474a4e)); chrome.addColour (0.84, juce::Colour (0xff9fa3a8));
+        g.setGradientFill (chrome);
+        g.fillRoundedRectangle (win.expanded (6.0f, 2.0f), 7.0f);
+        g.setColour (juce::Colours::black);
+        g.fillRoundedRectangle (win.expanded (3.0f, 0.0f), 5.0f);
+        {
+            // the drum: the face that is turned towards the glass, squeezed by the angle and shaded
+            juce::Graphics::ScopedSaveState s (g);
+            g.reduceClipRegion (win.toNearestInt());
+            const float angle = flip * juce::MathConstants<float>::pi;
+            const float squeeze = juce::jmax (0.02f, std::abs (std::cos (angle)));
+            g.addTransform (juce::AffineTransform::scale (1.0f, squeeze, win.getCentreX(), win.getCentreY()));
+            if (flip < 0.5f) drawLr (g, win); else { drawVu (g, vuArea()); drawScope (g, scopeArea()); }
+            const float shade = std::abs (std::sin (angle)) * 0.75f;
+            if (shade > 0.01f)
+            {
+                juce::ColourGradient sh (juce::Colours::black.withAlpha (shade), 0.0f, win.getY(), juce::Colours::black.withAlpha (shade), 0.0f, win.getBottom(), false);
+                sh.addColour (0.5, juce::Colours::black.withAlpha (shade * 0.3f));
+                g.setGradientFill (sh);
+                g.fillRect (win);
+            }
+        }
+        // the glass: its reflection stays put while the drum turns behind it
+        juce::ColourGradient glass (juce::Colours::white.withAlpha (0.22f), win.getX(), win.getY(), juce::Colours::transparentWhite, win.getX() + 90.0f, win.getY() + 60.0f, false);
+        glass.addColour (0.5, juce::Colours::white.withAlpha (0.06f));
+        g.setGradientFill (glass);
+        g.fillRoundedRectangle (win.expanded (3.0f, 0.0f), 5.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.25f));
+        g.drawLine (win.getX() + 4.0f, win.getY() + 0.6f, win.getRight() - 4.0f, win.getY() + 0.6f, 0.8f);
+
+        // the bay on the right: CLIP (with the VU meter) over the button
+        const float lampUp = juce::jlimit (0.0f, 1.0f, (flip - 0.55f) / 0.35f);
+        const auto c = lampCentre();
+        if (lampUp > 0.0f)
+        {
+            juce::Graphics::ScopedSaveState s (g);
+            g.setOpacity (lampUp);
+            if (clipHold > 0.0f) drawGlow (g, c, 16.0f, col::ledRed, juce::jmin (1.0f, clipHold * 2.0f));
+            juce::ColourGradient ring (juce::Colour (0xfff6f7f8), c.x - 8.0f, c.y - 8.0f, juce::Colour (0xff62666b), c.x + 8.0f, c.y + 8.0f, false);
+            g.setGradientFill (ring); g.fillEllipse (c.x - 11.0f, c.y - 11.0f, 22.0f, 22.0f);
+            const bool on = clipHold > 0.0f;
+            juce::ColourGradient lens (on ? juce::Colours::white : juce::Colour (0xffa0483e), c.x - 2.0f, c.y - 2.5f, on ? juce::Colour (0xff8a0e06) : juce::Colour (0xff2a0503), c.x + 7.0f, c.y + 7.0f, true);
+            lens.addColour (0.35, on ? col::ledRed.brighter (0.2f) : juce::Colour (0xff5a120c));
+            g.setGradientFill (lens); g.fillEllipse (c.x - 7.5f, c.y - 7.5f, 15.0f, 15.0f);
+            g.setColour (juce::Colours::white.withAlpha (0.6f)); g.fillEllipse (c.x - 3.5f, c.y - 5.0f, 4.5f, 3.0f);
+            label (g, "CLIP", juce::Rectangle<float> (40.0f, 12.0f).withCentre ({ c.x, c.y + 18.0f }), col::ink, type::jack, Weight::NarrowBold, juce::Justification::centred, 0.1f);
+        }
+        if (lampUp < 1.0f)
+        {
+            juce::Graphics::ScopedSaveState s (g);
+            g.setOpacity (1.0f - lampUp);
+            label (g, juce::String::fromUTF8 ("L\xc2\xb7R"), juce::Rectangle<float> (46.0f, 12.0f).withCentre ({ c.x, c.y - 4.0f }), col::ink, type::jack, Weight::NarrowBold, juce::Justification::centred, 0.06f);
+            g.setColour (col::ink.withAlpha (0.5f)); g.drawLine (c.x - 15.0f, c.y + 3.0f, c.x + 15.0f, c.y + 3.0f, 0.8f);
+            label (g, "VU", juce::Rectangle<float> (46.0f, 12.0f).withCentre ({ c.x, c.y + 10.0f }), col::ink, type::jack, Weight::NarrowBold, juce::Justification::centred, 0.06f);
+        }
+        {   // the button: a black cap in a chrome ring, its LED amber for L-R, green for VU
+            const auto b = buttonArea();
+            const auto bc = b.getCentre();
+            g.setColour (juce::Colours::black.withAlpha (0.6f)); g.fillEllipse (b.translated (0.0f, 2.5f));
+            juce::ColourGradient ring (juce::Colour (0xfff3f4f5), b.getX(), b.getY(), juce::Colour (0xff6f7378), b.getRight(), b.getBottom(), false);
+            ring.addColour (0.5, juce::Colour (0xffc9ccd0));
+            g.setGradientFill (ring); g.fillEllipse (b);
+            const auto cap = b.reduced (5.0f).translated (0.0f, pressed ? 1.0f : 0.0f);
+            juce::ColourGradient body (juce::Colour (0xff4a4a4a), cap.getX() + cap.getWidth() * 0.3f, cap.getY(), juce::Colour (0xff050505), cap.getRight(), cap.getBottom(), true);
+            g.setGradientFill (body); g.fillEllipse (cap);
+            g.setColour (juce::Colours::white.withAlpha (0.25f)); g.drawEllipse (cap.reduced (0.5f), 0.8f);
+            const auto led = vu ? col::ledGreen : col::ledAmber;
+            drawGlow (g, bc, 8.0f, led, 0.9f);
+            g.setColour (led.brighter (0.3f)); g.fillEllipse (bc.x - 3.0f, bc.y - 3.0f + (pressed ? 1.0f : 0.0f), 6.0f, 6.0f);
+        }
     }
 
 private:
@@ -428,11 +533,60 @@ private:
     std::vector<float> trace;          // the scope's current sweep
     juce::Image faceDim, faceLit;      // the face with the lamps low and at full
     float cachedScale = 0.0f;
+    // L-R meter
+    bool vu = false, pressed = false;
+    float flip = 0.0f, flipVel = 0.0f;               // the drum: 0 = L-R facing the glass, 1 = VU + scope
+    float bar[2] { -60.0f, -60.0f }, peakDb[2] { -60.0f, -60.0f }, peakAge[2] { 0.0f, 0.0f }, lastChPeak[2] { 0.0f, 0.0f };
+    // segments in dBFS: green up to -6, red from -3 to full scale
+    static constexpr float kThresholds[13] = { -48.0f, -40.0f, -32.0f, -26.0f, -20.0f, -16.0f, -12.0f, -9.0f, -6.0f, -3.0f, -2.0f, -1.0f, 0.0f };
 
-    juce::Rectangle<float> vuArea() const { return { 6.0f, 4.0f, 206.0f, (float) getHeight() - 8.0f }; }
-    juce::Rectangle<float> scopeArea() const { return { 222.0f, 4.0f, 206.0f, (float) getHeight() - 8.0f }; }
+    juce::Rectangle<float> window() const { return { 6.0f, 2.0f, 404.0f, 80.0f }; }
+    juce::Rectangle<float> vuArea() const { return { 6.0f, 2.0f, 194.0f, 80.0f }; }
+    juce::Rectangle<float> scopeArea() const { return { 206.0f, 2.0f, 204.0f, 80.0f }; }
+    juce::Rectangle<float> buttonArea() const { return juce::Rectangle<float> (30.0f, 30.0f).withCentre ({ 448.0f, 60.0f }); }
     int hintZone = 0;
-    juce::Point<float> lampCentre() const { return { (float) getWidth() - 24.0f, (float) getHeight() * 0.5f - 10.0f }; }
+    juce::Point<float> lampCentre() const { return { 448.0f, 18.0f }; }
+
+    // The digital L-R meter: two rows of segments (green to -3, red from 0 up), the scale printed between them.
+    void drawLr (juce::Graphics& g, juce::Rectangle<float> r) const
+    {
+        juce::ColourGradient bg (juce::Colour (0xff0b0e12), r.getCentreX(), r.getY() + r.getHeight() * 0.4f, juce::Colour (0xff030405), r.getX(), r.getY(), true);
+        g.setGradientFill (bg);
+        g.fillRect (r);
+        const juce::Colour green (0xffa6ec3c), red (0xffff3a22);
+        const float sx = r.getX() + 30.0f, sw = 364.0f, gap = 5.0f, segW = (sw - gap * 12.0f) / 13.0f;
+        auto segX = [&] (int i) { return sx + (float) i * (segW + gap); };
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            const float y = r.getY() + (ch == 0 ? 10.0f : 55.0f);
+            for (int i = 0; i < 13; ++i)
+            {
+                const float d = kThresholds[i], next = i + 1 < 13 ? kThresholds[i + 1] : 99.0f;
+                const bool on = bar[ch] >= d || (peakDb[ch] >= d && peakDb[ch] < next);
+                const bool hot = d >= -3.0f;
+                const juce::Rectangle<float> seg (segX (i), y, segW, 15.0f);
+                if (on)
+                {
+                    const auto c = hot ? red : green;
+                    g.setColour (c.withAlpha (0.35f)); g.fillRoundedRectangle (seg.expanded (2.5f), 3.0f);
+                    g.setColour (c); g.fillRoundedRectangle (seg, 1.5f);
+                    juce::ColourGradient hi (juce::Colours::white.withAlpha (0.3f), 0.0f, seg.getY(), juce::Colours::transparentWhite, 0.0f, seg.getCentreY(), false);
+                    g.setGradientFill (hi); g.fillRoundedRectangle (seg, 1.5f);
+                }
+                else
+                {
+                    g.setColour (hot ? juce::Colour (0xff2c0c08) : juce::Colour (0xff141f0b));
+                    g.fillRoundedRectangle (seg, 1.5f);
+                }
+            }
+            label (g, ch == 0 ? "L" : "R", juce::Rectangle<float> (18.0f, 15.0f).withPosition (r.getX() + 6.0f, y), green, 16.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
+        }
+        label (g, "dB", juce::Rectangle<float> (22.0f, 12.0f).withPosition (r.getX() + 5.0f, r.getY() + 34.0f), green, 12.0f, Weight::Narrow, juce::Justification::centred, 0.0f);
+        const std::pair<int, const char*> marks[] = { { 0, "-48" }, { 2, "-32" }, { 4, "-20" }, { 6, "-12" }, { 8, "-6" }, { 9, "-3" }, { 11, "-1" }, { 12, "0" } };
+        for (auto [i, t] : marks)
+            label (g, t, juce::Rectangle<float> (30.0f, 12.0f).withCentre ({ segX (i) + segW * 0.5f, r.getY() + 40.0f }), i >= 9 ? red : green, 13.5f, Weight::Narrow,
+                   juce::Justification::centred, 0.0f);
+    }
 
     // VU scale: the needle moves in proportion to the signal voltage, from −20 VU to +3 VU.
     static float needleFor (float vu) { const float v = std::pow (10.0f, vu / 20.0f); return juce::jlimit (-0.02f, 1.06f, (v - 0.1f) / (std::pow (10.0f, 0.15f) - 0.1f)); }
@@ -461,10 +615,10 @@ private:
         constexpr float dt = 1.0f / 60.0f;
         if (fresh > 0) { lastRms = std::sqrt (sum / (float) fresh); sinceAudio = 0.0f; }
         else if ((sinceAudio += dt) > 0.15f) lastRms = 0.0f;
-        const float vu = 20.0f * std::log10 (juce::jmax (lastRms, 1.0e-6f)) + 12.0f;
+        const float vuDb = 20.0f * std::log10 (juce::jmax (lastRms, 1.0e-6f)) + 12.0f;
         // needle: a damped spring (ζ ≈ 0.8, ≈300 ms to the reading)
         constexpr float w = juce::MathConstants<float>::twoPi * 2.1f, zeta = 0.8f;
-        needleVel += (w * w * (needleFor (vu) - needle) - 2.0f * zeta * w * needleVel) * dt;
+        needleVel += (w * w * (needleFor (vuDb) - needle) - 2.0f * zeta * w * needleVel) * dt;
         needle = juce::jlimit (-0.03f, 1.08f, needle + needleVel * dt);
         // CLIP: output samples at 0 dBFS
         const uint32_t clips = processor.getClipCount();
@@ -483,11 +637,42 @@ private:
             if (m < 0.002f) trace.clear();
             traceDirty = true;
         }
-        // repaint only what changed
-        if (lightChanged) repaint (vuArea().toNearestInt().expanded (2));
-        else if (std::abs (needle - drawnNeedle) > 0.0008f) repaint (vuArea().toNearestInt());       // the needle and its shadow
-        if (traceDirty) { repaint (scopeArea().toNearestInt()); traceDirty = false; }
-        if ((clipHold > 0.0f) != lampWasOn || clipHold > 0.0f) { repaint (juce::Rectangle<float> (40.0f, 46.0f).withCentre (lampCentre()).toNearestInt()); lampWasOn = clipHold > 0.0f; }
+        // L-R: the peak of each channel over the fresh samples in dBFS, up at once, down 20 dB/s, peak held a second
+        bool lrChanged = false;
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            float pk = 0.0f;
+            for (int i = pos - fresh; i < pos; ++i) pk = juce::jmax (pk, std::abs (processor.channelSample (ch, i)));
+            if (fresh > 0) lastChPeak[ch] = pk;
+            else if (sinceAudio > 0.15f) lastChPeak[ch] = 0.0f;
+            const float level = 20.0f * std::log10 (juce::jmax (lastChPeak[ch], 1.0e-6f));
+            const float before = bar[ch], beforePeak = peakDb[ch];
+            bar[ch] = juce::jmax (level, bar[ch] - 20.0f * dt);
+            if (bar[ch] >= peakDb[ch] || (peakAge[ch] += dt) > 1.0f) { peakDb[ch] = bar[ch]; peakAge[ch] = 0.0f; }
+            lrChanged |= std::abs (bar[ch] - before) > 0.05f || std::abs (peakDb[ch] - beforePeak) > 0.05f;
+        }
+        // the drum: a quick spring to its side with a slight overshoot
+        const float target = vu ? 1.0f : 0.0f;
+        const bool turning = std::abs (flip - target) > 0.0005f || std::abs (flipVel) > 0.0005f;
+        if (turning)
+        {
+            constexpr float fw = juce::MathConstants<float>::twoPi * 2.4f, fz = 0.72f;
+            flipVel += (fw * fw * (target - flip) - 2.0f * fz * fw * flipVel) * dt;
+            flip = juce::jlimit (-0.04f, 1.04f, flip + flipVel * dt);
+            if (std::abs (flip - target) < 0.0005f && std::abs (flipVel) < 0.01f) { flip = target; flipVel = 0.0f; }
+        }
+        const bool showsBack = flip >= 0.5f;
+        const bool lampChanged = (clipHold > 0.0f) != lampWasOn || clipHold > 0.0f;
+        lampWasOn = clipHold > 0.0f;
+        if (turning || pressed) repaint();
+        else if (showsBack)
+        {
+            if (lightChanged || std::abs (needle - drawnNeedle) > 0.0008f) repaint (vuArea().toNearestInt().expanded (2));
+            if (traceDirty) repaint (scopeArea().toNearestInt());
+            if (lampChanged) repaint (juce::Rectangle<float> (40.0f, 40.0f).withCentre (lampCentre()).toNearestInt());
+        }
+        else if (lrChanged) repaint (window().toNearestInt());
+        traceDirty = false;
     }
 
     void updateTrace (int pos)

@@ -199,7 +199,7 @@ APVTS::ParameterLayout BabushkaProcessor::createLayout()
     fx ("choNoise", "Chorus Noise", 0.2f);     fx ("choAge", "Chorus Age", 0.25f);
     onOff ("tapOn", "Tape Echo On");
     choice ("tapHeads", "Tape Echo Heads", { "1", "2", "3", "1+2", "2+3", "1+3", "1+2+3" }, 0);
-    choice ("tapSync", "Tape Echo Sync", { "FREE", "1/4", "1/8", "1/8 D", "1/16" }, 0);
+    choice ("tapSync", "Tape Echo Sync", { "FREE", "1/4", "1/8", "1/8 D", "1/16", "1/2" }, 0);      // 1/2 last: saved indices keep their meaning
     fxKnob ("tapTime", "Tape Echo Time", 0.45f, [] (float v) { return String (juce::roundToInt (1000.0f * babushka::dsp::pedallaw::echoSeconds (v))) + " ms"; });
     fx ("tapFeedback", "Tape Echo Feedback", 0.35f);
     pct ("tapMix", "Tape Echo Mix", 0.35f);      fx ("tapWow", "Tape Echo Wow", 0.2f);
@@ -252,6 +252,7 @@ void BabushkaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     euro.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     reverbOut.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     ext.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
+    meterSide.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
     {
         const juce::SpinLock::ScopedLockType lock (seqLock);
         engine.arpSeq().sequences() = pendingSequences;   // sequences survive re-prepare
@@ -432,12 +433,17 @@ babushka::dsp::Sequence BabushkaProcessor::sequenceFromString (const juce::Strin
     return s;
 }
 
-// Recent samples of the main output, for the VU meter and the oscilloscope on the panel.
-void BabushkaProcessor::meterBlock (const float* x, int n) noexcept
+// Recent samples of the main output, for the meters on the panel: the mid (VU meter, oscilloscope) and both channels (L-R).
+void BabushkaProcessor::meterBlock (const float* x, const float* l, const float* r, int n) noexcept
 {
     int pos = scopePos.load (std::memory_order_relaxed);
     for (int i = 0; i < n; ++i, ++pos)
-        scope[(size_t) (pos & (kScopeSize - 1))].store (x[i], std::memory_order_relaxed);
+    {
+        const auto k = (size_t) (pos & (kScopeSize - 1));
+        scope[k].store (x[i], std::memory_order_relaxed);
+        scopeL[k].store (l[i], std::memory_order_relaxed);
+        scopeR[k].store (r[i], std::memory_order_relaxed);
+    }
     scopePos.store (pos & 0x3fffffff, std::memory_order_release);
 }
 
@@ -515,6 +521,7 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         {
             playing = pos->getIsPlaying();
             if (auto b = pos->getBpm()) bpm = *b;
+            hostBpm.store (bpm);
             if (auto q = pos->getPpqPosition()) ppq = *q;
         }
 
@@ -571,10 +578,12 @@ void BabushkaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             mainOut.copyFrom (1, 0, right.data(), numSamples);
             for (int ch = 2; ch < mainOut.getNumChannels(); ++ch) mainOut.copyFrom (ch, 0, left, numSamples);
         }
+        if ((int) meterSide.size() < numSamples) meterSide.resize ((size_t) numSamples);   // the left channel, before it becomes the mid
+        std::copy (left, left + numSamples, meterSide.begin());
         juce::FloatVectorOperations::add (left, right.data(), numSamples);      // → the mid, for a mono bus and the meters
         juce::FloatVectorOperations::multiply (left, 0.5f, numSamples);
         if (mainOut.getNumChannels() == 1) mainOut.copyFrom (0, 0, left, numSamples);
-        meterBlock (left, numSamples);
+        meterBlock (left, meterSide.data(), right.data(), numSamples);
         if (const int overs = engine.takeOvers(); overs > 0) clipCount.fetch_add ((uint32_t) overs);
         if (euroOn)
         {

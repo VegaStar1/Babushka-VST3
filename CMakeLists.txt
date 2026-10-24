@@ -43,6 +43,8 @@ juce_add_binary_data(BabushkaAssets SOURCES
     Source/ui/fonts/BarlowSemiCondensed-SemiBold.ttf
     Source/ui/fonts/BarlowSemiCondensed-Bold.ttf
     Source/ui/art/nuwmun_logo.svg
+    Source/ui/art/selector_lever.png             # outline of the selector knobs' lever (beak up, base disc r = 0.45)
+    Source/ui/art/selector_slit.png              # the white line in its beak
     Source/ui/art/app_icon.svg)                  # source of the Standalone app icon (babushka_uishot --icons)
 
 # Plugin sources, shared with the JUCE-based test tools below.

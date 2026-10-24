@@ -9,9 +9,9 @@
 
 namespace
 {
-void save (juce::Component& c, const juce::File& f)
+void save (juce::Component& c, const juce::File& f, float scale = 1.0f)
 {
-    auto img = c.createComponentSnapshot (c.getLocalBounds(), true, 1.0f);
+    auto img = c.createComponentSnapshot (c.getLocalBounds(), true, scale);
     f.deleteFile();
     juce::FileOutputStream os (f);
     juce::PNGImageFormat().writeImageToStream (img, os);
@@ -144,10 +144,10 @@ struct Runner : private juce::Timer
                            for (auto* id : { "osc2Sync", "arpHold" }) proc.apvts.getParameter (id)->setValueNotifyingHost (1.0f); }
         if (tick == 186) midiWheels (8191 + 6000, 100);      // a MIDI keyboard's wheels: the panel's wheels must follow
         if (tick == 192) { save (ed, out.getChildFile ("ui_black.png")); midiWheels (8192, 0); }
-        if (tick == 193) ed.setSize (900, 651);
+        if (tick == 193) ed.setSize (900, 653);
         if (tick == 195) save (ed, out.getChildFile ("ui_small_black.png"));
         if (tick == 196) { ed.setSkin (0); }
-        if (tick == 198) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1500, 1085); ed.setSkin (skinBefore); }
+        if (tick == 198) { save (ed, out.getChildFile ("ui_small.png")); ed.setSize (1450, 1052); ed.setSkin (skinBefore); }
         // MIDI: the menu with the Oxygen MK V profile, MIDI learn on the panel, soft takeover
         if (tick == 199) { proc.midiMap.applyProfile (1); ed.synthPanel().setRearOpen (true, false); ed.showMidi (true); }
         if (tick == 202) { save (ed, out.getChildFile ("ui_midi.png")); ed.startMidiLearn(); }
@@ -247,9 +247,27 @@ struct Runner : private juce::Timer
             set ("tapOn", 0.0f);
         }
         // the window most people use (about 78 %), rear panel out: the print in its four sizes
-        if (tick == 239) { ed.setSize (1172, 848); load ("Two Saws"); ed.synthPanel().setRearOpen (true, false); }
-        if (tick == 241) { save (ed, out.getChildFile ("ui_mid_rear.png")); ed.setSize (1500, 1085); ed.synthPanel().setRearOpen (false, false); }
-        if (tick == 243) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
+        if (tick == 239) { ed.setSize (1160, 842); load ("Two Saws"); ed.synthPanel().setRearOpen (true, false); }
+        if (tick == 241) { save (ed, out.getChildFile ("ui_mid_rear.png")); ed.setSize (1450, 1052); ed.synthPanel().setRearOpen (false, false); }
+        // the output meters: L-R with a sound, then the drum turning to VU + scope, and back
+        if (tick == 242) load ("Two Saws");
+        if (tick > 242 && tick <= 250) play (48);
+        if (tick == 250) { save (ed, out.getChildFile ("ui_meter_lr.png")); ed.synthPanel().outputMeters().setShowsVu (true); }
+        if (tick == 251) save (ed, out.getChildFile ("ui_meter_turning.png"));
+        if (tick > 251 && tick <= 256) play (48);
+        if (tick == 256) { save (ed, out.getChildFile ("ui_meter_vu.png")); ed.synthPanel().outputMeters().setShowsVu (false, false); }
+        // TAPE ECHO locked to the tempo at 1/2: the TIME knobs point at the synced time
+        if (tick == 257) { ed.synthPanel().setRearOpen (true, false); ed.showPedal (3);
+                           auto* sync = proc.apvts.getParameter ("tapSync"); sync->setValueNotifyingHost (sync->convertTo0to1 (5.0f)); }
+        if (tick == 260) { save (ed, out.getChildFile ("ui_pedal_echo_sync.png"));
+                           std::printf ("echo sync: %s\n", proc.apvts.getParameter ("tapSync")->getCurrentValueAsText().toRawUTF8()); }
+        // retina and 4K: the same panel drawn at 2x and 3x
+        if (tick == 262) { ed.showPedal (-1); ed.synthPanel().setRearOpen (false, false); load ("Two Saws"); }
+        if (tick > 262 && tick <= 266) play (48);
+        if (tick == 266) { save (ed, out.getChildFile ("ui_2x.png"), 2.0f); save (ed, out.getChildFile ("ui_3x.png"), 3.0f); ed.synthPanel().setRearOpen (true, false); }
+        if (tick == 268) { save (ed, out.getChildFile ("ui_rear_2x.png"), 2.0f); ed.setSkin (1); }
+        if (tick == 270) { save (ed, out.getChildFile ("ui_black_rear_2x.png"), 2.0f); ed.setSkin (0); ed.synthPanel().setRearOpen (false, false); }
+        if (tick == 272) { std::printf ("ok\n"); juce::MessageManager::getInstance()->stopDispatchLoop(); }
     }
     int before = 0, skinBefore = 0;
 };
@@ -296,7 +314,7 @@ int main (int argc, char** argv)
     proc.setPlayConfigDetails (0, 2, 48000.0, 512);
     proc.prepareToPlay (48000.0, 512);
     std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
-    ed->setSize (1500, 1085);
+    ed->setSize (1450, 1052);
     auto* be = dynamic_cast<BabushkaEditor*> (ed.get());
     Runner runner (proc, *be, out);
     juce::MessageManager::getInstance()->runDispatchLoop();

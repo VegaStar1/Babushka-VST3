@@ -22,18 +22,14 @@ public:
     PlateButton (const juce::String& t, float textHeight = type::title) : text (t), height (textHeight) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
     std::function<void()> onClick, onRightClick;          // right click (or ctrl-click on a Mac) opens a menu where there is one
     void setText (const juce::String& t) { text = t; repaint(); }
+    bool primary = false;                                  // the main button of a dialog: lit amber
     void paint (juce::Graphics& g) override
     {
-        const auto r = getLocalBounds().toFloat().reduced (1.5f);
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.fillRoundedRectangle (r.translated (0.0f, 1.5f), 4.0f);
-        juce::ColourGradient grad (juce::Colour (down ? 0xff1c1b1a : 0xff3a3836), r.getX(), r.getY(), juce::Colour (down ? 0xff2d2b29 : 0xff161514), r.getX(), r.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillRoundedRectangle (r, 4.0f);
-        g.setColour (col::outline.withAlpha (0.45f));
-        g.drawRoundedRectangle (r, 4.0f, 1.0f);
-        label (g, text, r.translated (0.0f, down ? 1.0f : 0.0f), col::ink.withAlpha (isEnabled() ? 1.0f : 0.35f), height, Weight::NarrowBold,
-               juce::Justification::centred, 0.1f);
+        const auto r = getLocalBounds().toFloat().reduced (3.0f);
+        const bool lit = primary && isEnabled();
+        drawKey (g, r, lit, down);
+        label (g, text, r.translated (0.0f, down ? 1.0f : 0.0f), lit ? juce::Colour (0xff2a1700) : col::ink.withAlpha (isEnabled() ? 1.0f : 0.35f), height,
+               Weight::NarrowBold, juce::Justification::centred, 0.12f);
     }
     void enablementChanged() override { repaint(); }
     void mouseDown (const juce::MouseEvent& e) override { if (e.mods.isPopupMenu()) return; down = true; repaint(); }
@@ -61,10 +57,12 @@ public:
         const auto r = getLocalBounds().toFloat().reduced (1.0f);
         g.setColour (juce::Colours::black.withAlpha (0.6f));
         g.fillRoundedRectangle (r.translated (0.0f, 2.0f), 6.0f);
-        juce::ColourGradient bezel (juce::Colour (0xff3a3836), r.getX(), r.getY(), juce::Colour (0xff121110), r.getX(), r.getBottom(), false);
+        // chrome bezel round the glass, as on the panel's other screens
+        juce::ColourGradient bezel (juce::Colour (0xffd7d9dc), 0.0f, r.getY(), juce::Colour (0xffacb0b5), 0.0f, r.getBottom(), false);
+        bezel.addColour (0.5, juce::Colour (0xff62666b));
         g.setGradientFill (bezel);
         g.fillRoundedRectangle (r, 6.0f);
-        const auto lcd = r.reduced (6.0f);
+        const auto lcd = r.reduced (3.5f);
         juce::ColourGradient glass (juce::Colour (0xff1b130a), lcd.getX(), lcd.getY(), juce::Colour (0xff0a0704), lcd.getX(), lcd.getBottom(), false);
         g.setGradientFill (glass);
         g.fillRoundedRectangle (lcd, 4.0f);
@@ -216,6 +214,8 @@ public:
     // Controls that can be bound to a MIDI knob (MIDI learn on the panel): the control and its parameter.
     struct LearnSite { juce::Component* control; juce::String paramId; };
     const std::vector<LearnSite>& learnSites() const { return learnables; }
+
+    OutputMeters& outputMeters() { return *meters; }
 
     bool isRearOpen() const { return rearTarget > 0.5f; }
     // Opens or closes the rear panel, with the slide animation or at once.
@@ -393,7 +393,7 @@ private:
             const float left = juce::jmax (lo, l.x - natural * 0.5f), right = juce::jmin (hi, l.x + natural * 0.5f);
             const float x = 0.5f * (left + right), w = right - left;
             const auto t = l.text; const auto c = l.colour; const float y = l.y;
-            op ([=] (juce::Graphics& g) { drawText (g, t, x, y, c, type::jack, Weight::NarrowBold, w, 0.03f); });
+            op ([=] (juce::Graphics& g) { drawJackName (g, t, { x, y }, w, c, type::jack, isOutputName (t)); });
         }
         jackLabels.clear();
     }
@@ -460,10 +460,14 @@ private:
             const juce::Rectangle<float> r (30.0f, 26.0f, 1440.0f, 1040.0f);
             g.setColour (juce::Colours::black.withAlpha (0.6f));
             g.fillRoundedRectangle (r.translated (0.0f, 6.0f).expanded (4.0f), 22.0f);
-            juce::ColourGradient grad (c.brighter (0.5f), r.getX(), r.getY(), c.darker (0.3f), r.getX(), r.getBottom(), false);
+            // black powder coat: a rough relief, lit from the top, a little worn
+            juce::ColourGradient grad (juce::Colour (0xff3a3a3a), r.getX(), r.getY(), c.darker (0.2f), r.getX(), r.getBottom(), false);
+            grad.addColour (0.06, juce::Colour (0xff262626)); grad.addColour (0.5, juce::Colour (0xff1c1c1c));
             g.setGradientFill (grad);
-            g.fillRoundedRectangle (r, 20.0f);
-            grain (g, r, 1.0f);
+            juce::Path body; body.addRoundedRectangle (r, 20.0f);
+            g.fillPath (body);
+            fillTiled (g, Texture::Powder, body, 1.0f);
+            drawWear (g, r.reduced (4.0f), false, 2.0f);
             g.setColour (juce::Colours::white.withAlpha (0.12f));
             g.drawRoundedRectangle (r.reduced (0.7f), 20.0f, 1.2f); });
 
@@ -591,9 +595,9 @@ private:
         textAt ("DECAY", 1144, 344, ink, type::control, Weight::NarrowBold, 70.0f);
         ticks (1144, 404, 50, 11, ink); knob ("release", 1144, 404, 50, [] (double v) { return fmt::envTime (v, 0.002); });
         textAt ("RELEASE", 1144, 441, ink, type::control, Weight::NarrowBold, 70.0f);
-        sustain = std::make_unique<Fader> (apvts, "sustain", 232.0f);
+        sustain = std::make_unique<Fader> (apvts, "sustain", 222.0f);
         sustain->hints = &hints;
-        sustain->setCentrePosition (1246, 318);
+        sustain->setCentrePosition (1246, 313);
         addAndMakeVisible (*sustain);
         placed (*sustain);
         learnables.push_back ({ sustain.get(), "sustain" });
@@ -618,9 +622,9 @@ private:
         placeJackLabels();                  // still in the front zone
         zone = Zone::Keys;
         glideKnob = knob ("glide", 101, 606, 40, [] (double v) { return fmt::glide (v); });
-        playPad = addPad (S.play, 162, 610, 40);
-        holdPad = addPad (S.hold, 207, 610, 40);
-        tapPad  = addPad (S.tap, 252, 610, 40);
+        playPad = addPad (S.play, 162, 610, 34);
+        holdPad = addPad (S.hold, 207, 610, 34);
+        tapPad  = addPad (S.tap, 252, 610, 34);
         setupPads();
         pitchWheel = std::make_unique<Wheel> (true, 196.0f, S.wheel);
         pitchWheel->title = "Pitch";
@@ -657,9 +661,7 @@ private:
         const auto lhInk = col::ink;
         {
             const juce::Rectangle<float> r (78.0f, kl.top + 4.0f, 216.0f, kl.height - 4.0f);
-            g.setColour (juce::Colour (0xff0c0c0c));
-            g.fillRoundedRectangle (r, 6.0f);
-            grain (g, r, 0.8f);
+            drawPlate (g, r, S.panel, true);                                // a black plate like the modules above
             g.setColour (juce::Colours::white.withAlpha (0.10f));
             g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
         }
@@ -668,8 +670,8 @@ private:
         drawText (g, "[< KB]", kPadX[0], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
         drawText (g, "[SHIFT]", kPadX[1], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
         drawText (g, "[KB >]", kPadX[2], kl.labelsY, lhInk, type::mark, Weight::NarrowBold, 44.0f, 0.02f);
-        drawPill (g, "PLAY", kPadX[0], kl.pillY, 42, S.pillArp, lhInk); drawPill (g, "HOLD", kPadX[1], kl.pillY, 42, S.pillArp, lhInk);
-        drawPill (g, "TAP", kPadX[2], kl.pillY, 42, S.pillArp, lhInk);
+        drawPill (g, "PLAY", kPadX[0], kl.pillY, 39, S.pillArp, lhInk); drawPill (g, "HOLD", kPadX[1], kl.pillY, 39, S.pillArp, lhInk);
+        drawPill (g, "TAP", kPadX[2], kl.pillY, 39, S.pillArp, lhInk);
         drawText (g, "(TIE)", kPadX[0], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 44.0f, 0.02f);
         drawText (g, "(REST)", kPadX[1], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 44.0f, 0.02f);
         drawText (g, "(ACCENT)", kPadX[2], kl.subY, lhInk, type::mark, Weight::NarrowSemi, 46.0f, 0.02f);
@@ -780,8 +782,10 @@ private:
         g.fillRoundedRectangle (r.translated (0.0f, 2.0f), 3.0f);
         juce::ColourGradient grad (fill.brighter (dark ? 0.15f : 0.08f), r.getX(), r.getY(), fill.darker (0.14f), r.getX(), r.getBottom(), false);
         g.setGradientFill (grad);
-        g.fillRoundedRectangle (r, 3.0f);
-        grain (g, r, 0.8f);
+        juce::Path face; face.addRoundedRectangle (r, 3.0f);
+        g.fillPath (face);
+        enamel (g, face, r);
+        drawWear (g, r, ! dark, 1.2f);
         if (dark) { g.setColour (col::outline.withAlpha (0.78f)); g.drawRoundedRectangle (r.reduced (4.5f), 2.0f, 1.0f); }
 
         const auto band = r.reduced (0.0f, 13.0f);          // 36 px tall, centred
