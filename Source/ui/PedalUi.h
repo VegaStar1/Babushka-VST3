@@ -40,14 +40,23 @@ namespace babushka::ui
 struct PedalLook { juce::Colour top, bottom, ink, lcd; const char* folder; };
 inline const PedalLook& pedalLook (int pedal)
 {
-    static const PedalLook looks[] = {
-        // enamel colours of the die-cast boxes; the pedals keep them on every skin
-        { juce::Colour (0xffc8362f), juce::Colour (0xff9e2822), juce::Colour (0xffece6d6), juce::Colour (0xffffb540), "Saturator" },
-        { juce::Colour (0xffe57b25), juce::Colour (0xffbb5f16), juce::Colour (0xff1f1206), juce::Colour (0xffffd28a), "Phaser" },
-        { juce::Colour (0xff3f7fc0), juce::Colour (0xff2c6099), juce::Colour (0xffece6d6), juce::Colour (0xff8fe6ff), "BBD Chorus" },
-        { juce::Colour (0xffe9e1c8), juce::Colour (0xffc4bb9f), juce::Colour (0xff1a1810), juce::Colour (0xff9dffa0), "Tape Echo" },
+    // enamel colours of the die-cast boxes, one set per skin (the panel is rebuilt when the skin changes)
+    static const PedalLook looks[][babushka::kNumPedals] = {
+        {   // Babushka
+            { juce::Colour (0xffc8362f), juce::Colour (0xff9e2822), juce::Colour (0xffece6d6), juce::Colour (0xffffb540), "Saturator" },
+            { juce::Colour (0xffe8c22c), juce::Colour (0xffc29d17), juce::Colour (0xff1f1a06), juce::Colour (0xffffd28a), "Phaser" },
+            { juce::Colour (0xff3f7fc0), juce::Colour (0xff2c6099), juce::Colour (0xffece6d6), juce::Colour (0xff8fe6ff), "BBD Chorus" },
+            { juce::Colour (0xffe9e1c8), juce::Colour (0xffc4bb9f), juce::Colour (0xff1a1810), juce::Colour (0xff9dffa0), "Tape Echo" },
+        },
+        {   // Pastel
+            { juce::Colour (0xfff2807f), juce::Colour (0xffd9666a), juce::Colour (0xff2a1414), juce::Colour (0xffffb540), "Saturator" },
+            { juce::Colour (0xfff3dc8c), juce::Colour (0xffd8be6c), juce::Colour (0xff231d0a), juce::Colour (0xffffd28a), "Phaser" },
+            { juce::Colour (0xff9cc4ec), juce::Colour (0xff7fa8d2), juce::Colour (0xff0f1a26), juce::Colour (0xff8fe6ff), "BBD Chorus" },
+            { juce::Colour (0xfff1eadb), juce::Colour (0xffd6cdb8), juce::Colour (0xff1a1810), juce::Colour (0xff9dffa0), "Tape Echo" },
+        },
     };
-    return looks[juce::jlimit (0, babushka::kNumPedals - 1, pedal)];
+    constexpr int numSets = (int) (sizeof (looks) / sizeof (looks[0]));
+    return looks[juce::jlimit (0, numSets - 1, skinIndex())][juce::jlimit (0, babushka::kNumPedals - 1, pedal)];
 }
 
 inline juce::RangedAudioParameter* pedalParam (BabushkaProcessor& p, const juce::String& id)
